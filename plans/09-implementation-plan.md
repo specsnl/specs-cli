@@ -19,9 +19,9 @@ at once upfront**. This list is a reference so you know what to reach for in eac
 | Package | Used for |
 |---------|----------|
 | `github.com/spf13/cobra` | CLI framework, subcommands, flags |
-| `github.com/charmbracelet/huh` | Interactive prompts for template variables |
-| `github.com/charmbracelet/lipgloss` | Terminal styling and coloured output |
-| `github.com/charmbracelet/bubbles` | Table component for `specs template list` |
+| `charm.land/huh/v2` | Interactive prompts for template variables |
+| `charm.land/lipgloss/v2` | Terminal styling and coloured output |
+| `charm.land/bubbles/v2` | Table component for `specs template list` |
 | `gopkg.in/yaml.v3` | Parsing `project.yaml` |
 | `github.com/Masterminds/sprig/v3` | Extended template functions (date, crypto, strings, …) |
 | `github.com/go-git/go-git/v5` | Cloning repositories |

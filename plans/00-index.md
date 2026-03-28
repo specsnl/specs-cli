@@ -1,8 +1,8 @@
-# Boilr Plans
+# Specs CLI — Plans
 
-This directory contains the architectural documentation and planning documents for boilr.
+This directory contains the architectural documentation and planning documents for the specs CLI.
 
-## Documents
+## Architecture & decisions
 
 | File | Description |
 |------|-------------|
@@ -14,4 +14,12 @@ This directory contains the architectural documentation and planning documents f
 | [06-template-engine-v2.md](./06-template-engine-v2.md) | Template engine decisions: delimiters and verbatim copy |
 | [07-issues-and-prs.md](./07-issues-and-prs.md) | Review of open issues and PRs from both repos |
 | [08-v2-architecture.md](./08-v2-architecture.md) | Overall v2 architecture, package structure, data flows |
-| [09-implementation-plan.md](./09-implementation-plan.md) | Phased implementation plan with testing requirements |
+
+## Implementation
+
+| File | Description |
+|------|-------------|
+| [09-implementation-plan.md](./09-implementation-plan.md) | Phased overview with package reference |
+| [implementation/phase1.md](./implementation/phase1.md) | Phase 1 — Project skeleton (Cobra root, version command) |
+| [implementation/phase2.md](./implementation/phase2.md) | Phase 2 — Config & output infrastructure (XDG, lipgloss) |
+| [implementation/phase3.md](./implementation/phase3.md) | Phase 3 — Template engine (YAML context, render pipeline) |

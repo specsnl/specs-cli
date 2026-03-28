@@ -17,7 +17,7 @@ Rejected because: its declarative struct style becomes awkward at depth, and its
 
 ## Interactive Prompts: huh
 
-**Decision:** `github.com/charmbracelet/huh` — full replacement for `pkg/prompt`.
+**Decision:** `charm.land/huh/v2` — full replacement for `pkg/prompt`.
 
 **Rationale:**
 - Huh is usable in **standalone mode** (`form.Run()` blocks like a normal function call), so it drops into any Cobra command with zero architectural change.
@@ -42,7 +42,7 @@ Remove `pkg/prompt` entirely. Each command that currently calls `prompt.New(...)
 
 ## Output Styling: lipgloss
 
-**Decision:** `github.com/charmbracelet/lipgloss` — replaces `fatih/color` and `tablewriter`.
+**Decision:** `charm.land/lipgloss/v2` — replaces `fatih/color` and `tablewriter`.
 
 **Rationale:**
 - CSS-like chainable API for colour, bold/italic/underline, padding, margins, borders, and alignment.
@@ -58,7 +58,7 @@ Remove `pkg/prompt` entirely. Each command that currently calls `prompt.New(...)
 
 ## TUI Components: bubbles (selective)
 
-**Decision:** `github.com/charmbracelet/bubbles` — adopt individual components as needed.
+**Decision:** `charm.land/bubbles/v2` — adopt individual components as needed.
 
 **Initial candidates:**
 
