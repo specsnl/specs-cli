@@ -1,10 +1,5 @@
-# Specs CLI
+@AGENTS.md
 
-- **Binary:** `specs`
-- **Module:** `github.com/specsnl/specs-cli`
+## Instructions
 
-## Planning documents
-
-All architectural planning lives in the `plans/` directory.
-Start with [plans/00-index.md](./plans/00-index.md) for an overview of all documents.
-The implementation plan is at [plans/09-implementation-plan.md](./plans/09-implementation-plan.md).
+- @.github/instructions/executing-commands.md: how to run `specs` commands locally and in CI.

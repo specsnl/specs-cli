@@ -1,81 +1,35 @@
 ---
 name: executing-commands
 description: Rules for executing commands safely inside the project.
+applyTo: "**"
 ---
 
 # Repository Execution Rules
 
 ## Execution Model
 
-All project commands MUST be executed via the Taskfile. Agents MUST NOT call Docker Compose commands directly.
+Use the Taskfile tasks for building and testing. Other commands (e.g. `git`, file manipulation,
+installing host tools) may run locally on the host.
 
-Never run directly on the host (outside `task`):
+| Operation | How to run |
+|-----------|-----------|
+| Run tests | `task test` |
+| Build the binary | `task build` |
+| Anything else | Run locally on the host |
 
-- go
-- docker compose
-- docker
+Never call `docker` or `docker compose` directly — use the Taskfile tasks above.
 
-Always use:
-
-```shell
-task <task-name>
-```
-
-To list all available tasks, use:
+To list all available tasks:
 
 ```shell
 task --list
 ```
 
-If a task does not exist:
-
-1. Inspect the [Taskfile](./Taskfile.dist.yml).
-2. Prefer creating or extending a task.
-3. As a temporary fallback, use `task dc:run:go-builder -- <command>` unless another service is explicitly required. This still executes via the Taskfile.
-
 ## Container Context
 
-The default execution service is `go-builder`.
+`task test` and `task build` execute inside the `go-builder` Docker Compose service. This
+service is a one-off container (`--rm`) under the `build` profile — it does not need to be
+started before use.
 
-All standard development commands run inside the Docker Compose service `go-builder`. It is a one-off service (run with `--rm`) under the `build` profile — it does not need to be started before use.
-
-Only use another service if:
-
-- the user explicitly instructs it, or
-- the command explicitly references that service.
-
-To open an interactive shell in the container:
-
-```shell
-task dc:shell
-```
-
-To build the Docker images:
-
-```shell
-task dc:build
-```
-
-## Examples
-
-Build the binary:
-
-```shell
-task build
-```
-
-Run a one-off Go command inside the container:
-
-```shell
-task dc:run:go-builder -- go test ./...
-```
-
-Run tests:
-
-```shell
-task test
-```
-
-```shell
-task build
-```
+Do not use `task dc:run:go-builder` unless no suitable task exists for the operation. Prefer
+creating or extending a task in `Taskfile.dist.yml` instead.
