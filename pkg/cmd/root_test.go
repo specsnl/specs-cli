@@ -42,8 +42,8 @@ func TestVersionDontPrettify(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(out, "specs version") {
-		t.Errorf("expected output to contain 'specs version', got: %q", out)
+	if strings.Contains(out, "specs version") {
+		t.Errorf("expected output to not contain 'specs version', got: %q", out)
 	}
 }
 

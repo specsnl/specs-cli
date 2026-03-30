@@ -17,7 +17,11 @@ var versionCmd = &cobra.Command{
 	Short: "Print the specs version",
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Fprintf(cmd.OutOrStdout(), "specs version %s\n", Version)
+		if (dontPrettifyVersion) {
+			fmt.Fprintln(cmd.OutOrStdout(), Version)
+		} else {
+			fmt.Fprintf(cmd.OutOrStdout(), "specs version %s\n", Version)
+		}
 		return nil
 	},
 }
