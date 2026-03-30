@@ -1,0 +1,26 @@
+# https://taskfile.dev
+version: "3"
+
+silent: true
+
+# env:
+#   BUILDKIT_PROGRESS: plain
+
+tasks:
+
+  build:
+    desc: Build Specscli
+    cmds:
+      - go vet
+      - go build -o specs ./main.go
+
+  cleanup:
+    desc: Cleanup workspace
+    summary: |
+      Cleanup of almost all gitignored files, untracked files and development containers.
+
+      The following files/dirs are excluded: none
+    cmds:
+      - git clean
+        -xd
+        --force
