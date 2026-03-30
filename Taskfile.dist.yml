@@ -7,12 +7,56 @@ silent: true
 #   BUILDKIT_PROGRESS: plain
 
 tasks:
+  dc:
+    desc: Run a docker compose command
+    internal: true
+    cmds:
+      - docker compose {{.SUB_CMD}} {{.CLI_ARGS}}
+
+  dc:build:
+    desc: Run docker compose build
+    cmds:
+      - task: dc
+        vars:
+          SUB_CMD: --profile=* build
+
+  dc:run:*:
+    desc: Run a one-off docker compose command
+    vars:
+      SERVICE: '{{index .MATCH 0}}'
+    cmds:
+      - task: dc
+        vars:
+          SUB_CMD: 'run --rm {{.SERVICE}} {{.SUB_CMD}}'
+          CLI_ARGS: '{{.CLI_ARGS}}'
+
+  dc:shell:
+    desc: Shell into a docker compose service
+    cmds:
+      - task: dc
+        vars:
+          SUB_CMD: 'run --tty --rm go-builder /bin/bash'
+          CLI_ARGS: '{{.CLI_ARGS}}'
 
   build:
-    desc: Build Specscli
+    desc: Build Specs cli
     cmds:
-      - go vet
-      - go build -o specs ./main.go
+      - task: dc:run:go-builder
+        vars:
+          SUB_CMD: go vet
+      - >-
+        docker buildx bake --file compose.yml
+        --set "go-binary.output=type=local,dest=."
+        --set "go-binary.args.GOARCH={{ARCH}}"
+        --set "go-binary.args.GOOS={{OS}}"
+        go-binary
+
+  test:
+    desc: Run go tests
+    cmds:
+      - task: dc:run:go-builder
+        vars:
+          SUB_CMD: 'go test ./...'
 
   cleanup:
     desc: Cleanup workspace
