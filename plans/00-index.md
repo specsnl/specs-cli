@@ -23,3 +23,9 @@ This directory contains the architectural documentation and planning documents f
 | [implementation/phase1.md](./implementation/phase1.md) | Phase 1 — Project skeleton (Cobra root, version command) |
 | [implementation/phase2.md](./implementation/phase2.md) | Phase 2 — Config & output infrastructure (XDG, lipgloss) |
 | [implementation/phase3.md](./implementation/phase3.md) | Phase 3 — Template engine (YAML context, render pipeline) |
+
+## Operations
+
+| File | Description |
+|------|-------------|
+| [10-release-plan.md](./10-release-plan.md) | Release pipeline: GoReleaser, GitHub Releases, Homebrew, CI/CD workflows |
