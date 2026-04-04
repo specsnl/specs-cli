@@ -58,6 +58,13 @@ tasks:
         vars:
           SUB_CMD: 'go test ./...'
 
+  release:dry-run:
+    desc: Build a snapshot release locally without publishing
+    cmds:
+      - task: dc:run:goreleaser
+        vars:
+          SUB_CMD: release --snapshot --clean
+
   cleanup:
     desc: Cleanup workspace
     summary: |

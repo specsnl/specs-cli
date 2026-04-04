@@ -3,4 +3,5 @@
 /dev
 Taskfile.yml
 
-specs
+/specs
+/dist/
