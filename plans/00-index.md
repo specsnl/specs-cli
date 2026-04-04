@@ -14,6 +14,7 @@ This directory contains the architectural documentation and planning documents f
 | [06-template-engine-v2.md](./06-template-engine-v2.md) | Template engine decisions: delimiters and verbatim copy |
 | [07-issues-and-prs.md](./07-issues-and-prs.md) | Review of open issues and PRs from both repos |
 | [08-v2-architecture.md](./08-v2-architecture.md) | Overall v2 architecture, package structure, data flows |
+| [11-computed-values.md](./11-computed-values.md) | Computed values: post-prompt derived context keys |
 
 ## Implementation
 

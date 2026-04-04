@@ -8,6 +8,7 @@
 - Switch template delimiters to `[[ ]]`
 - Replace `project.json` with `project.yaml`
 - Add hooks, `--values`/`--arg`, XDG config, `.boilrignore`, conditional files
+- Add computed values (post-prompt derived context keys)
 - Add `boilr use` one-step command
 - Maintain backward compatibility with v1 templates
 
@@ -217,16 +218,22 @@ Context is built in four stages before prompting:
 ```
 1. Load project.yaml defaults
        │
-2. Resolve referenced defaults ([[ ]] in default values, topological order)
+2. Strip computed: section (not user inputs — resolved post-prompt)
        │
-3. Merge --values file   (provided keys override defaults)
+3. Resolve referenced defaults ([[ ]] in default values, topological order)
        │
-4. Merge --arg flags     (take precedence over --values)
+4. Merge --values file   (provided keys override defaults; error if key is computed)
        │
-5. Prompt for remaining keys (huh form, skipped for pre-provided keys)
+5. Merge --arg flags     (take precedence over --values; error if key is computed)
        │
-6. Final resolved context → FuncMap + hook env vars
+6. Prompt for remaining keys (huh form, skipped for pre-provided keys)
+       │         ↓ final user context
+7. Resolve computed values (topological sort; each result merged before next)
+       │         ↓ full context (user inputs + computed values)
+8. Execute template files + hook commands
 ```
+
+See [11-computed-values.md](../11-computed-values.md) for the full design.
 
 ---
 

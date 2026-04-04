@@ -20,7 +20,7 @@ prompt layer is Phase 6). The engine must be fully testable in isolation.
 
 ```
 go get gopkg.in/yaml.v3
-go get github.com/Masterminds/sprig/v3
+go get github.com/go-sprout/sprout
 go get github.com/sethvargo/go-password/password
 go get github.com/docker/go-units
 go get github.com/danwakefield/fnmatch
@@ -121,14 +121,45 @@ import (
     "strings"
     "text/template"
 
-    "github.com/Masterminds/sprig/v3"
     "github.com/docker/go-units"
+    "github.com/go-sprout/sprout"
+    "github.com/go-sprout/sprout/registry/conversion"
+    "github.com/go-sprout/sprout/registry/crypto"
+    "github.com/go-sprout/sprout/registry/encoding"
+    "github.com/go-sprout/sprout/registry/maps"
+    "github.com/go-sprout/sprout/registry/numeric"
+    "github.com/go-sprout/sprout/registry/random"
+    "github.com/go-sprout/sprout/registry/regexp"
+    "github.com/go-sprout/sprout/registry/semver"
+    "github.com/go-sprout/sprout/registry/slices"
+    "github.com/go-sprout/sprout/registry/std"
+    "github.com/go-sprout/sprout/registry/strings"
+    "github.com/go-sprout/sprout/registry/time"
+    "github.com/go-sprout/sprout/registry/uniqueid"
     "github.com/sethvargo/go-password/password"
 )
 
-// FuncMap returns all template functions: Sprig functions + custom specs functions.
+// FuncMap returns all template functions: Sprout registries + custom specs functions.
+// The env and filesystem registries are intentionally omitted — templates must not
+// read host environment variables or access arbitrary paths.
 func FuncMap() template.FuncMap {
-    m := sprig.TxtFuncMap()
+    handler := sprout.New()
+    handler.AddRegistries(
+        std.NewRegistry(),
+        uniqueid.NewRegistry(),
+        semver.NewRegistry(),
+        time.NewRegistry(),
+        strings.NewRegistry(),
+        random.NewRegistry(),
+        encoding.NewRegistry(),
+        conversion.NewRegistry(),
+        numeric.NewRegistry(),
+        crypto.NewRegistry(),
+        regexp.NewRegistry(),
+        slices.NewRegistry(),
+        maps.NewRegistry(),
+    )
+    m := handler.Build()
 
     m["hostname"] = func() string {
         h, _ := os.Hostname()
@@ -162,9 +193,11 @@ func FuncMap() template.FuncMap {
 }
 ```
 
-**Why start from `sprig.TxtFuncMap()`:** Sprig provides ~70 helpers (string, math, date,
-crypto, encoding). Starting from this map and adding custom entries means all Sprig functions
-are available in templates without any extra work.
+**Why use sprout registries:** Sprout is the active successor to sprig (~100 helpers across
+string, math, date, crypto, encoding, semver registries). Opt-in registries mean only needed
+function groups are included. `env` and `filesystem` registries are excluded so templates
+cannot read host environment variables or access arbitrary paths — important for untrusted
+template downloads.
 
 ---
 
@@ -182,7 +215,7 @@ A context is a `map[string]interface{}` where values are typed as follows:
 | `name: my-project` | `string` | free-text input |
 | `useSonar: false` | `bool` | yes/no confirm |
 | `license: [MIT, GPL]` | `[]interface{}` | select (first item = default) |
-| `ProjectSlug: "[[kebabcase .Name]]"` | `string` containing `[[` | referenced default |
+| `ProjectSlug: "[[toKebabCase .Name]]"` | `string` containing `[[` | referenced default |
 
 #### Referenced defaults
 
@@ -571,7 +604,7 @@ Table-driven; create a `project.yaml` in a temp dir for each case.
 | Bool default | `UseSonar: false` | `ctx["UseSonar"] == false` |
 | Select default | `License: [MIT, GPL]` | `ctx["License"]` is `[]interface{}{"MIT","GPL"}` |
 | project.json fallback | no project.yaml, has project.json | parses successfully |
-| Referenced default | `Slug: "[[kebabcase .Name]]"`, `Name: My App` | `ctx["Slug"] == "my-app"` |
+| Referenced default | `Slug: "[[toKebabCase .Name]]"`, `Name: My App` | `ctx["Slug"] == "my-app"` |
 | Cyclic reference | A depends on B, B depends on A | returns error |
 
 ### `pkg/template/ignore_test.go`

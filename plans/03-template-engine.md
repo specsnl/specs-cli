@@ -138,10 +138,12 @@ All of Go's standard `text/template` built-ins are available, plus:
 | `password` | `(length, digits, symbols int, noUpper, allowRepeat bool) string` | Secure random password |
 | `randomBase64` | `(length int) string` | Random base64-encoded string |
 
-### Sprig Functions
+### Sprout Functions
 
-All functions from [`Masterminds/sprig`](https://masterminds.github.io/sprig/) are available,
-giving ~70 extra helpers: string manipulation, math, date/time, encoding, reflection, etc.
+All functions from [`go-sprout/sprout`](https://github.com/go-sprout/sprout) are available,
+giving ~100 extra helpers: string manipulation, math, date/time, encoding, reflection, etc.
+Sprout is the active successor to sprig with renamed canonical functions (e.g. `toKebabCase`,
+`toSnakeCase`) and opt-in registries.
 
 ### Template Options
 

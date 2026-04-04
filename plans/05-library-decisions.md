@@ -85,6 +85,54 @@ Remove `pkg/prompt` entirely. Each command that currently calls `prompt.New(...)
 
 ---
 
+## Template Functions: sprout
+
+**Decision:** `github.com/go-sprout/sprout` — replaces `github.com/Masterminds/sprig/v3`.
+Backwards compatibility layer (`sprigin`) is **not** used.
+
+**Rationale:**
+- Sprig is effectively unmaintained; sprout is its active successor with ongoing development.
+- Functions are grouped into opt-in registries rather than one large flat map — only pull in what is needed.
+- Canonical function names follow Go conventions (`toKebabCase`, `toSnakeCase`, `toPascalCase`) instead of lowercase aliases.
+- `env` and `expandenv` are not included by default — templates cannot read host environment variables, reducing the attack surface for untrusted template downloads.
+
+**Migration impact on template authors:** function names changed. Without BC mode the old aliases are gone:
+
+| Old (sprig) | New (sprout) |
+|---|---|
+| `kebabcase` | `toKebabCase` |
+| `snakecase` | `toSnakeCase` |
+| `camelcase` | `toPascalCase` |
+| `upper` / `toupper` | `toUpper` |
+| `lower` / `tolower` | `toLower` |
+| `title` | `toTitleCase` |
+| `b64enc` / `b64dec` | `base64Encode` / `base64Decode` |
+| `push` | `append` |
+| `tuple` | `list` |
+
+Argument order also changed for map/slice functions (`get`, `set`, `append`, `prepend`, `slice`, `without`, `pick`, `omit`, `dig`) — they now follow Go template pipe convention where the collection is the last argument.
+
+**Library replaced:** `github.com/Masterminds/sprig/v3`
+
+---
+
+## Debug Logging: slog
+
+**Decision:** `log/slog` (standard library, Go ≥ 1.21) — internal debug logger.
+
+**Rationale:**
+- Zero additional dependency.
+- Structured key-value fields give context to debug messages (file path, template name, error).
+- Cleanly separates concerns: lipgloss drives user-facing styled output; slog drives internal observability.
+- Silent by default; activated by a `--debug` flag on the root command.
+
+**Integration:**
+- Root command calls `slog.SetDefault(...)` based on the `--debug` flag.
+- `pkg/util/output` wraps `slog.Debug(...)` in `output.Debug(msg, args...)`.
+- Template engine, context parser, and ignore loader call `output.Debug(...)` for skipped files and recoverable errors.
+
+---
+
 ## Config / Context Parsing: go-yaml
 
 **Decision:** `gopkg.in/yaml.v3` — replaces `encoding/json` for reading `project.yaml`.
@@ -111,6 +159,7 @@ found, so existing templates continue to work.
 |---------|--------|
 | `github.com/fatih/color` | Replaced by lipgloss |
 | `github.com/olekukonko/tablewriter` | Replaced by lipgloss tables |
+| `github.com/Masterminds/sprig` | Replaced by sprout |
 
 ---
 
@@ -119,7 +168,6 @@ found, so existing templates continue to work.
 | Library | Reason |
 |---------|--------|
 | `github.com/spf13/cobra` | CLI framework — no change |
-| `github.com/Masterminds/sprig` | Template functions — still needed |
 | `github.com/go-git/go-git/v5` | Git clone — still needed |
 | `github.com/sethvargo/go-password` | Password generation in FuncMap |
 | `github.com/docker/go-units` | File size formatting in FuncMap |
@@ -135,10 +183,11 @@ huh            interactive forms & prompts
 lipgloss       output styling
 bubbles        spinner, progress, table components
 go-yaml v3     project.yaml parsing
-sprig          extended template functions
+sprout         extended template functions (replaces sprig)
 go-git         git clone for template download
 go-password    password() template function
 go-units       formatFilesize() template function
 go-glob        glob pattern matching
 xdg            config/data directory resolution
+slog           internal debug logging (stdlib, no extra dependency)
 ```

@@ -43,7 +43,7 @@ group: ${{ github.workflow }}-${{ github.ref }}
 SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
 # Template expressions use [[ ]]
-MARIADB_DATABASE: "[[snakecase .ProjectShortName]]_test"
+MARIADB_DATABASE: "[[toSnakeCase .ProjectShortName]]_test"
 ```
 
 All existing template features work identically — variable substitution, conditionals,
@@ -261,7 +261,7 @@ IssuePrefix: ACM
 UseSonarQube: false
 
 # Referenced default — resolved after ProjectShortName is answered
-ProjectSlug: "[[kebabcase .ProjectShortName]]"
+ProjectSlug: "[[toKebabCase .ProjectShortName]]"
 
 # Hooks inline (mutually exclusive with hooks/ directory)
 # Each hook is a list; items run sequentially via bash -c
@@ -288,7 +288,7 @@ and numeric-looking IDs must be quoted.
 |---------|--------|
 | `project.json` variable schema | Unchanged |
 | Prompt types (string, bool, select, multiselect) | Unchanged |
-| Sprig functions (`kebabcase`, `snakecase`, etc.) | Unchanged |
+| Sprout functions (renamed: `toKebabCase`, `toSnakeCase`, etc.) | Replaced — see library decisions |
 | Custom functions (`password`, `hostname`, etc.) | Unchanged |
 | Conditional sections (`[[if .UseSonarQube]]`) | Unchanged, new delimiters |
 | Whitespace-only file deletion | Unchanged |

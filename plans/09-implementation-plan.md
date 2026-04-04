@@ -23,7 +23,7 @@ at once upfront**. This list is a reference so you know what to reach for in eac
 | `charm.land/lipgloss/v2` | Terminal styling and coloured output |
 | `charm.land/bubbles/v2` | Table component for `specs template list` |
 | `gopkg.in/yaml.v3` | Parsing `project.yaml` |
-| `github.com/Masterminds/sprig/v3` | Extended template functions (date, crypto, strings, …) |
+| `github.com/go-sprout/sprout` | Extended template functions (date, crypto, strings, …) |
 | `github.com/go-git/go-git/v5` | Cloning repositories |
 | `github.com/adrg/xdg` | Resolving XDG config and data directories |
 | `github.com/danwakefield/fnmatch` | Glob matching for `.specsignore` |
@@ -82,7 +82,7 @@ produce non-empty strings at each level.
 ## Phase 3 — Template engine
 
 **Goal:** Load a `project.yaml`, render files with `[[ ]]` delimiters.
-**You learn:** `go-yaml v3`, `text/template` custom delimiters, `sprig`.
+**You learn:** `go-yaml v3`, `text/template` custom delimiters, `sprout` registries.
 **Tests:**
 - Context parsing: string, bool, select, referenced default (topological sort), fallback to `project.json`.
 - Ignore matching: patterns in `.specsignore` match correct file paths.
@@ -94,7 +94,8 @@ Files:
 - `pkg/template/metadata.go` — `Metadata` struct, `JSONTime`
 - `pkg/template/functions.go` — FuncMap: Sprig + custom (`password`, `hostname`, `formatFilesize`, etc.)
 - `pkg/template/context.go` — parse `project.yaml` (fallback `project.json`), referenced
-  default resolution (topological sort on `[[ ]]` in default values)
+  default resolution (topological sort on `[[ ]]` in default values), computed value
+  extraction and post-prompt resolution (see [11-computed-values.md](../11-computed-values.md))
 - `pkg/template/ignore.go` — load `.specsignore`, glob matching via `go-glob`
 - `pkg/template/template.go` — `Get()`, `Execute()`: filepath.Walk, conditional filenames,
   verbatim copy, binary detection, whitespace-only deletion
@@ -195,7 +196,7 @@ specs
 |-------|----------------------|
 | 1 | Cobra — subcommands, flags, `PersistentPreRunE` |
 | 2 | lipgloss — styles, colour downsampling, table layout |
-| 3 | go-yaml, `text/template` custom delimiters, Sprig FuncMap |
+| 3 | go-yaml, `text/template` custom delimiters, Sprout registries + FuncMap |
 | 4 | `os/exec` subprocess, env injection |
 | 5 | go-git clone API |
 | 6a | huh — `Input`, `Confirm`, `Select` fields, form composition |
