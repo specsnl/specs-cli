@@ -135,29 +135,57 @@ Files:
 
 ---
 
-## Phase 6 — CLI commands
+## Phase 6 — Registry commands
 
-**Goal:** Full working CLI. Each step is independently testable.
-**You learn:** `huh` forms progressively; argument validation; osutil.
-**Tests:** Each command tested via `cmd.ExecuteC()` with a fake/stubbed template store on
-disk. Use `t.TempDir()` for isolation. Test flag combinations, missing-arg errors, and
-happy paths.
+**Goal:** All registry-management commands plus shared infrastructure (`osutil`, `validate`,
+metadata writing, `--debug` flag).
+**You learn:** Cobra command wiring, `os.MkdirAll`/`os.RemoveAll`, recursive file copy.
+**Tests:** Each command tested via `cmd.ExecuteC()` with a temp XDG directory. Test flag
+combinations, missing-arg errors, and happy paths.
 
-Steps (implement in this order):
+Files:
 
-1. `pkg/util/osutil/` — file copy helpers; test recursive copy preserves structure and permissions.
-2. `pkg/util/validate/` — argument validators (`AlphanumericExt` for tags); table-driven unit tests.
-3. `pkg/cmd/init.go` — initialise XDG template directory (`specs init`).
-4. `pkg/cmd/template_list.go` — `specs template list` (uses output/table).
-5. `pkg/cmd/template_save.go` — `specs template save` — save a local path into the registry.
-6. `pkg/cmd/template_download.go` — `specs template download` — `git clone` into registry; `--force`; `repo:branch` support.
-7. `pkg/cmd/template_validate.go` — `specs template validate` — validate a template directory.
-8. `pkg/cmd/template_rename.go` — `specs template rename` — rename a registry entry.
-9. `pkg/cmd/template_delete.go` — `specs template delete` — delete one or more registry entries.
-10. `pkg/cmd/template_use.go` — `specs template use` — **main huh learning step**: build form
-    from `project.yaml` schema, `--values`, `--arg`, `--use-defaults`, `--no-hooks`, run hooks.
-11. `pkg/cmd/use.go` — `specs use <source> <target>` — one-step command: parse source format
-    → clone to temp → execute → discard (no registry entry created).
+- `pkg/util/osutil/` — `CopyDir()` recursive copy
+- `pkg/util/validate/` — `Tag()` validator (`AlphanumericExt` — fixes tmrts#61)
+- `pkg/cmd/metadata.go` — `writeMetadata()` helper
+- `main.go` — wire in `output.Error` + `os.Exit(1)` for unhandled errors
+- `pkg/cmd/root.go` — add `--debug` persistent flag + `PersistentPreRunE`
+- `pkg/cmd/init.go` — `specs init [--force]`
+- `pkg/cmd/template_list.go` — `specs template list [--dont-prettify]`
+- `pkg/cmd/template_save.go` — `specs template save [--force] <path> <tag>`
+- `pkg/cmd/template_download.go` — `specs template download [--force] <source> <tag>`
+- `pkg/cmd/template_validate.go` — `specs template validate <path>`
+- `pkg/cmd/template_rename.go` — `specs template rename <old> <new>`
+- `pkg/cmd/template_delete.go` — `specs template delete <tag>...`
+
+---
+
+## Phase 7 — `specs template use`
+
+**Goal:** Interactive template execution with huh prompts, `--values`/`--arg` overrides,
+and hooks orchestration.
+**You learn:** `huh` — `Input`, `Confirm`, `Select` fields, form composition, pre-filling
+answers from `--values`/`--arg`, `--use-defaults` short-circuit.
+**Tests:** Command tests using real template directories in `t.TempDir()`; no network access.
+
+Files:
+
+- `pkg/util/values/` — `LoadFile()` (JSON `--values` file), `ParseArg()` (`Key=Value`), `Merge()`
+- `pkg/cmd/template_use.go` — `specs template use <tag> <target-dir>`; shared `executeTemplate()` helper
+- `pkg/template/template.go` — add public `FuncMap()` method
+
+---
+
+## Phase 8 — `specs use`
+
+**Goal:** One-step command — clone or copy a template, execute it, discard the temp copy.
+No registry entry is created.
+**You learn:** Composing phases 5–7; temp directory lifecycle.
+**Tests:** Local-path tests only (no network); integration tests covered by phase 5.
+
+Files:
+
+- `pkg/cmd/use.go` — `specs use <source> <target-dir>`; reuses `executeTemplate()` from phase 7
 
 ---
 
@@ -199,17 +227,20 @@ specs
 | 3 | go-yaml, `text/template` custom delimiters, Sprout registries + FuncMap |
 | 4 | `os/exec` subprocess, env injection |
 | 5 | go-git clone API |
-| 6a | huh — `Input`, `Confirm`, `Select` fields, form composition |
-| 6b | huh — pre-filling answers from `--values`/`--arg`, `--use-defaults` short-circuit |
+| 6 | Cobra command wiring, `osutil`, `validate`, registry operations |
+| 7 | huh — `Input`, `Confirm`, `Select` fields, form composition, `--values`/`--arg` |
+| 8 | Composing phases 5–7; temp directory lifecycle |
 
 ---
 
 ## Suggested order of work
 
 ```
-Phase 1 → Phase 2 → Phase 3 → Phase 5 → Phase 6 (list/save/download first)
+Phase 1 → Phase 2 → Phase 3 → Phase 5 → Phase 6
                                                → Phase 4 (hooks)
-                                               → Phase 6 (template use + specs use)
+                                               → Phase 7 (template use)
+                                               → Phase 8 (specs use)
 ```
 
-Phase 4 (hooks) can be deferred until `specs template use` since nothing else depends on it.
+Phase 4 (hooks) can be deferred until phase 7 (`specs template use`) since nothing else
+depends on it.

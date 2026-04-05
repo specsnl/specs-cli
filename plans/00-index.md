@@ -25,6 +25,10 @@ This directory contains the architectural documentation and planning documents f
 | [implementation/phase2.md](./implementation/phase2.md) | Phase 2 — Config & output infrastructure (XDG, lipgloss) |
 | [implementation/phase3.md](./implementation/phase3.md) | Phase 3 — Template engine (YAML context, render pipeline) |
 | [implementation/phase4.md](./implementation/phase4.md) | Phase 4 — Hooks (pre/post-use, inline yaml + hooks/ dir) |
+| [implementation/phase5.md](./implementation/phase5.md) | Phase 5 — Git & host utilities (clone, source format parsing) |
+| [implementation/phase6.md](./implementation/phase6.md) | Phase 6 — Registry commands (init, list, save, download, validate, rename, delete) |
+| [implementation/phase7.md](./implementation/phase7.md) | Phase 7 — `specs template use` (huh prompts, --values/--arg, hooks) |
+| [implementation/phase8.md](./implementation/phase8.md) | Phase 8 — `specs use` (one-step: clone/copy → execute → discard) |
 
 ## Operations
 
