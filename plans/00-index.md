@@ -24,6 +24,7 @@ This directory contains the architectural documentation and planning documents f
 | [implementation/phase1.md](./implementation/phase1.md) | Phase 1 — Project skeleton (Cobra root, version command) |
 | [implementation/phase2.md](./implementation/phase2.md) | Phase 2 — Config & output infrastructure (XDG, lipgloss) |
 | [implementation/phase3.md](./implementation/phase3.md) | Phase 3 — Template engine (YAML context, render pipeline) |
+| [implementation/phase4.md](./implementation/phase4.md) | Phase 4 — Hooks (pre/post-use, inline yaml + hooks/ dir) |
 
 ## Operations
 

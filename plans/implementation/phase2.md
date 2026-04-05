@@ -296,8 +296,8 @@ func toTableRows(rows [][]string) []table.Row {
 func TestConfigDir_XDGOverride(t *testing.T) {
     tmp := t.TempDir()
     t.Setenv("XDG_CONFIG_HOME", tmp)
-    // adrg/xdg reads the env var at import time; re-init is needed.
-    // See note below.
+    xdg.Reload()
+    t.Cleanup(func() { xdg.Reload() })
     got := specs.ConfigDir()
     want := filepath.Join(tmp, "specs")
     if got != want {
@@ -305,9 +305,11 @@ func TestConfigDir_XDGOverride(t *testing.T) {
     }
 }
 
-func TestTemplateDir(t *testing.T) {
+func TestTemplateDir_XDGOverride(t *testing.T) {
     tmp := t.TempDir()
     t.Setenv("XDG_CONFIG_HOME", tmp)
+    xdg.Reload()
+    t.Cleanup(func() { xdg.Reload() })
     got := specs.TemplateDir()
     want := filepath.Join(tmp, "specs", "templates")
     if got != want {
@@ -317,19 +319,9 @@ func TestTemplateDir(t *testing.T) {
 ```
 
 > **`adrg/xdg` and env vars:** `xdg.ConfigHome` is evaluated once when the package is
-> initialised. In tests, `t.Setenv` changes the env var but the xdg package variable may
-> already be set. Two options:
-> 1. Call `xdg.Reload()` if the library exposes it (check the API when implementing).
-> 2. Make `ConfigDir` accept an optional override via a package-level var for testing:
->    ```go
->    var configHomeOverride string // set in tests only
->    func ConfigDir() string {
->        base := configHomeOverride
->        if base == "" { base = xdg.ConfigHome }
->        return filepath.Join(base, AppName)
->    }
->    ```
->    This is a pragmatic test seam that avoids needing to mock the whole XDG layer.
+> initialised. In tests, `t.Setenv` changes the env var but the xdg variable is already set.
+> Call `xdg.Reload()` after `t.Setenv` and register `t.Cleanup(func() { xdg.Reload() })` to
+> restore it. The library exposes `Reload()` for exactly this purpose.
 
 ### `pkg/util/output/log_test.go`
 

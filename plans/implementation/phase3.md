@@ -12,7 +12,9 @@ prompt layer is Phase 6). The engine must be fully testable in isolation.
 - `template.Execute(targetDir)` renders all files to the target directory.
 - Conditional filenames, verbatim copy, binary detection, and whitespace-only deletion all
   work correctly.
-- All tests pass (context parsing, ignore matching, execute pipeline).
+- Computed values (from the `computed:` section) are resolved after defaults and merged into
+  the context before rendering.
+- All tests pass (context parsing, ignore matching, computed values, execute pipeline).
 
 ---
 
@@ -232,6 +234,9 @@ resolved in dependency order so each key's pre-filled value is correct.
 5. Process keys in sorted order: render each referenced default using the current resolved
    context as data. The result replaces the original template expression string.
 
+The context loading is split into two functions to support the computed values resolution
+order (see [11-computed-values.md](../../11-computed-values.md)):
+
 ```go
 package template
 
@@ -245,14 +250,32 @@ import (
     "gopkg.in/yaml.v3"
 )
 
-// ParseContext loads project.yaml (or project.json) from templateRoot and
-// returns the variable map with referenced defaults resolved.
-func ParseContext(templateRoot string) (map[string]interface{}, error) {
+// LoadUserContext loads project.yaml (or project.json) from templateRoot.
+// Strips the reserved top-level keys "computed" and "hooks" before returning.
+// Resolves referenced defaults (string values containing "[[") in topological order.
+// Returns the user input map and the raw computed definitions separately.
+func LoadUserContext(templateRoot string) (userCtx map[string]interface{}, computedDefs map[string]string, err error) {
     raw, err := loadContextFile(templateRoot)
     if err != nil {
-        return nil, err
+        return nil, nil, err
     }
-    return resolveReferencedDefaults(raw)
+    computedDefs, err = extractComputed(raw) // strips "computed" key, returns its entries
+    if err != nil {
+        return nil, nil, err
+    }
+    delete(raw, "hooks") // hooks section is config, not a template variable
+    userCtx, err = resolveReferencedDefaults(raw)
+    return userCtx, computedDefs, err
+}
+
+// ApplyComputed resolves computed definitions against the finalised context (post-prompt)
+// and merges the results in. Called after prompting and --values/--arg overrides are complete.
+// Returns a new map containing both user inputs and computed values.
+func ApplyComputed(ctx map[string]interface{}, defs map[string]string, funcMap template.FuncMap) (map[string]interface{}, error) {
+    // 1. Topological sort of defs by .Key dependencies.
+    // 2. Execute each template in order against the growing context.
+    // 3. Merge result into context before moving to the next computed key.
+    // 4. Return error on cycle, unknown reference, or template execution failure.
 }
 
 // loadContextFile reads project.yaml; falls back to project.json.
@@ -277,6 +300,12 @@ func loadContextFile(templateRoot string) (map[string]interface{}, error) {
     }
     return ctx, nil
 }
+
+// extractComputed removes the "computed" key from raw and returns its string entries.
+// Returns an error if a computed key conflicts with a user input key.
+func extractComputed(raw map[string]interface{}) (map[string]string, error) {
+    // ...
+}
 ```
 
 #### `resolveReferencedDefaults`
@@ -285,7 +314,7 @@ func loadContextFile(templateRoot string) (map[string]interface{}, error) {
 func resolveReferencedDefaults(ctx map[string]interface{}) (map[string]interface{}, error) {
     // 1. Find all keys with [[ ]] in their string value.
     // 2. Extract .Key references from the template expressions.
-    // 3. Topological sort.
+    // 3. Topological sort (Kahn's algorithm).
     // 4. Render each in order, updating ctx as we go.
     // Returns an error if a cycle is detected or a referenced key does not exist.
 }
@@ -296,6 +325,9 @@ depends on B and B depends on A), return a clear error naming the involved keys.
 
 **Scope:** only top-level string keys are checked. Nested objects and list values are never
 referenced defaults.
+
+**Note:** `resolveReferencedDefaults` and `ApplyComputed` share the same topological sort
+logic — extract into a private `topoSort(deps map[string][]string) ([]string, error)` helper.
 
 ---
 
@@ -389,17 +421,18 @@ var ignoredFiles = map[string]bool{
 
 // Template holds everything needed to execute a template.
 type Template struct {
-    Root     string                 // path to the template root (contains project.yaml + template/)
-    Context  map[string]interface{} // variable map with defaults resolved
-    Metadata *Metadata              // nil if __metadata.json is absent
-    funcMap  template.FuncMap
-    ignore   *IgnoreRules
+    Root         string                 // path to the template root (contains project.yaml + template/)
+    Context      map[string]interface{} // user input map with referenced defaults resolved
+    ComputedDefs map[string]string      // raw computed definitions; resolved by ApplyComputed post-prompt
+    Metadata     *Metadata              // nil if __metadata.json is absent
+    funcMap      template.FuncMap
+    ignore       *IgnoreRules
 }
 
 // Get loads a template from templateRoot. The root must contain either project.yaml or
 // project.json, and a template/ subdirectory.
 func Get(templateRoot string) (*Template, error) {
-    ctx, err := ParseContext(templateRoot)
+    userCtx, computedDefs, err := LoadUserContext(templateRoot)
     if err != nil {
         return nil, err
     }
@@ -412,11 +445,12 @@ func Get(templateRoot string) (*Template, error) {
     meta, _ := loadMetadata(templateRoot) // missing metadata is not an error
 
     return &Template{
-        Root:     templateRoot,
-        Context:  ctx,
-        Metadata: meta,
-        funcMap:  FuncMap(),
-        ignore:   ignore,
+        Root:         templateRoot,
+        Context:      userCtx,
+        ComputedDefs: computedDefs,
+        Metadata:     meta,
+        funcMap:      FuncMap(),
+        ignore:       ignore,
     }, nil
 }
 ```
@@ -426,7 +460,18 @@ func Get(templateRoot string) (*Template, error) {
 ```go
 // Execute renders the template/ subdirectory into targetDir.
 // targetDir must already exist.
+// If ComputedDefs is non-empty, ApplyComputed is called first to resolve and merge
+// computed values into the context before the walk.
 func (t *Template) Execute(targetDir string) error {
+    ctx := t.Context
+    if len(t.ComputedDefs) > 0 {
+        var err error
+        ctx, err = ApplyComputed(t.Context, t.ComputedDefs, t.funcMap)
+        if err != nil {
+            return err
+        }
+    }
+
     srcRoot := filepath.Join(t.Root, specs.TemplateDirFile)
 
     return filepath.WalkDir(srcRoot, func(srcPath string, d fs.DirEntry, err error) error {
@@ -446,7 +491,7 @@ func (t *Template) Execute(targetDir string) error {
         }
 
         // 2. Render the relative path as a template to get the destination path.
-        destRel, err := t.renderName(rel)
+        destRel, err := t.renderName(rel, ctx)
         if err != nil || strings.TrimSpace(destRel) == "" {
             // Parse/execution error or empty result: skip silently with a debug log.
             output.Debug("skipping %s: %v", rel, err)
@@ -476,7 +521,7 @@ func (t *Template) Execute(targetDir string) error {
         if t.ignore.Matches(relForward) || isBinary(srcPath) {
             return copyFile(srcPath, destPath)
         }
-        return t.renderFile(srcPath, destPath)
+        return t.renderFile(srcPath, destPath, ctx)
     })
 }
 ```
@@ -485,21 +530,23 @@ func (t *Template) Execute(targetDir string) error {
 
 ```go
 // renderName renders a file/directory path template using [[ ]] delimiters.
-func (t *Template) renderName(name string) (string, error) {
+// ctx is the fully resolved context (user inputs + computed values).
+func (t *Template) renderName(name string, ctx map[string]interface{}) (string, error) {
     tmpl, err := template.New("").Delims("[[", "]]").Funcs(t.funcMap).Parse(name)
     if err != nil {
         return "", err
     }
     var buf strings.Builder
-    if err := tmpl.Execute(&buf, t.Context); err != nil {
+    if err := tmpl.Execute(&buf, ctx); err != nil {
         return "", err
     }
     return buf.String(), nil
 }
 
 // renderFile renders a text file's content using [[ ]] delimiters.
+// ctx is the fully resolved context (user inputs + computed values).
 // If the rendered content is whitespace-only, the destination file is not created.
-func (t *Template) renderFile(srcPath, destPath string) error {
+func (t *Template) renderFile(srcPath, destPath string, ctx map[string]interface{}) error {
     data, err := os.ReadFile(srcPath)
     if err != nil {
         return err
@@ -517,7 +564,7 @@ func (t *Template) renderFile(srcPath, destPath string) error {
     }
 
     var buf strings.Builder
-    if err := tmpl.Execute(&buf, t.Context); err != nil {
+    if err := tmpl.Execute(&buf, ctx); err != nil {
         output.Debug("template execute error in %s, copying verbatim: %v", srcPath, err)
         return copyFile(srcPath, destPath)
     }
@@ -606,6 +653,11 @@ Table-driven; create a `project.yaml` in a temp dir for each case.
 | project.json fallback | no project.yaml, has project.json | parses successfully |
 | Referenced default | `Slug: "[[toKebabCase .Name]]"`, `Name: My App` | `ctx["Slug"] == "my-app"` |
 | Cyclic reference | A depends on B, B depends on A | returns error |
+| Computed stripped | `computed:\n  Env: "prod"` | `computedDefs["Env"] == "prod"`, not in userCtx |
+| Computed conflict | `Name: foo` + `computed:\n  Name: bar` | `LoadUserContext` returns error |
+| Computed resolved | `Name: acme`, `computed:\n  Env: "[[toUpperCase .Name]]"` | `ApplyComputed` → `ctx["Env"] == "ACME"` |
+| Computed chain | `computed:\n  A: "x"\n  B: "[[.A]]y"` | `ApplyComputed` → `ctx["B"] == "xy"` |
+| Computed cycle | `computed:\n  A: "[[.B]]"\n  B: "[[.A]]"` | `ApplyComputed` returns error |
 
 ### `pkg/template/ignore_test.go`
 
@@ -649,6 +701,9 @@ Each test case creates a minimal template directory structure in `t.TempDir()`, 
   fall back to JSON. The internal representation is identical either way.
 - **YAML type coercion gotcha:** unquoted `8.4` in YAML is parsed as `float64`. Warn template
   authors in `specs template validate` output: quote strings that look like numbers.
-- **`hooks` key in `project.yaml`:** the context parser must strip the `hooks` key before
-  returning the context — it is configuration for the hook runner (Phase 4), not a user-facing
-  template variable.
+- **Reserved keys stripped:** `LoadUserContext` removes both `hooks` and `computed` from the
+  user input map before returning. `hooks` is consumed by the hook runner (Phase 4); `computed`
+  is consumed by `ApplyComputed`. Neither should appear as prompted variables.
+- **Computed values:** see [11-computed-values.md](../../11-computed-values.md) for the full
+  design. `ApplyComputed` shares the same topological sort helper as `resolveReferencedDefaults`;
+  extract it as a private `topoSort` function to avoid duplication.
