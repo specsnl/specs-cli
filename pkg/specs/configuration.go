@@ -15,7 +15,7 @@ const (
 	ProjectYAMLFile = "project.yaml"
 	ProjectJSONFile = "project.json" // backward-compat fallback
 	MetadataFile    = "__metadata.json"
-	IgnoreFile      = ".specsignore"
+	VerbatimFile    = ".specsverbatim"
 	TemplateDirFile = "template" // the subdirectory that gets rendered
 )
 

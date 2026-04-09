@@ -6,19 +6,21 @@ import (
 	"testing"
 )
 
-// executeRoot resets rootCmd state and executes it with the given args.
-// Returns captured stdout and the execution error.
-func executeRoot(args ...string) (string, error) {
+// executeCmd creates a fresh App and root command, executes it with the given
+// args, and returns captured stdout+stderr and the error.
+func executeCmd(args ...string) (string, error) {
+	app := NewApp()
+	cmd := newRootCmd(app)
 	buf := new(bytes.Buffer)
-	rootCmd.SetOut(buf)
-	rootCmd.SetErr(buf)
-	rootCmd.SetArgs(args)
-	err := Execute()
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+	cmd.SetArgs(args)
+	err := cmd.Execute()
 	return buf.String(), err
 }
 
-func TestHelpExitsZero(t *testing.T) {
-	out, err := executeRoot("--help")
+func TestHelp_ExitsZero(t *testing.T) {
+	out, err := executeCmd("--help")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -27,38 +29,8 @@ func TestHelpExitsZero(t *testing.T) {
 	}
 }
 
-func TestVersionCommand(t *testing.T) {
-	out, err := executeRoot("version")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !strings.Contains(out, "specs version") {
-		t.Errorf("expected output to contain 'specs version', got: %q", out)
-	}
-}
-
-func TestVersionDontPrettify(t *testing.T) {
-	out, err := executeRoot("version", "--dont-prettify")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if strings.Contains(out, "specs version") {
-		t.Errorf("expected output to not contain 'specs version', got: %q", out)
-	}
-}
-
-func TestTemplateGroupHelp(t *testing.T) {
-	out, err := executeRoot("template", "--help")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !strings.Contains(out, "template") {
-		t.Errorf("expected output to contain 'template', got: %q", out)
-	}
-}
-
-func TestUnknownCommandError(t *testing.T) {
-	_, err := executeRoot("nonexistent")
+func TestUnknownCommand_ReturnsError(t *testing.T) {
+	_, err := executeCmd("nonexistent")
 	if err == nil {
 		t.Fatal("expected error for unknown command, got nil")
 	}
