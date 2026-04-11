@@ -29,7 +29,7 @@ release:
   draft: false
   prerelease: auto
 
-brews:
+homebrew_casks:
   - name: specs
     repository:
       owner: specsnl
@@ -37,9 +37,10 @@ brews:
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     homepage: "https://github.com/specsnl/specs-cli"
     description: "General-purpose developer CLI"
-    license: "MIT"
-    directory: Formula
-    install: |
-      bin.install "specs"
-    test: |
-      system "#{bin}/specs", "version", "--dont-prettify"
+    directory: Casks
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/specs"]
+          end
