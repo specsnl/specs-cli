@@ -37,6 +37,7 @@ pkg/
 └── template/
     ├── metadata.go
     ├── functions.go
+    ├── specsregistry.go
     ├── context.go
     ├── verbatim.go
     └── template.go
@@ -108,99 +109,49 @@ func (t JSONTime) String() string {
 
 ### `pkg/template/functions.go`
 
-The template FuncMap: Sprig + custom functions.
+Builds the template FuncMap by wiring up all sprout registries and the custom `SpecsRegistry`.
+In safe mode (`--safe-mode` flag), the `env` and `filesystem` registries are excluded so
+templates cannot read host environment variables or access arbitrary paths — important for
+untrusted template downloads.
 
 ```go
-package template
-
-import (
-    "crypto/rand"
-    "encoding/base64"
-    "fmt"
-    "os"
-    "os/user"
-    "strconv"
-    "strings"
-    "text/template"
-
-    "github.com/docker/go-units"
-    "github.com/go-sprout/sprout"
-    "github.com/go-sprout/sprout/registry/conversion"
-    "github.com/go-sprout/sprout/registry/crypto"
-    "github.com/go-sprout/sprout/registry/encoding"
-    "github.com/go-sprout/sprout/registry/maps"
-    "github.com/go-sprout/sprout/registry/numeric"
-    "github.com/go-sprout/sprout/registry/random"
-    "github.com/go-sprout/sprout/registry/regexp"
-    "github.com/go-sprout/sprout/registry/semver"
-    "github.com/go-sprout/sprout/registry/slices"
-    "github.com/go-sprout/sprout/registry/std"
-    "github.com/go-sprout/sprout/registry/strings"
-    "github.com/go-sprout/sprout/registry/time"
-    "github.com/go-sprout/sprout/registry/uniqueid"
-    "github.com/sethvargo/go-password/password"
-)
-
-// FuncMap returns all template functions: Sprout registries + custom specs functions.
-// The env and filesystem registries are intentionally omitted — templates must not
-// read host environment variables or access arbitrary paths.
-// cfg controls which registries are included (SafeMode disables env/filesystem registries).
-func FuncMap(cfg Config, logger *slog.Logger) template.FuncMap {
-    handler := sprout.New()
-    handler.AddRegistries(
-        std.NewRegistry(),
-        uniqueid.NewRegistry(),
-        semver.NewRegistry(),
-        time.NewRegistry(),
-        strings.NewRegistry(),
-        random.NewRegistry(),
-        encoding.NewRegistry(),
-        conversion.NewRegistry(),
-        numeric.NewRegistry(),
-        crypto.NewRegistry(),
-        regexp.NewRegistry(),
-        slices.NewRegistry(),
-        maps.NewRegistry(),
-    )
-    m := handler.Build()
-
-    m["hostname"] = func() string {
-        h, _ := os.Hostname()
-        return h
-    }
-    m["username"] = func() string {
-        u, _ := user.Current()
-        if u != nil {
-            return u.Username
-        }
-        return ""
-    }
-    m["toBinary"] = func(n int) string {
-        return strconv.FormatInt(int64(n), 2)
-    }
-    m["formatFilesize"] = func(bytes float64) string {
-        return units.HumanSize(bytes)
-    }
-    m["toTitle"] = strings.Title
-    m["password"] = func(length, digits, symbols int, noUpper, allowRepeat bool) string {
-        p, _ := password.Generate(length, digits, symbols, noUpper, allowRepeat)
-        return p
-    }
-    m["randomBase64"] = func(length int) string {
-        b := make([]byte, length)
-        rand.Read(b)
-        return base64.StdEncoding.EncodeToString(b)[:length]
+func FuncMap(cfg Config, logger *slog.Logger) texttemplate.FuncMap {
+    registries := []sprout.Registry{
+        sproutstd.NewRegistry(), sproutconversion.NewRegistry(), sproutnumeric.NewRegistry(),
+        sproutreflect.NewRegistry(), sproutstrings.NewRegistry(), sproutencoding.NewRegistry(),
+        sproutregexp.NewRegistry(), sproutslices.NewRegistry(), sproutmaps.NewRegistry(),
+        sprouttime.NewRegistry(), sproutuniqueid.NewRegistry(), sproutcrypto.NewRegistry(),
+        sproutchecksum.NewRegistry(), sproutnetwork.NewRegistry(), sproutsemver.NewRegistry(),
+        sproutrandom.NewRegistry(),
+        NewSpecsRegistry(), // specs-specific functions
     }
 
-    return m
+    if !cfg.SafeMode {
+        registries = append(registries, sproutenv.NewRegistry(), sproutfilesystem.NewRegistry())
+    }
+
+    handler := sprout.New(sprout.WithLogger(logger))
+    handler.AddRegistries(registries...)
+    return handler.Build()
 }
 ```
 
-**Why use sprout registries:** Sprout is the active successor to sprig (~100 helpers across
-string, math, date, crypto, encoding, semver registries). Opt-in registries mean only needed
-function groups are included. `env` and `filesystem` registries are excluded so templates
-cannot read host environment variables or access arbitrary paths — important for untrusted
-template downloads.
+---
+
+### `pkg/template/specsregistry.go`
+
+A sprout `Registry` that provides specs-specific template functions. Registered via
+`NewSpecsRegistry()` in `FuncMap`.
+
+Functions provided:
+
+| Function | Description |
+|---|---|
+| `hostname` | Returns the system hostname |
+| `username` | Returns the current OS username |
+| `toBinary` | Formats an integer as a binary string |
+| `formatFilesize` | Human-readable file size (e.g. `"1.2 MB"`) via `docker/go-units` |
+| `password` | Generates a secure random password via `sethvargo/go-password` |
 
 ---
 

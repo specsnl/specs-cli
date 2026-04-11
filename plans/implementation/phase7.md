@@ -419,7 +419,7 @@ func loadRawConfig(templateRoot string) (map[string]any, error) {
 ### `Template.FuncMap()` — expose for callers
 
 `executeTemplate` needs access to the FuncMap to pass to `hooks.Run` and `ApplyComputed`.
-Add a public method to `pkg/template/Template`:
+This method is **already implemented** as part of Phase 3.
 
 ```go
 // FuncMap returns the template's function map.

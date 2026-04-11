@@ -99,7 +99,8 @@ produce non-empty strings at each level.
 Files:
 
 - `pkg/template/metadata.go` — `Metadata` struct, `JSONTime`
-- `pkg/template/functions.go` — FuncMap: Sprig + custom (`password`, `hostname`, `formatFilesize`, etc.)
+- `pkg/template/functions.go` — FuncMap: builds sprout handler with all registries; excludes env/filesystem in safe mode
+- `pkg/template/specsregistry.go` — `SpecsRegistry` sprout registry: custom functions (`hostname`, `username`, `toBinary`, `formatFilesize`, `password`)
 - `pkg/template/context.go` — parse `project.yaml` (fallback `project.json`), referenced
   default resolution (topological sort on `[[ ]]` in default values), computed value
   extraction and post-prompt resolution (see [11-computed-values.md](../11-computed-values.md))
@@ -138,7 +139,7 @@ Files:
 Files:
 
 - `pkg/util/git/` — `Clone(url, dir)` wrapper around go-git
-- `pkg/host/github.go` — parse `github:user/repo[:branch]` and full HTTPS URLs into clone URLs
+- `pkg/host/source.go` — parse `github:user/repo[:branch]`, full HTTPS URLs, and local paths into a `Source` type
 
 ---
 
@@ -181,7 +182,7 @@ Files:
 
 - `pkg/util/values/` — `LoadFile()` (JSON `--values` file), `ParseArg()` (`Key=Value`), `Merge()`
 - `pkg/cmd/template_use.go` — `specs template use <tag> <target-dir>`; shared `executeTemplate()` helper
-- `pkg/template/template.go` — add public `FuncMap()` method
+- `pkg/template/template.go` — public `FuncMap()` method (already implemented in Phase 3)
 
 ---
 

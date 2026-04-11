@@ -16,7 +16,7 @@ what CI workflows are needed.
 - Archive packaging (`.tar.gz` for Unix, `.zip` for Windows)
 - SHA-256 checksum file generation
 - GitHub Release creation and asset uploads
-- Homebrew tap formula update
+- Homebrew tap cask update
 
 GoReleaser is run only in the release workflow (see below). It is **not** needed for local
 development or the CI test workflow.
@@ -45,7 +45,6 @@ GoReleaser sets `Version` to the Git tag (e.g. `1.2.3`) automatically through th
 | `linux` | `arm64` | Raspberry Pi / ARM servers |
 | `darwin` | `amd64` | macOS Intel |
 | `darwin` | `arm64` | macOS Apple Silicon |
-| `windows` | `amd64` | Windows 64-bit |
 
 ---
 
@@ -67,11 +66,8 @@ builds:
       - -X github.com/specsnl/specs-cli/pkg/cmd.Version={{ .Version }}
     env:
       - CGO_ENABLED=0
-    goos: [linux, darwin, windows]
+    goos: [linux, darwin]
     goarch: [amd64, arm64]
-    ignore:
-      - goos: windows
-        goarch: arm64
 ```
 
 ### `archives`
@@ -79,10 +75,7 @@ builds:
 ```yaml
 archives:
   - format: tar.gz
-    format_overrides:
-      - goos: windows
-        format: zip
-    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    name_template: "specs_{{ .Os }}_{{ .Arch }}"
 ```
 
 ### `checksum`
@@ -103,25 +96,28 @@ release:
   prerelease: auto   # tags like v1.0.0-rc1 become pre-releases automatically
 ```
 
-### `brews` (Homebrew tap)
+### `homebrew_casks` (Homebrew tap)
 
-GoReleaser can push a formula update to a separate tap repository after each release.
+GoReleaser can push a cask update to a separate tap repository after each release.
+`brews` (formulae) is deprecated since GoReleaser v2.10; `homebrew_casks` is the current approach.
 See the [Homebrew tap](#homebrew-tap) section for the tap repo setup.
 
 ```yaml
-brews:
+homebrew_casks:
   - name: specs
     repository:
       owner: specsnl
       name: homebrew-tap        # must exist before first release
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     homepage: "https://github.com/specsnl/specs-cli"
     description: "General-purpose developer CLI"
-    license: "MIT"
-    folder: Formula
-    install: |
-      bin.install "specs"
-    test: |
-      system "#{bin}/specs", "version", "--dont-prettify"
+    directory: Casks
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/specs"]
+          end
 ```
 
 ---
@@ -141,7 +137,7 @@ Structure after first release:
 
 ```
 homebrew-tap/
-  Formula/
+  Casks/
     specs.rb     ← generated and committed by GoReleaser on every release
   README.md
 ```
@@ -150,7 +146,7 @@ Users install with:
 
 ```shell
 brew tap specsnl/tap
-brew install specs
+brew install --cask specs
 ```
 
 `brew tap specsnl/tap` is shorthand for `specsnl/homebrew-tap`.
@@ -158,10 +154,10 @@ brew install specs
 ### Setup steps
 
 1. Create the `specsnl/homebrew-tap` repository (public, with a `README.md`).
-2. Create the `Formula/` directory with an empty placeholder or initial `specs.rb`.
+2. Create the `Casks/` directory with a `.gitkeep` placeholder.
 3. Create a GitHub token (fine-grained or classic PAT) with `contents: write` on that
    repository and store it as the secret `HOMEBREW_TAP_GITHUB_TOKEN` in `specs-cli`.
-4. Add the `brews` section to `.goreleaser.yml` (shown above).
+4. Add the `homebrew_casks` section to `.goreleaser.yml` (shown above).
 
 GoReleaser commits directly to the tap repository as part of the release workflow.
 
@@ -300,11 +296,11 @@ Before tagging a release:
    ```
 
 5. The release workflow triggers automatically and creates the GitHub Release.
-6. Verify the Homebrew formula was updated in `specsnl/homebrew-tap`.
+6. Verify the Homebrew cask was updated in `specsnl/homebrew-tap`.
 7. Test the Homebrew install on a clean machine:
 
    ```shell
-   brew update && brew upgrade specs
+   brew update && brew upgrade --cask specs
    ```
 
 ---
