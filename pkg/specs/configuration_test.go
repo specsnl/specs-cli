@@ -33,3 +33,4 @@ func TestTemplateDir_XDGOverride(t *testing.T) {
 		t.Errorf("TemplateDir() = %q, want %q", got, want)
 	}
 }
+

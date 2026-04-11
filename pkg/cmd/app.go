@@ -44,9 +44,10 @@ func WithHandler(factory HandlerFactory) Option {
 
 // App holds application-wide dependencies shared across all commands.
 type App struct {
-	Logger   *slog.Logger
-	level    *slog.LevelVar
-	SafeMode bool
+	Logger       *slog.Logger
+	level        *slog.LevelVar
+	SafeMode     bool
+	HookEnvPrefix string // prefix for context keys injected as env vars into hooks
 }
 
 // NewApp creates an App. The default logger writes text to stderr at info level.

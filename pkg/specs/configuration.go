@@ -11,6 +11,9 @@ const (
 	AppName         = "specs"
 	TemplateDirName = "templates"
 
+	// HookEnvPrefix is the default prefix for context env vars injected into hooks.
+	HookEnvPrefix = "SPECS_"
+
 	// File names inside a template root
 	ProjectYAMLFile = "project.yaml"
 	ProjectJSONFile = "project.json" // backward-compat fallback
