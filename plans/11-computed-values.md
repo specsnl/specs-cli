@@ -229,11 +229,11 @@ hooks:
 ```go
 // computedSection extracts and removes the "computed" key from a raw context map.
 // Returns the computed definitions as a separate map.
-func extractComputed(raw map[string]interface{}) (userCtx map[string]interface{}, computedDefs map[string]string, err error)
+func extractComputed(raw map[string]any) (userCtx map[string]any, computedDefs map[string]string, err error)
 
 // resolveComputed evaluates each computed template against the finalised user context.
 // Returns the full merged context (user inputs + computed values).
-func resolveComputed(ctx map[string]interface{}, defs map[string]string) (map[string]interface{}, error)
+func resolveComputed(ctx map[string]any, defs map[string]string) (map[string]any, error)
 ```
 
 `resolveComputed` reuses the same topological sort implementation as `resolveReferencedDefaults`.
@@ -245,11 +245,11 @@ func resolveComputed(ctx map[string]interface{}, defs map[string]string) (map[st
 ```go
 // LoadUserContext loads and returns user inputs + computed definitions separately.
 // Referenced defaults are resolved. computed: and hooks: sections are stripped.
-func LoadUserContext(templateRoot string) (userCtx map[string]interface{}, computedDefs map[string]string, err error)
+func LoadUserContext(templateRoot string) (userCtx map[string]any, computedDefs map[string]string, err error)
 
 // ApplyComputed resolves computed values against the finalised context and merges them in.
 // Called after prompting/overrides are complete.
-func ApplyComputed(ctx map[string]interface{}, defs map[string]string) (map[string]interface{}, error)
+func ApplyComputed(ctx map[string]any, defs map[string]string) (map[string]any, error)
 ```
 
 ### Changes to `Template` struct
@@ -257,11 +257,11 @@ func ApplyComputed(ctx map[string]interface{}, defs map[string]string) (map[stri
 ```go
 type Template struct {
     Root         string
-    Context      map[string]interface{} // user inputs (pre-prompt)
+    Context      map[string]any // user inputs (pre-prompt)
     ComputedDefs map[string]string      // raw computed definitions (resolved post-prompt)
     Metadata     *Metadata
     funcMap      template.FuncMap
-    ignore       *IgnoreRules
+    verbatim     *VerbatimRules
 }
 ```
 

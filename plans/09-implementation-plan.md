@@ -26,7 +26,7 @@ at once upfront**. This list is a reference so you know what to reach for in eac
 | `github.com/go-sprout/sprout` | Extended template functions (date, crypto, strings, …) |
 | `github.com/go-git/go-git/v5` | Cloning repositories |
 | `github.com/adrg/xdg` | Resolving XDG config and data directories |
-| `github.com/danwakefield/fnmatch` | Glob matching for `.specsignore` |
+| `github.com/danwakefield/fnmatch` | Glob matching for `.specsverbatim` |
 | `github.com/sethvargo/go-password` | Password generation template function |
 | `github.com/docker/go-units` | Human-readable file size formatting |
 
@@ -34,6 +34,13 @@ at once upfront**. This list is a reference so you know what to reach for in eac
 
 Fresh repository — no legacy code. Each phase results in a buildable, testable state
 before moving on.
+
+---
+
+## Coding conventions
+
+- Use `any` instead of `interface{}` everywhere — they are identical but `any` is the modern idiomatic form since Go 1.18.
+- Template delimiters are defined as `specs.DelimLeft` / `specs.DelimRight` — never hardcode `"[["` or `"]]"` in call sites.
 
 ---
 
@@ -71,7 +78,7 @@ without passing tests. Aim for:
 produce non-empty strings at each level.
 
 - `pkg/specs/configuration.go` — XDG config dir, template dir path, file name constants
-  (`project.yaml`, `__metadata.json`, `.specsignore`)
+  (`project.yaml`, `__metadata.json`, `.specsverbatim`)
 - `pkg/specs/errors.go` — sentinel errors
 - `pkg/util/exit/` — exit codes
 - `pkg/util/output/log.go` — lipgloss-based levelled logger (info, warn, error, debug styles)
@@ -85,9 +92,9 @@ produce non-empty strings at each level.
 **You learn:** `go-yaml v3`, `text/template` custom delimiters, `sprout` registries.
 **Tests:**
 - Context parsing: string, bool, select, referenced default (topological sort), fallback to `project.json`.
-- Ignore matching: patterns in `.specsignore` match correct file paths.
+- Verbatim matching: patterns in `.specsverbatim` match correct file paths.
 - Execute: table-driven tests covering conditional filenames (true/false), verbatim copy
-  (specsignore + binary), whitespace-only deletion, nested conditional directories.
+  (specsverbatim + binary), whitespace-only deletion, nested conditional directories.
 
 Files:
 
@@ -96,7 +103,7 @@ Files:
 - `pkg/template/context.go` — parse `project.yaml` (fallback `project.json`), referenced
   default resolution (topological sort on `[[ ]]` in default values), computed value
   extraction and post-prompt resolution (see [11-computed-values.md](../11-computed-values.md))
-- `pkg/template/ignore.go` — load `.specsignore`, glob matching via `go-glob`
+- `pkg/template/verbatim.go` — load `.specsverbatim`, glob matching via `fnmatch`
 - `pkg/template/template.go` — `Get()`, `Execute()`: filepath.Walk, conditional filenames,
   verbatim copy, binary detection, whitespace-only deletion
 
@@ -138,18 +145,20 @@ Files:
 ## Phase 6 — Registry commands
 
 **Goal:** All registry-management commands plus shared infrastructure (`osutil`, `validate`,
-metadata writing, `--debug` flag).
+metadata writing).
 **You learn:** Cobra command wiring, `os.MkdirAll`/`os.RemoveAll`, recursive file copy.
 **Tests:** Each command tested via `cmd.ExecuteC()` with a temp XDG directory. Test flag
 combinations, missing-arg errors, and happy paths.
 
-Files:
+**Pre-phase setup (already done):** `App` struct (`pkg/cmd/app.go`), `NewApp()`,
+`--debug`/`--safe-mode` persistent flags, `slog`-based debug logging, error printing in
+`main.go`. See [implementation/phase6.md](implementation/phase6.md) prerequisites.
+
+Files remaining:
 
 - `pkg/util/osutil/` — `CopyDir()` recursive copy
 - `pkg/util/validate/` — `Tag()` validator (`AlphanumericExt` — fixes tmrts#61)
 - `pkg/cmd/metadata.go` — `writeMetadata()` helper
-- `main.go` — wire in `output.Error` + `os.Exit(1)` for unhandled errors
-- `pkg/cmd/root.go` — add `--debug` persistent flag + `PersistentPreRunE`
 - `pkg/cmd/init.go` — `specs init [--force]`
 - `pkg/cmd/template_list.go` — `specs template list [--dont-prettify]`
 - `pkg/cmd/template_save.go` — `specs template save [--force] <path> <tag>`
@@ -227,7 +236,7 @@ specs
 | 3 | go-yaml, `text/template` custom delimiters, Sprout registries + FuncMap |
 | 4 | `os/exec` subprocess, env injection |
 | 5 | go-git clone API |
-| 6 | Cobra command wiring, `osutil`, `validate`, registry operations |
+| 6 | Cobra command wiring, `osutil`, `validate`, registry operations; `App` struct + slog already wired |
 | 7 | huh — `Input`, `Confirm`, `Select` fields, form composition, `--values`/`--arg` |
 | 8 | Composing phases 5–7; temp directory lifecycle |
 

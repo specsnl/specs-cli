@@ -140,7 +140,7 @@ Argument order also changed for map/slice functions (`get`, `set`, `append`, `pr
 **Rationale:**
 - `project.json` is replaced by `project.yaml` in v2.
 - YAML supports comments, making template config files self-documenting.
-- `gopkg.in/yaml.v3` unmarshals into `map[string]interface{}` identically to `encoding/json`,
+- `gopkg.in/yaml.v3` unmarshals into `map[string]any` identically to `encoding/json`,
   so the internal context representation is unchanged.
 - Standard, stable library — used across the Go ecosystem.
 

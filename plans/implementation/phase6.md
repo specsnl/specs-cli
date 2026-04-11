@@ -6,6 +6,17 @@ All registry-management commands (`init`, `list`, `save`, `download`, `validate`
 `delete`) plus the shared infrastructure they depend on (`osutil`, `validate`, metadata
 writing). No interactive prompts in this phase — that is Phase 7.
 
+## Prerequisites (already done before this phase)
+
+The following were implemented as a pre-phase-6 setup step and do not need to be repeated:
+
+- `pkg/cmd/app.go` — `App` struct with `*slog.Logger`, `*slog.LevelVar`, `SafeMode bool`; `NewApp()`, `SetDebug()`, `templateConfig()`
+- `main.go` — creates `App`, passes it to `Execute(app)`, prints errors via `output.Error`
+- `pkg/cmd/root.go` — rewritten as `newRootCmd(app *App)`; `--debug` and `--safe-mode` persistent flags; `PersistentPreRunE` configures the App
+- `pkg/cmd/template.go` / `version.go` — rewritten as constructor functions (`newTemplateCmd()`, `newVersionCmd()`)
+- `pkg/util/output/log.go` — `Debug`/`SetDebug`/`debugEnabled` removed; debug logging is now `slog.Debug(...)` throughout
+- `pkg/template/template.go` — `output.Debug(...)` replaced with `slog.Debug(...)`
+
 ## Done criteria
 
 - `specs init` creates the XDG template directory.
@@ -15,8 +26,6 @@ writing). No interactive prompts in this phase — that is Phase 7.
 - `specs template validate` validates a template directory.
 - `specs template rename` renames a registry entry.
 - `specs template delete` removes one or more registry entries.
-- `--debug` persistent root flag wires `output.SetDebug(true)`.
-- Error printing is wired into `main.go`.
 - All tests pass.
 
 ---
@@ -30,11 +39,13 @@ No new packages beyond what phases 1–5 added.
 ## File overview
 
 ```
-main.go                           (updated: print error)
 pkg/
 ├── cmd/
-│   ├── root.go                   (updated: --debug flag, PersistentPreRunE)
-│   ├── metadata.go               (new: WriteMetadata helper)
+│   ├── app.go                    (done — App struct, NewApp, SetDebug, templateConfig)
+│   ├── root.go                   (done — newRootCmd(app), --debug/--safe-mode flags)
+│   ├── template.go               (done — newTemplateCmd())
+│   ├── version.go                (done — newVersionCmd())
+│   ├── metadata.go               (new: writeMetadata helper)
 │   ├── init.go                   (new)
 │   ├── template_list.go          (new)
 │   ├── template_save.go          (new)
@@ -53,35 +64,54 @@ pkg/
 
 ## Shared infrastructure
 
-### `main.go` — wire in error printing
+### `main.go` and `pkg/cmd/root.go` — already done
 
-`Execute()` returns the unhandled error from the command. `main.go` must print it before
-exiting, otherwise the user sees nothing when a command fails.
+These were implemented in the pre-phase-6 setup. For reference, the current shape is:
 
 ```go
+// main.go
 func main() {
-    if err := cmd.Execute(); err != nil {
+    app := cmd.NewApp()
+    if err := cmd.Execute(app); err != nil {
         output.Error("%v", err)
         os.Exit(exit.Error)
     }
 }
 ```
 
----
-
-### `pkg/cmd/root.go` — `--debug` flag and `PersistentPreRunE`
-
-Add a persistent `--debug` flag that enables `output.Debug` calls across all commands.
-
 ```go
-var debug bool
+// pkg/cmd/root.go
+func Execute(app *App) error {
+    return newRootCmd(app).Execute()
+}
 
-func init() {
-    rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Enable debug output")
-    rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-        output.SetDebug(debug)
+func newRootCmd(app *App) *cobra.Command {
+    cmd := &cobra.Command{ /* ... */ }
+    cmd.PersistentFlags().Bool("debug", false, "Enable debug output")
+    cmd.PersistentFlags().Bool("safe-mode", false, "Disable env/filesystem template functions and hooks")
+    cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+        debug, _ := cmd.Flags().GetBool("debug")
+        safeMode, _ := cmd.Flags().GetBool("safe-mode")
+        app.SetDebug(debug)
+        app.SafeMode = safeMode
         return nil
     }
+    cmd.AddCommand(newTemplateCmd())
+    cmd.AddCommand(newVersionCmd())
+    return cmd
+}
+```
+
+All new command constructors in this phase follow the same pattern — regular functions
+(not `init()`-wired vars) registered onto `newTemplateCmd()`'s return value:
+
+```go
+func newTemplateCmd() *cobra.Command {
+    cmd := &cobra.Command{ /* ... */ }
+    cmd.AddCommand(newInitCmd())
+    cmd.AddCommand(newTemplateListCmd())
+    // ...
+    return cmd
 }
 ```
 

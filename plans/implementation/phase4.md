@@ -102,7 +102,7 @@ type Hooks struct {
 //
 // Returns an error if both sources are present.
 // Returns an empty *Hooks (not nil) if no hooks are defined at all.
-func Load(templateRoot string, projectConfig map[string]interface{}) (*Hooks, error) {
+func Load(templateRoot string, projectConfig map[string]any) (*Hooks, error) {
     hasInline := false
     var h Hooks
 
@@ -134,7 +134,7 @@ func Load(templateRoot string, projectConfig map[string]interface{}) (*Hooks, er
 // ctx values are injected as UPPER_SNAKE_CASE env vars.
 // [[ ]] template expressions in each command are rendered against ctx before execution.
 // Returns immediately on the first non-zero exit.
-func (h *Hooks) Run(trigger, cwd string, ctx map[string]interface{}, funcMap template.FuncMap) error {
+func (h *Hooks) Run(trigger, cwd string, ctx map[string]any, funcMap template.FuncMap) error {
     var commands []string
     switch trigger {
     case "pre-use":
@@ -183,8 +183,8 @@ func (h *Hooks) HasPostUse() bool { return len(h.PostUse) > 0 }
 //   hooks:
 //     pre-use:  ["cmd1", "cmd2"]
 //     post-use: ["cmd1"]
-func (h *Hooks) parseInline(raw interface{}) error {
-    m, ok := raw.(map[string]interface{})
+func (h *Hooks) parseInline(raw any) error {
+    m, ok := raw.(map[string]any)
     if !ok {
         return fmt.Errorf("hooks must be a mapping, got %T", raw)
     }
@@ -230,7 +230,7 @@ func (h *Hooks) loadFromDir(hooksDir string) error {
 
 // buildEnv converts a context map to a slice of "KEY=value" strings.
 // Keys are uppercased; non-string values are formatted with fmt.Sprintf.
-func buildEnv(ctx map[string]interface{}) []string {
+func buildEnv(ctx map[string]any) []string {
     env := make([]string, 0, len(ctx))
     for k, v := range ctx {
         env = append(env, fmt.Sprintf("%s=%v", strings.ToUpper(k), v))
@@ -239,7 +239,7 @@ func buildEnv(ctx map[string]interface{}) []string {
 }
 
 // renderCommand renders [[ ]] template expressions in a hook command string.
-func renderCommand(cmdTpl string, ctx map[string]interface{}, funcMap template.FuncMap) (string, error) {
+func renderCommand(cmdTpl string, ctx map[string]any, funcMap template.FuncMap) (string, error) {
     if !strings.Contains(cmdTpl, "[[") {
         return cmdTpl, nil // fast path: no template expressions
     }
@@ -254,9 +254,9 @@ func renderCommand(cmdTpl string, ctx map[string]interface{}, funcMap template.F
     return buf.String(), nil
 }
 
-// toStringSlice coerces a YAML []interface{} into []string.
-func toStringSlice(v interface{}) ([]string, error) {
-    list, ok := v.([]interface{})
+// toStringSlice coerces a YAML []any into []string.
+func toStringSlice(v any) ([]string, error) {
+    list, ok := v.([]any)
     if !ok {
         return nil, fmt.Errorf("expected a list, got %T", v)
     }

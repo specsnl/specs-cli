@@ -42,8 +42,8 @@ boilr/
     ├── template/                 # template loading & execution engine
     │   ├── template.go           # Get(), Execute(), [[ ]] delimiters
     │   ├── context.go            # NEW: project.yaml parsing, referenced defaults
-    │   ├── ignore.go             # NEW: .boilrignore loading & matching
-    │   ├── functions.go          # FuncMap (custom + Sprig)
+    │   ├── verbatim.go           # NEW: .specsverbatim loading & matching
+    │   ├── functions.go          # FuncMap (custom + Sprout)
     │   └── metadata.go           # Metadata struct, JSONTime
     ├── hooks/                    # NEW: hook execution
     │   └── hooks.go              # Load(), Run(), context → env vars
@@ -254,7 +254,7 @@ func Load(templateRoot string, projectYAML *ProjectConfig) (*Hooks, error)
 // Run executes each command in sequence via `bash -c`.
 // ctx is injected as uppercase env vars: ProjectName → PROJECTNAME.
 // Stops and returns error on first non-zero exit.
-func (h *Hooks) Run(trigger string, cwd string, ctx map[string]interface{}) error
+func (h *Hooks) Run(trigger string, cwd string, ctx map[string]any) error
 ```
 
 Commands in the list may contain `[[ ]]` template expressions — resolved against the
@@ -268,7 +268,7 @@ final context before execution.
 |---------|--------|--------|
 | `pkg/boilr` | updated | XDG paths, yaml file name constant |
 | `pkg/cmd` | updated | new `use.go`, updated `template_use.go`, tag validator fix |
-| `pkg/template` | updated | `[[ ]]` delimiters, `context.go`, `ignore.go`, conditional skip |
+| `pkg/template` | updated | `[[ ]]` delimiters, `context.go`, `verbatim.go`, conditional skip |
 | `pkg/hooks` | **new** | hook loading and execution |
 | `pkg/util/output` | **new** | lipgloss logger + bubbles table (replaces tlog + tabular) |
 | `pkg/prompt` | **removed** | replaced by `huh` |

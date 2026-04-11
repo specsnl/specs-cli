@@ -14,7 +14,7 @@ prompt layer is Phase 6). The engine must be fully testable in isolation.
   work correctly.
 - Computed values (from the `computed:` section) are resolved after defaults and merged into
   the context before rendering.
-- All tests pass (context parsing, ignore matching, computed values, execute pipeline).
+- All tests pass (context parsing, verbatim matching, computed values, execute pipeline).
 
 ---
 
@@ -38,7 +38,7 @@ pkg/
     ├── metadata.go
     ├── functions.go
     ├── context.go
-    ├── ignore.go
+    ├── verbatim.go
     └── template.go
 ```
 
@@ -144,7 +144,8 @@ import (
 // FuncMap returns all template functions: Sprout registries + custom specs functions.
 // The env and filesystem registries are intentionally omitted — templates must not
 // read host environment variables or access arbitrary paths.
-func FuncMap() template.FuncMap {
+// cfg controls which registries are included (SafeMode disables env/filesystem registries).
+func FuncMap(cfg Config, logger *slog.Logger) template.FuncMap {
     handler := sprout.New()
     handler.AddRegistries(
         std.NewRegistry(),
@@ -210,13 +211,13 @@ any referenced defaults.
 
 #### Context schema
 
-A context is a `map[string]interface{}` where values are typed as follows:
+A context is a `map[string]any` where values are typed as follows:
 
 | YAML value | Go type after unmarshal | Prompt type |
 |------------|------------------------|-------------|
 | `name: my-project` | `string` | free-text input |
 | `useSonar: false` | `bool` | yes/no confirm |
-| `license: [MIT, GPL]` | `[]interface{}` | select (first item = default) |
+| `license: [MIT, GPL]` | `[]any` | select (first item = default) |
 | `ProjectSlug: "[[toKebabCase .Name]]"` | `string` containing `[[` | referenced default |
 
 #### Referenced defaults
@@ -254,7 +255,8 @@ import (
 // Strips the reserved top-level keys "computed" and "hooks" before returning.
 // Resolves referenced defaults (string values containing "[[") in topological order.
 // Returns the user input map and the raw computed definitions separately.
-func LoadUserContext(templateRoot string) (userCtx map[string]interface{}, computedDefs map[string]string, err error) {
+// funcMap is created once by Get() and passed in to avoid duplicate construction.
+func LoadUserContext(templateRoot string, funcMap template.FuncMap) (userCtx map[string]any, computedDefs map[string]string, err error) {
     raw, err := loadContextFile(templateRoot)
     if err != nil {
         return nil, nil, err
@@ -264,14 +266,14 @@ func LoadUserContext(templateRoot string) (userCtx map[string]interface{}, compu
         return nil, nil, err
     }
     delete(raw, "hooks") // hooks section is config, not a template variable
-    userCtx, err = resolveReferencedDefaults(raw)
+    userCtx, err = resolveReferencedDefaults(raw, funcMap)
     return userCtx, computedDefs, err
 }
 
 // ApplyComputed resolves computed definitions against the finalised context (post-prompt)
 // and merges the results in. Called after prompting and --values/--arg overrides are complete.
 // Returns a new map containing both user inputs and computed values.
-func ApplyComputed(ctx map[string]interface{}, defs map[string]string, funcMap template.FuncMap) (map[string]interface{}, error) {
+func ApplyComputed(ctx map[string]any, defs map[string]string, funcMap template.FuncMap) (map[string]any, error) {
     // 1. Topological sort of defs by .Key dependencies.
     // 2. Execute each template in order against the growing context.
     // 3. Merge result into context before moving to the next computed key.
@@ -279,10 +281,10 @@ func ApplyComputed(ctx map[string]interface{}, defs map[string]string, funcMap t
 }
 
 // loadContextFile reads project.yaml; falls back to project.json.
-func loadContextFile(templateRoot string) (map[string]interface{}, error) {
+func loadContextFile(templateRoot string) (map[string]any, error) {
     yamlPath := filepath.Join(templateRoot, specs.ProjectYAMLFile)
     if data, err := os.ReadFile(yamlPath); err == nil {
-        var ctx map[string]interface{}
+        var ctx map[string]any
         if err := yaml.Unmarshal(data, &ctx); err != nil {
             return nil, fmt.Errorf("parsing %s: %w", specs.ProjectYAMLFile, err)
         }
@@ -294,7 +296,7 @@ func loadContextFile(templateRoot string) (map[string]interface{}, error) {
     if err != nil {
         return nil, fmt.Errorf("no project.yaml or project.json found in %s", templateRoot)
     }
-    var ctx map[string]interface{}
+    var ctx map[string]any
     if err := json.Unmarshal(data, &ctx); err != nil {
         return nil, fmt.Errorf("parsing %s: %w", specs.ProjectJSONFile, err)
     }
@@ -303,7 +305,7 @@ func loadContextFile(templateRoot string) (map[string]interface{}, error) {
 
 // extractComputed removes the "computed" key from raw and returns its string entries.
 // Returns an error if a computed key conflicts with a user input key.
-func extractComputed(raw map[string]interface{}) (map[string]string, error) {
+func extractComputed(raw map[string]any) (map[string]string, error) {
     // ...
 }
 ```
@@ -311,7 +313,7 @@ func extractComputed(raw map[string]interface{}) (map[string]string, error) {
 #### `resolveReferencedDefaults`
 
 ```go
-func resolveReferencedDefaults(ctx map[string]interface{}) (map[string]interface{}, error) {
+func resolveReferencedDefaults(ctx map[string]any, funcMap template.FuncMap) (map[string]any, error) {
     // 1. Find all keys with [[ ]] in their string value.
     // 2. Extract .Key references from the template expressions.
     // 3. Topological sort (Kahn's algorithm).
@@ -331,9 +333,10 @@ logic — extract into a private `topoSort(deps map[string][]string) ([]string, 
 
 ---
 
-### `pkg/template/ignore.go`
+### `pkg/template/verbatim.go`
 
-Loads `.specsignore` and matches file paths against its patterns.
+Loads `.specsverbatim` and matches file paths against its patterns. Matched files are copied
+verbatim (no template rendering), identical to binary files.
 
 ```go
 package template
@@ -347,18 +350,18 @@ import (
     "github.com/danwakefield/fnmatch"
 )
 
-// IgnoreRules holds compiled glob patterns from .specsignore.
-type IgnoreRules struct {
+// VerbatimRules holds compiled glob patterns from .specsverbatim.
+type VerbatimRules struct {
     patterns []string
 }
 
-// LoadIgnore reads .specsignore from templateRoot. Returns an empty IgnoreRules
+// LoadVerbatim reads .specsverbatim from templateRoot. Returns an empty VerbatimRules
 // (no patterns) if the file does not exist.
-func LoadIgnore(templateRoot string) (*IgnoreRules, error) {
-    path := filepath.Join(templateRoot, specs.IgnoreFile)
+func LoadVerbatim(templateRoot string) (*VerbatimRules, error) {
+    path := filepath.Join(templateRoot, specs.VerbatimFile)
     f, err := os.Open(path)
     if os.IsNotExist(err) {
-        return &IgnoreRules{}, nil
+        return &VerbatimRules{}, nil
     }
     if err != nil {
         return nil, err
@@ -374,12 +377,12 @@ func LoadIgnore(templateRoot string) (*IgnoreRules, error) {
         }
         patterns = append(patterns, line)
     }
-    return &IgnoreRules{patterns: patterns}, scanner.Err()
+    return &VerbatimRules{patterns: patterns}, scanner.Err()
 }
 
-// Matches reports whether path (relative to the template root) matches any ignore pattern.
+// Matches reports whether path (relative to the template root) matches any verbatim pattern.
 // path uses forward slashes regardless of OS.
-func (r *IgnoreRules) Matches(path string) bool {
+func (r *VerbatimRules) Matches(path string) bool {
     for _, pattern := range r.patterns {
         if fnmatch.Match(pattern, path, 0) {
             return true
@@ -422,22 +425,26 @@ var ignoredFiles = map[string]bool{
 // Template holds everything needed to execute a template.
 type Template struct {
     Root         string                 // path to the template root (contains project.yaml + template/)
-    Context      map[string]interface{} // user input map with referenced defaults resolved
+    Context      map[string]any // user input map with referenced defaults resolved
     ComputedDefs map[string]string      // raw computed definitions; resolved by ApplyComputed post-prompt
     Metadata     *Metadata              // nil if __metadata.json is absent
+    cfg          Config
+    logger       *slog.Logger
     funcMap      template.FuncMap
-    ignore       *IgnoreRules
+    verbatim     *VerbatimRules
 }
 
 // Get loads a template from templateRoot. The root must contain either project.yaml or
 // project.json, and a template/ subdirectory.
-func Get(templateRoot string) (*Template, error) {
-    userCtx, computedDefs, err := LoadUserContext(templateRoot)
+func Get(templateRoot string, cfg Config, logger *slog.Logger) (*Template, error) {
+    funcMap := FuncMap(cfg, logger)
+
+    userCtx, computedDefs, err := LoadUserContext(templateRoot, funcMap)
     if err != nil {
         return nil, err
     }
 
-    ignore, err := LoadIgnore(templateRoot)
+    verbatim, err := LoadVerbatim(templateRoot)
     if err != nil {
         return nil, err
     }
@@ -449,8 +456,10 @@ func Get(templateRoot string) (*Template, error) {
         Context:      userCtx,
         ComputedDefs: computedDefs,
         Metadata:     meta,
-        funcMap:      FuncMap(),
-        ignore:       ignore,
+        cfg:          cfg,
+        logger:       logger,
+        funcMap:      funcMap,
+        verbatim:     verbatim,
     }, nil
 }
 ```
@@ -518,7 +527,7 @@ func (t *Template) Execute(targetDir string) error {
 
         // 5. File: determine copy strategy.
         relForward := filepath.ToSlash(rel)
-        if t.ignore.Matches(relForward) || isBinary(srcPath) {
+        if t.verbatim.Matches(relForward) || isBinary(srcPath) {
             return copyFile(srcPath, destPath)
         }
         return t.renderFile(srcPath, destPath, ctx)
@@ -531,7 +540,7 @@ func (t *Template) Execute(targetDir string) error {
 ```go
 // renderName renders a file/directory path template using [[ ]] delimiters.
 // ctx is the fully resolved context (user inputs + computed values).
-func (t *Template) renderName(name string, ctx map[string]interface{}) (string, error) {
+func (t *Template) renderName(name string, ctx map[string]any) (string, error) {
     tmpl, err := template.New("").Delims("[[", "]]").Funcs(t.funcMap).Parse(name)
     if err != nil {
         return "", err
@@ -546,7 +555,7 @@ func (t *Template) renderName(name string, ctx map[string]interface{}) (string, 
 // renderFile renders a text file's content using [[ ]] delimiters.
 // ctx is the fully resolved context (user inputs + computed values).
 // If the rendered content is whitespace-only, the destination file is not created.
-func (t *Template) renderFile(srcPath, destPath string, ctx map[string]interface{}) error {
+func (t *Template) renderFile(srcPath, destPath string, ctx map[string]any) error {
     data, err := os.ReadFile(srcPath)
     if err != nil {
         return err
@@ -600,7 +609,7 @@ func isBinary(path string) bool {
 // hasEmptySegment returns true if any path segment (split by os.PathSeparator) is empty
 // after trimming whitespace.
 func hasEmptySegment(path string) bool {
-    for _, seg := range strings.Split(path, string(filepath.Separator)) {
+    for seg := range strings.SplitSeq(path, string(filepath.Separator)) {
         if strings.TrimSpace(seg) == "" {
             return true
         }
@@ -649,7 +658,7 @@ Table-driven; create a `project.yaml` in a temp dir for each case.
 |------|-------|----------|
 | String default | `Name: my-project` | `ctx["Name"] == "my-project"` |
 | Bool default | `UseSonar: false` | `ctx["UseSonar"] == false` |
-| Select default | `License: [MIT, GPL]` | `ctx["License"]` is `[]interface{}{"MIT","GPL"}` |
+| Select default | `License: [MIT, GPL]` | `ctx["License"]` is `[]any{"MIT","GPL"}` |
 | project.json fallback | no project.yaml, has project.json | parses successfully |
 | Referenced default | `Slug: "[[toKebabCase .Name]]"`, `Name: My App` | `ctx["Slug"] == "my-app"` |
 | Cyclic reference | A depends on B, B depends on A | returns error |
@@ -659,7 +668,7 @@ Table-driven; create a `project.yaml` in a temp dir for each case.
 | Computed chain | `computed:\n  A: "x"\n  B: "[[.A]]y"` | `ApplyComputed` → `ctx["B"] == "xy"` |
 | Computed cycle | `computed:\n  A: "[[.B]]"\n  B: "[[.A]]"` | `ApplyComputed` returns error |
 
-### `pkg/template/ignore_test.go`
+### `pkg/template/verbatim_test.go`
 
 | Test | Pattern | Path | Matches |
 |------|---------|------|---------|
@@ -668,7 +677,7 @@ Table-driven; create a `project.yaml` in a temp dir for each case.
 | Wildcard no match | `*.min.js` | `dist/app.js` | false |
 | Glob double-star | `vendor/**` | `vendor/autoload.php` | true |
 | Comment line ignored | `# composer.lock` | `composer.lock` | false |
-| Missing file | *(no .specsignore)* | any | false (empty rules) |
+| Missing file | *(no .specsverbatim)* | any | false (empty rules) |
 
 ### `pkg/template/template_test.go`
 
@@ -681,7 +690,7 @@ Each test case creates a minimal template directory structure in `t.TempDir()`, 
 | `TestExecute_ConditionalFilename_True` | `template/[[if .UseX]]feature.txt[[end]]`, `UseX: true` | `feature.txt` exists |
 | `TestExecute_ConditionalFilename_False` | same, `UseX: false` | `feature.txt` absent |
 | `TestExecute_ConditionalDir_False` | dir `[[if .UseX]]subdir[[end]]`, `UseX: false` | `subdir/` absent |
-| `TestExecute_VerbatimCopy` | `template/composer.lock`, `.specsignore: composer.lock` | file copied byte-for-byte |
+| `TestExecute_VerbatimCopy` | `template/composer.lock`, `.specsverbatim: composer.lock` | file copied byte-for-byte |
 | `TestExecute_BinaryFile` | `template/image.png` with null bytes | file copied byte-for-byte |
 | `TestExecute_WhitespaceOnly` | `template/empty.txt` with `[[if false]]x[[end]]` | `empty.txt` absent |
 | `TestExecute_NestedConditionalDir` | dir `[[if .X]]a/b[[end]]`, file inside, `X: false` | neither dir nor file created |

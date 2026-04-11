@@ -67,8 +67,13 @@ const (
     ProjectYAMLFile = "project.yaml"
     ProjectJSONFile = "project.json" // backward-compat fallback
     MetadataFile    = "__metadata.json"
-    IgnoreFile      = ".specsignore"
+    VerbatimFile    = ".specsverbatim"
     TemplateDirFile = "template"     // the subdirectory that gets rendered
+
+    // DelimLeft and DelimRight are the template expression delimiters used in all template
+    // files and file names. [[ ]] is chosen over {{ }} to avoid conflicts with GitHub Actions.
+    DelimLeft  = "[["
+    DelimRight = "]]"
 )
 
 // ConfigDir returns the specs configuration directory.
@@ -168,13 +173,7 @@ var (
     styleInfo  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.ANSIColor(12)) // bright blue
     styleWarn  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.ANSIColor(11)) // bright yellow
     styleError = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.ANSIColor(9))  // bright red
-    styleDebug = lipgloss.NewStyle().Foreground(lipgloss.ANSIColor(8))             // dark grey
 )
-
-// debugEnabled can be toggled by a --debug persistent flag in Phase 6.
-var debugEnabled bool
-
-func SetDebug(enabled bool) { debugEnabled = enabled }
 
 func Info(format string, a ...any) {
     logTo(os.Stdout, styleInfo.Render("info")+" ", format, a...)
@@ -188,17 +187,12 @@ func Error(format string, a ...any) {
     logTo(os.Stderr, styleError.Render("error")+" ", format, a...)
 }
 
-func Debug(format string, a ...any) {
-    if !debugEnabled {
-        return
-    }
-    logTo(os.Stdout, styleDebug.Render("debug")+" ", format, a...)
-}
-
 func logTo(w io.Writer, prefix, format string, a ...any) {
     lipgloss.Fprintln(w, fmt.Sprintf(prefix+format, a...))
 }
 ```
+
+**No `Debug` function in the output package.** Internal debug logging uses `slog.Debug(...)` directly (stdlib). The `App` struct in `pkg/cmd/app.go` configures a `slog.LevelVar`-backed handler at startup; `--debug` adjusts the level at runtime via `App.SetDebug()`. Because `slog.SetDefault()` is called in `NewApp()`, any package can call `slog.Debug(...)` without importing `pkg/cmd`.
 
 **lipgloss v2 — key differences from v1:**
 - `lipgloss.Color("12")` (string type) is gone. Use `lipgloss.ANSIColor(n)` for indexed
@@ -210,10 +204,10 @@ func logTo(w io.Writer, prefix, format string, a ...any) {
   terminal's capability. The `logTo` helper above uses `lipgloss.Fprintln` for this reason.
 - The `Renderer` type and `DefaultRenderer()` are removed. `Style` is now a plain value type.
 
-**`--dont-prettify` integration (Phase 6):** When this flag is set, commands that call
-`output.Info/Warn/Error` should call the plain variants instead. A simple approach is to
-add `PlainInfo`, `PlainWarn`, `PlainError` variants, or check a package-level `prettify bool`
-flag. Defer this decision to Phase 6 when actual commands are written.
+**`--dont-prettify` integration (Phase 6):** When this flag is set on commands that
+produce styled output (`version`, `template list`), the command itself should bypass the
+lipgloss rendering and write plain text instead. This is handled per-command in Phase 6
+rather than through a package-level flag in `output`.
 
 ---
 

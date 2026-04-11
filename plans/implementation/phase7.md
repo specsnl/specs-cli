@@ -78,12 +78,12 @@ import (
 
 // LoadFile reads a JSON file and returns a flat map of key/value overrides.
 // Only top-level string, bool, and number values are supported; nested objects are ignored.
-func LoadFile(path string) (map[string]interface{}, error) {
+func LoadFile(path string) (map[string]any, error) {
     data, err := os.ReadFile(path)
     if err != nil {
         return nil, fmt.Errorf("reading values file %q: %w", path, err)
     }
-    var m map[string]interface{}
+    var m map[string]any
     if err := json.Unmarshal(data, &m); err != nil {
         return nil, fmt.Errorf("parsing values file %q: %w", path, err)
     }
@@ -102,8 +102,8 @@ func ParseArg(arg string) (key, value string, err error) {
 
 // Merge applies overrides on top of base, returning a new map.
 // Keys in overrides replace matching keys in base.
-func Merge(base, overrides map[string]interface{}) map[string]interface{} {
-    result := make(map[string]interface{}, len(base))
+func Merge(base, overrides map[string]any) map[string]any {
+    result := make(map[string]any, len(base))
     for k, v := range base {
         result[k] = v
     }
@@ -127,7 +127,7 @@ The huh form is built by iterating over the context map. Keys pre-filled by `--v
 |---|---|
 | `string` | `huh.NewInput()` with `Value(&result)` and default pre-filled |
 | `bool` | `huh.NewConfirm()` with `Value(&result)` |
-| `[]interface{}` | `huh.NewSelect[string]()` with first item as selected default |
+| `[]any` | `huh.NewSelect[string]()` with first item as selected default |
 
 ```go
 package cmd
@@ -307,7 +307,7 @@ Iterates over schema keys in a stable order and builds a huh form. Keys already 
 ```go
 // promptContext builds and runs a huh form for all keys in schema that are not
 // already present in ctx. Results are written directly into ctx.
-func promptContext(ctx map[string]interface{}, schema map[string]interface{}) error {
+func promptContext(ctx map[string]any, schema map[string]any) error {
     var fields []huh.Field
 
     // Sort keys for deterministic prompt order.
@@ -348,7 +348,7 @@ func promptContext(ctx map[string]interface{}, schema map[string]interface{}) er
             fields = append(fields, huh.NewConfirm().Title(key).Value(c))
             defer func() { ctx[k] = *c }()
 
-        case []interface{}:
+        case []any:
             // Select — first item is the default.
             opts := toStringOptions(v)
             if len(opts) == 0 {
@@ -381,7 +381,7 @@ func promptContext(ctx map[string]interface{}, schema map[string]interface{}) er
 
 > **Note on `defer` approach:** the `defer` trick above captures closures that flush
 > field results into `ctx` after `form.Run()` returns. An alternative (and arguably
-> cleaner) approach is to build a separate `results map[string]interface{}` and write
+> cleaner) approach is to build a separate `results map[string]any` and write
 > to ctx in a post-loop pass. Choose whichever reads more clearly during implementation.
 
 ---
@@ -394,12 +394,12 @@ func promptContext(ctx map[string]interface{}, schema map[string]interface{}) er
 ```go
 // loadRawConfig reads project.yaml (or project.json) without stripping any keys.
 // Used to pass the raw "hooks" value to hooks.Load.
-func loadRawConfig(templateRoot string) (map[string]interface{}, error) {
+func loadRawConfig(templateRoot string) (map[string]any, error) {
     // Attempt YAML first, fall back to JSON — identical to context.go logic.
     // Keep this function private to pkg/cmd; do not expose it via pkg/template.
     yamlPath := filepath.Join(templateRoot, specs.ProjectYAMLFile)
     if data, err := os.ReadFile(yamlPath); err == nil {
-        var m map[string]interface{}
+        var m map[string]any
         _ = yaml.Unmarshal(data, &m)
         return m, nil
     }
@@ -408,7 +408,7 @@ func loadRawConfig(templateRoot string) (map[string]interface{}, error) {
     if err != nil {
         return nil, err
     }
-    var m map[string]interface{}
+    var m map[string]any
     _ = json.Unmarshal(data, &m)
     return m, nil
 }
@@ -484,6 +484,6 @@ All tests build a real template directory in `t.TempDir()` and invoke the comman
 - **Temp directory cleanup:** `defer os.RemoveAll(tmp)` runs even if `Execute` or
   `CopyDir` fails — the partial output in `targetDir` may be incomplete, but the temp dir
   is always cleaned up.
-- **`[]interface{}` select values in `--arg`:** `--arg License=MIT` always produces a
-  string. For a key whose schema type is `[]interface{}` (a select), the string value is
+- **`[]any` select values in `--arg`:** `--arg License=MIT` always produces a
+  string. For a key whose schema type is `[]any` (a select), the string value is
   accepted as-is. No validation against the option list at this stage.
