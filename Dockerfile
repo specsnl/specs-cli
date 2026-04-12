@@ -2,7 +2,7 @@
 # check=error=true
 
 # Latest version: https://hub.docker.com/_/golang/tags
-FROM golang:1.26.1-trixie AS base
+FROM golang:1.26.2-trixie AS base
 
 WORKDIR /src
 
@@ -10,7 +10,8 @@ RUN apt-get update \
     && apt-get install --assume-yes --no-install-recommends \
         ca-certificates \
         tree \
-        git
+        git \
+        openssh-client
 
 FROM base AS builder-download
 

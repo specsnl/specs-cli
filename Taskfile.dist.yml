@@ -23,20 +23,20 @@ tasks:
   dc:run:*:
     desc: Run a one-off docker compose command
     vars:
-      SERVICE: '{{index .MATCH 0}}'
+      SERVICE: "{{index .MATCH 0}}"
     cmds:
       - task: dc
         vars:
-          SUB_CMD: 'run --rm {{.SERVICE}} {{.SUB_CMD}}'
-          CLI_ARGS: '{{.CLI_ARGS}}'
+          SUB_CMD: "run --rm {{.SERVICE}} {{.SUB_CMD}}"
+          CLI_ARGS: "{{.CLI_ARGS}}"
 
   dc:shell:
     desc: Shell into a docker compose service
     cmds:
       - task: dc
         vars:
-          SUB_CMD: 'run --tty --rm go-builder /bin/bash'
-          CLI_ARGS: '{{.CLI_ARGS}}'
+          SUB_CMD: "run --tty --rm go-builder /bin/bash"
+          CLI_ARGS: "{{.CLI_ARGS}}"
 
   build:
     desc: Build Specs cli
@@ -56,7 +56,14 @@ tasks:
     cmds:
       - task: dc:run:go-builder
         vars:
-          SUB_CMD: 'go test ./...'
+          SUB_CMD: "go test ./..."
+
+  docker:test:
+    desc: Run go tests (including integration tests) inside the Docker container
+    cmds:
+      - task: dc:run:go-builder
+        vars:
+          SUB_CMD: "go test -tags=integration ./..."
 
   release:dry-run:
     desc: Build a snapshot release locally without publishing
