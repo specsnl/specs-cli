@@ -29,21 +29,21 @@ func newTemplateListCmd() *cobra.Command {
 				return err
 			}
 
-			headers := []string{"Tag", "Repository", "Created"}
+			headers := []string{"Name", "Repository", "Created"}
 			var rows [][]string
 
 			for _, e := range entries {
 				if !e.IsDir() {
 					continue
 				}
-				tag := e.Name()
-				meta, _ := loadMetadataForListing(specs.TemplatePath(tag))
+				tmplName := e.Name()
+				meta, _ := loadMetadataForListing(specs.TemplatePath(tmplName))
 				repo, created := "-", "-"
 				if meta != nil {
 					repo = meta.Repository
 					created = meta.Created.String()
 				}
-				rows = append(rows, []string{tag, repo, created})
+				rows = append(rows, []string{tmplName, repo, created})
 			}
 
 			if len(rows) == 0 {

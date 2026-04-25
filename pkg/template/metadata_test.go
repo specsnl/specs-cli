@@ -102,7 +102,7 @@ func TestGet_LoadsMetadata(t *testing.T) {
 
 	created := time.Date(2024, 3, 10, 9, 0, 0, 0, time.UTC)
 	meta := pkgtemplate.Metadata{
-		Tag:        "my-tag",
+		Name:       "my-tpl",
 		Repository: "user/repo",
 		Created:    pkgtemplate.JSONTime{Time: created},
 	}
@@ -121,8 +121,8 @@ func TestGet_LoadsMetadata(t *testing.T) {
 	if tmpl.Metadata == nil {
 		t.Fatal("Metadata is nil, expected it to be loaded")
 	}
-	if tmpl.Metadata.Tag != "my-tag" {
-		t.Errorf("Tag = %q, want %q", tmpl.Metadata.Tag, "my-tag")
+	if tmpl.Metadata.Name != "my-tpl" {
+		t.Errorf("Name = %q, want %q", tmpl.Metadata.Name, "my-tpl")
 	}
 	if tmpl.Metadata.Repository != "user/repo" {
 		t.Errorf("Repository = %q, want %q", tmpl.Metadata.Repository, "user/repo")

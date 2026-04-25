@@ -33,9 +33,9 @@ func TemplateDir() string {
 	return filepath.Join(ConfigDir(), TemplateDirName)
 }
 
-// TemplatePath returns the full path to a specific registered template by tag.
-func TemplatePath(tag string) string {
-	return filepath.Join(TemplateDir(), tag)
+// TemplatePath returns the full path to a specific registered template by name.
+func TemplatePath(name string) string {
+	return filepath.Join(TemplateDir(), name)
 }
 
 // IsRegistryInitialised reports whether the template directory exists on disk.

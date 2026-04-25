@@ -19,7 +19,7 @@ func TestList_ShowsTemplate(t *testing.T) {
 	registryDir := withTempRegistry(t)
 
 	// Manually place a template directory
-	if err := os.MkdirAll(filepath.Join(registryDir, "my-tag"), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(registryDir, "my-tpl"), 0755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -27,14 +27,14 @@ func TestList_ShowsTemplate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("template list: %v", err)
 	}
-	if !strings.Contains(out, "my-tag") {
-		t.Errorf("expected output to contain 'my-tag', got: %q", out)
+	if !strings.Contains(out, "my-tpl") {
+		t.Errorf("expected output to contain 'my-tpl', got: %q", out)
 	}
 }
 
 func TestList_DontPrettify(t *testing.T) {
 	registryDir := withTempRegistry(t)
-	if err := os.MkdirAll(filepath.Join(registryDir, "my-tag"), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(registryDir, "my-tpl"), 0755); err != nil {
 		t.Fatal(err)
 	}
 

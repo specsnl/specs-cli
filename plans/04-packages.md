@@ -23,13 +23,13 @@ type Configuration struct {
 }
 ```
 
-`TemplatePath(name)` returns the absolute registry path for a given tag.
+`TemplatePath(name)` returns the absolute registry path for a given template name.
 `IsTemplateDirInitialized()` checks whether the registry directory exists.
 `init()` loads optional `~/.config/boilr/config.json` on startup.
 
 **`errors.go`**
 
-`ErrTemplateAlreadyExists` — sentinel returned when a tag collision occurs without `--force`.
+`ErrTemplateAlreadyExists` — sentinel returned when a name collision occurs without `--force`.
 
 ---
 
@@ -158,7 +158,7 @@ func Print(header []string, data [][]string)
 ```
 
 Renders a coloured table using `olekukonko/tablewriter`.
-Green separator lines, red tag column, blue/yellow repository column.
+Green separator lines, red name column, blue/yellow repository column.
 
 ---
 

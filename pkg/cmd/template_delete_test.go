@@ -11,16 +11,16 @@ func TestDelete_Success(t *testing.T) {
 	withTempRegistry(t)
 
 	src := makeFakeTemplate(t)
-	if _, err := executeCmd("template", "save", src, "my-tag"); err != nil {
+	if _, err := executeCmd("template", "save", src, "my-tpl"); err != nil {
 		t.Fatal(err)
 	}
 
-	if _, err := executeCmd("template", "delete", "my-tag"); err != nil {
+	if _, err := executeCmd("template", "delete", "my-tpl"); err != nil {
 		t.Fatalf("template delete: %v", err)
 	}
 
-	if _, err := os.Stat(specs.TemplatePath("my-tag")); !os.IsNotExist(err) {
-		t.Error("expected my-tag to be deleted")
+	if _, err := os.Stat(specs.TemplatePath("my-tpl")); !os.IsNotExist(err) {
+		t.Error("expected my-tpl to be deleted")
 	}
 }
 
@@ -37,20 +37,20 @@ func TestDelete_MultipleArgs(t *testing.T) {
 	withTempRegistry(t)
 
 	src := makeFakeTemplate(t)
-	if _, err := executeCmd("template", "save", src, "tag-a"); err != nil {
+	if _, err := executeCmd("template", "save", src, "tpl-a"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := executeCmd("template", "save", src, "tag-b"); err != nil {
+	if _, err := executeCmd("template", "save", src, "tpl-b"); err != nil {
 		t.Fatal(err)
 	}
 
-	if _, err := executeCmd("template", "delete", "tag-a", "tag-b"); err != nil {
+	if _, err := executeCmd("template", "delete", "tpl-a", "tpl-b"); err != nil {
 		t.Fatalf("template delete multiple: %v", err)
 	}
 
-	for _, tag := range []string{"tag-a", "tag-b"} {
-		if _, err := os.Stat(specs.TemplatePath(tag)); !os.IsNotExist(err) {
-			t.Errorf("expected %q to be deleted", tag)
+	for _, name := range []string{"tpl-a", "tpl-b"} {
+		if _, err := os.Stat(specs.TemplatePath(name)); !os.IsNotExist(err) {
+			t.Errorf("expected %q to be deleted", name)
 		}
 	}
 }

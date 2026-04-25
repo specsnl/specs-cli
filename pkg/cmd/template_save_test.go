@@ -25,11 +25,11 @@ func TestSave_Success(t *testing.T) {
 	withTempRegistry(t)
 
 	src := makeFakeTemplate(t)
-	if _, err := executeCmd("template", "save", src, "my-tag"); err != nil {
+	if _, err := executeCmd("template", "save", src, "my-tpl"); err != nil {
 		t.Fatalf("template save: %v", err)
 	}
 
-	if _, err := os.Stat(specs.TemplatePath("my-tag")); err != nil {
+	if _, err := os.Stat(specs.TemplatePath("my-tpl")); err != nil {
 		t.Errorf("expected registry entry to exist: %v", err)
 	}
 }
@@ -38,11 +38,11 @@ func TestSave_AlreadyExists(t *testing.T) {
 	withTempRegistry(t)
 
 	src := makeFakeTemplate(t)
-	if _, err := executeCmd("template", "save", src, "my-tag"); err != nil {
+	if _, err := executeCmd("template", "save", src, "my-tpl"); err != nil {
 		t.Fatal(err)
 	}
 
-	_, err := executeCmd("template", "save", src, "my-tag")
+	_, err := executeCmd("template", "save", src, "my-tpl")
 	if err == nil {
 		t.Fatal("expected error on duplicate save")
 	}
@@ -52,20 +52,20 @@ func TestSave_Force(t *testing.T) {
 	withTempRegistry(t)
 
 	src := makeFakeTemplate(t)
-	if _, err := executeCmd("template", "save", src, "my-tag"); err != nil {
+	if _, err := executeCmd("template", "save", src, "my-tpl"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := executeCmd("template", "save", "--force", src, "my-tag"); err != nil {
+	if _, err := executeCmd("template", "save", "--force", src, "my-tpl"); err != nil {
 		t.Fatalf("template save --force: %v", err)
 	}
 }
 
-func TestSave_InvalidTag(t *testing.T) {
+func TestSave_InvalidName(t *testing.T) {
 	withTempRegistry(t)
 
 	src := makeFakeTemplate(t)
-	_, err := executeCmd("template", "save", src, "bad tag")
+	_, err := executeCmd("template", "save", src, "bad name")
 	if err == nil {
-		t.Fatal("expected error for invalid tag")
+		t.Fatal("expected error for invalid name")
 	}
 }

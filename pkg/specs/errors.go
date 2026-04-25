@@ -3,10 +3,10 @@ package specs
 import "errors"
 
 var (
-	// ErrTemplateNotFound is returned when a tag is given that has no matching directory.
+	// ErrTemplateNotFound is returned when a name is given that has no matching directory.
 	ErrTemplateNotFound = errors.New("template not found")
 
-	// ErrTemplateAlreadyExists is returned on save/download when the tag is already in use
+	// ErrTemplateAlreadyExists is returned on save/download when the name is already in use
 	// and --force was not passed.
 	ErrTemplateAlreadyExists = errors.New("template already exists — use --force to overwrite")
 

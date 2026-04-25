@@ -7,7 +7,7 @@ Every boilr template is a directory with this structure:
 ```
 <template-root>/
 ├── project.json          # variable schema with defaults
-├── __metadata.json       # written by boilr (tag, repo, created)
+├── __metadata.json       # written by boilr (name, repo, created)
 └── template/             # the files that get rendered
     ├── {{.Name}}.go      # Go template syntax in filenames
     ├── README.md         # Go template syntax in file contents

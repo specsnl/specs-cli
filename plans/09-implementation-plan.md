@@ -158,15 +158,15 @@ combinations, missing-arg errors, and happy paths.
 Files remaining:
 
 - `pkg/util/osutil/` — `CopyDir()` recursive copy
-- `pkg/util/validate/` — `Tag()` validator (alphanumeric + hyphens + underscores)
+- `pkg/util/validate/` — `Name()` validator (alphanumeric + hyphens + underscores)
 - `pkg/cmd/metadata.go` — `writeMetadata()` helper
 - `pkg/cmd/init.go` — `specs init [--force]`
 - `pkg/cmd/template_list.go` — `specs template list [--dont-prettify]`
-- `pkg/cmd/template_save.go` — `specs template save [--force] <path> <tag>`
-- `pkg/cmd/template_download.go` — `specs template download [--force] <source> <tag>`
+- `pkg/cmd/template_save.go` — `specs template save [--force] <path> <name>`
+- `pkg/cmd/template_download.go` — `specs template download [--force] <source> <name>`
 - `pkg/cmd/template_validate.go` — `specs template validate <path>`
 - `pkg/cmd/template_rename.go` — `specs template rename <old> <new>`
-- `pkg/cmd/template_delete.go` — `specs template delete <tag>...`
+- `pkg/cmd/template_delete.go` — `specs template delete <name>...`
 
 ---
 
@@ -181,7 +181,7 @@ answers from `--values`/`--arg`, `--use-defaults` short-circuit.
 Files:
 
 - `pkg/util/values/` — `LoadFile()` (JSON `--values` file), `ParseArg()` (`Key=Value`), `Merge()`
-- `pkg/cmd/template_use.go` — `specs template use <tag> <target-dir>`; shared `executeTemplate()` helper
+- `pkg/cmd/template_use.go` — `specs template use <name> <target-dir>`; shared `executeTemplate()` helper
 - `pkg/template/template.go` — public `FuncMap()` method (already implemented in Phase 3)
 
 ---
@@ -210,15 +210,15 @@ specs
 │     [--no-hooks]
 │
 ├── template
-│   ├── download [--force] <repo> <tag>
-│   ├── save     [--force] <path> <tag>
-│   ├── use      <tag> <target-dir>
+│   ├── download [--force] <repo> <name>
+│   ├── save     [--force] <path> <name>
+│   ├── use      <name> <target-dir>
 │   │     [--values file.yaml]
 │   │     [--arg Key=Value]...
 │   │     [--use-defaults]
 │   │     [--no-hooks]
 │   ├── list     [--dont-prettify]
-│   ├── delete   <tag>...
+│   ├── delete   <name>...
 │   ├── validate <path>
 │   └── rename   <old> <new>
 │

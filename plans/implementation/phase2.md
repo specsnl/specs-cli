@@ -87,9 +87,9 @@ func TemplateDir() string {
     return filepath.Join(ConfigDir(), TemplateDirName)
 }
 
-// TemplatePath returns the full path to a specific registered template by tag.
-func TemplatePath(tag string) string {
-    return filepath.Join(TemplateDir(), tag)
+// TemplatePath returns the full path to a specific registered template by name.
+func TemplatePath(name string) string {
+    return filepath.Join(TemplateDir(), name)
 }
 
 // IsRegistryInitialised reports whether the template directory exists on disk.
@@ -120,10 +120,10 @@ var (
     // Fix: run `specs init`.
     ErrRegistryNotInitialised = errors.New("template registry is not initialised — run 'specs init'")
 
-    // ErrTemplateNotFound is returned when a tag is given that has no matching directory.
+    // ErrTemplateNotFound is returned when a name is given that has no matching directory.
     ErrTemplateNotFound = errors.New("template not found")
 
-    // ErrTemplateAlreadyExists is returned on save/download when the tag is already in use
+    // ErrTemplateAlreadyExists is returned on save/download when the name is already in use
     // and --force was not passed.
     ErrTemplateAlreadyExists = errors.New("template already exists — use --force to overwrite")
 
@@ -347,14 +347,14 @@ before calling.
 ```go
 func TestRenderTable_ContainsHeaders(t *testing.T) {
     out := output.RenderTable(
-        []string{"Tag", "Repository", "Created"},
-        [][]string{{"my-tag", "user/repo", "2 days ago"}},
+        []string{"Name", "Repository", "Created"},
+        [][]string{{"my-tpl", "user/repo", "2 days ago"}},
     )
-    if !strings.Contains(out, "Tag") {
-        t.Error("table output does not contain header 'Tag'")
+    if !strings.Contains(out, "Name") {
+        t.Error("table output does not contain header 'Name'")
     }
-    if !strings.Contains(out, "my-tag") {
-        t.Error("table output does not contain row value 'my-tag'")
+    if !strings.Contains(out, "my-tpl") {
+        t.Error("table output does not contain row value 'my-tpl'")
     }
 }
 ```

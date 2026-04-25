@@ -12,7 +12,7 @@ import (
 
 // Metadata is stored in __metadata.json inside each registered template.
 type Metadata struct {
-	Tag        string   `json:"Tag"`
+	Name       string   `json:"Name"`
 	Repository string   `json:"Repository"`
 	Created    JSONTime `json:"Created"`
 }

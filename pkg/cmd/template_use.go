@@ -31,19 +31,19 @@ func newTemplateUseCmd(app *App) *cobra.Command {
 	var opts executeOpts
 
 	cmd := &cobra.Command{
-		Use:   "use <tag> <target-dir>",
+		Use:   "use <name> <target-dir>",
 		Short: "Execute a registered template",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			tag, targetDir := args[0], args[1]
+			name, targetDir := args[0], args[1]
 
-			if err := validate.Tag(tag); err != nil {
+			if err := validate.Name(name); err != nil {
 				return err
 			}
 
-			templateRoot := specs.TemplatePath(tag)
+			templateRoot := specs.TemplatePath(name)
 			if _, err := os.Stat(templateRoot); os.IsNotExist(err) {
-				return fmt.Errorf("%w: %s", specs.ErrTemplateNotFound, tag)
+				return fmt.Errorf("%w: %s", specs.ErrTemplateNotFound, name)
 			}
 
 			return app.executeTemplate(templateRoot, targetDir, opts)

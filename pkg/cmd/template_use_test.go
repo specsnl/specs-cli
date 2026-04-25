@@ -30,14 +30,14 @@ func makeTemplateWithVar(t *testing.T, varName, defaultVal string) string {
 	return dir
 }
 
-// saveAndUse is a helper that saves src under tag and runs template use with extra args.
-func saveAndUse(t *testing.T, src, tag, target string, extraArgs ...string) error {
+// saveAndUse is a helper that saves src under name and runs template use with extra args.
+func saveAndUse(t *testing.T, src, name, target string, extraArgs ...string) error {
 	t.Helper()
-	if _, err := executeCmd("template", "save", src, tag); err != nil {
+	if _, err := executeCmd("template", "save", src, name); err != nil {
 		t.Fatalf("template save: %v", err)
 	}
 	args := append([]string{"template", "use"}, extraArgs...)
-	args = append(args, tag, target)
+	args = append(args, name, target)
 	_, err := executeCmd(args...)
 	return err
 }
@@ -122,9 +122,9 @@ func TestTemplateUse_ArgBeatsValues(t *testing.T) {
 
 func TestTemplateUse_NotFound(t *testing.T) {
 	withTempRegistry(t)
-	_, err := executeCmd("template", "use", "--use-defaults", "no-such-tag", t.TempDir())
+	_, err := executeCmd("template", "use", "--use-defaults", "no-such-name", t.TempDir())
 	if err == nil {
-		t.Fatal("expected error for unknown tag")
+		t.Fatal("expected error for unknown name")
 	}
 	if !errors.Is(err, specs.ErrTemplateNotFound) {
 		t.Errorf("expected ErrTemplateNotFound, got %v", err)

@@ -27,7 +27,7 @@ Covering open (and select closed) issues from both
 | Issue | Title | Fix |
 |-------|-------|-----|
 | tmrts#79, tmrts#29 | `--use-defaults` closure bug — all variables get the same value | Fix variable capture in `handleBindDefaults` loop |
-| tmrts#61 | Tag names reject `-` and `_` | Change tag validator from `Alphanumeric` to `AlphanumericExt` (already exists) |
+| tmrts#61 | Template names reject `-` and `_` | Change name validator from `Alphanumeric` to `AlphanumericExt` (already exists) |
 | tmrts#67 | Invalid `project.json` not reported | Surface JSON decode error before template execution; don't swallow it |
 | tmrts#27 | Error messages not helpful | Print command usage automatically on argument errors (`SilenceUsage: false` in Cobra) |
 

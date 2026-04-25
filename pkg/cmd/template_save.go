@@ -14,20 +14,20 @@ func newTemplateSaveCmd() *cobra.Command {
 	var force bool
 
 	cmd := &cobra.Command{
-		Use:   "save <path> <tag>",
+		Use:   "save <path> <name>",
 		Short: "Save a local directory as a template",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			srcPath, tag := args[0], args[1]
+			srcPath, name := args[0], args[1]
 
-			if err := validate.Tag(tag); err != nil {
+			if err := validate.Name(name); err != nil {
 				return err
 			}
 			if err := specs.EnsureRegistry(); err != nil {
 				return err
 			}
 
-			dest := specs.TemplatePath(tag)
+			dest := specs.TemplatePath(name)
 			if _, err := os.Stat(dest); err == nil && !force {
 				return specs.ErrTemplateAlreadyExists
 			}
@@ -38,11 +38,11 @@ func newTemplateSaveCmd() *cobra.Command {
 			if err := osutil.CopyDir(srcPath, dest); err != nil {
 				return err
 			}
-			if err := writeMetadata(dest, tag, srcPath); err != nil {
+			if err := writeMetadata(dest, name, srcPath); err != nil {
 				return err
 			}
 
-			output.Info("template %q saved", tag)
+			output.Info("template %q saved", name)
 			return nil
 		},
 	}

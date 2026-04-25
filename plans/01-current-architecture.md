@@ -55,13 +55,13 @@ boilr.go  main()
 boilr
 ├── init [--force]
 ├── template
-│   ├── download [--force] [--log-level] <repo> <tag>
-│   ├── save     [--force] <path> <tag>
-│   ├── use      [--use-defaults] [--log-level] <tag> <dir>
+│   ├── download [--force] [--log-level] <repo> <name>
+│   ├── save     [--force] <path> <name>
+│   ├── use      [--use-defaults] [--log-level] <name> <dir>
 │   ├── list     [--dont-prettify]
-│   ├── delete   <tag>...
+│   ├── delete   <name>...
 │   ├── validate <path>
-│   └── rename   <old-tag> <new-tag>       (hidden)
+│   └── rename   <old-name> <new-name>       (hidden)
 ├── version      [--dont-prettify]
 └── configure-bash-completion              (hidden)
 ```
@@ -79,9 +79,9 @@ All templates are stored on disk under `~/.config/boilr/`:
 ├── config.json           # optional user overrides
 ├── completion.bash       # bash completion script
 └── templates/
-    └── <tag>/
+    └── <name>/
         ├── project.json          # context schema & defaults
-        ├── __metadata.json       # tag, repo URL, creation time
+        ├── __metadata.json       # name, repo URL, creation time
         └── template/             # rendered file tree lives here
             ├── {{Name}}.go
             ├── README.md
@@ -96,7 +96,7 @@ All templates are stored on disk under `~/.config/boilr/`:
 ## Data Flow — `boilr template use`
 
 ```
-boilr template use <tag> <target-dir>
+boilr template use <name> <target-dir>
         │
         ▼
   validate args & check registry

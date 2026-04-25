@@ -75,15 +75,15 @@ boilr
 │     [--no-hooks]
 │
 ├── template
-│   ├── download [--force] <repo> <tag>     updated: supports repo:branch
-│   ├── save     [--force] <path> <tag>
-│   ├── use      <tag> <target-dir>         updated: --values, --arg, --no-hooks
+│   ├── download [--force] <repo> <name>     updated: supports repo:branch
+│   ├── save     [--force] <path> <name>
+│   ├── use      <name> <target-dir>         updated: --values, --arg, --no-hooks
 │   │     [--values file.yaml]
 │   │     [--arg Key=Value]...
 │   │     [--use-defaults]
 │   │     [--no-hooks]
 │   ├── list     [--dont-prettify]
-│   ├── delete   <tag>...
+│   ├── delete   <name>...
 │   ├── validate <path>
 │   └── rename   <old> <new>
 │
@@ -136,7 +136,7 @@ Downloads to a temp directory, executes, discards. No registry entry created.
 $XDG_CONFIG_HOME/boilr/          (default: ~/.config/boilr/)
 ├── config.yaml                  # optional user config
 └── templates/
-    └── <tag>/
+    └── <name>/
         ├── project.yaml
         ├── .boilrignore
         ├── __metadata.json
@@ -154,14 +154,14 @@ templateDir  := filepath.Join(configDir, "templates")
 
 ## Key Data Flows
 
-### `boilr template use <tag> <target-dir>`
+### `boilr template use <name> <target-dir>`
 
 ```
 validate args & flags
   │
-check registry initialised + tag exists
+check registry initialised + name exists
   │
-template.Get(registryPath/tag)
+template.Get(registryPath/name)
   ├── parse project.yaml (fallback: project.json)
   ├── resolve referenced defaults (topological sort on [[ ]] in default values)
   ├── load .boilrignore patterns
@@ -267,7 +267,7 @@ final context before execution.
 | Package | Status | Change |
 |---------|--------|--------|
 | `pkg/boilr` | updated | XDG paths, yaml file name constant |
-| `pkg/cmd` | updated | new `use.go`, updated `template_use.go`, tag validator fix |
+| `pkg/cmd` | updated | new `use.go`, updated `template_use.go`, name validator fix |
 | `pkg/template` | updated | `[[ ]]` delimiters, `context.go`, `verbatim.go`, conditional skip |
 | `pkg/hooks` | **new** | hook loading and execution |
 | `pkg/util/output` | **new** | lipgloss logger + bubbles table (replaces tlog + tabular) |

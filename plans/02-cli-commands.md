@@ -34,22 +34,22 @@ boilr init [--force]
 Downloads a template from GitHub and registers it locally.
 
 ```
-boilr template download <github-repo> <tag>
+boilr template download <github-repo> <name>
                          e.g. tmrts/boilr-license  license
 ```
 
 | Flag | Short | Default | Description |
 |------|-------|---------|-------------|
-| `--force` | `-f` | `false` | Overwrite if tag already exists |
+| `--force` | `-f` | `false` | Overwrite if name already exists |
 | `--log-level` | `-l` | `error` | Logging verbosity |
 
 **Flow:**
-1. Validate exactly 2 args; validate `tag` is alphanumeric-ext.
+1. Validate exactly 2 args; validate `name` is alphanumeric-ext.
 2. Check registry is initialised.
-3. If tag exists and `--force` not set → error.
+3. If name exists and `--force` not set → error.
 4. `host.URL(repo)` → normalise to `https://github.com/user/repo`.
-5. `git.Clone(registryPath/tag, CloneOptions{URL})`.
-6. `serializeMetadata(tag, repo, now)` → `__metadata.json`.
+5. `git.Clone(registryPath/name, CloneOptions{URL})`.
+6. `serializeMetadata(name, repo, now)` → `__metadata.json`.
 
 ---
 
@@ -60,19 +60,19 @@ boilr template download <github-repo> <tag>
 Registers a local directory as a template.
 
 ```
-boilr template save <template-path> <tag>
+boilr template save <template-path> <name>
 ```
 
 | Flag | Short | Default | Description |
 |------|-------|---------|-------------|
-| `--force` | `-f` | `false` | Overwrite existing tag |
+| `--force` | `-f` | `false` | Overwrite existing name |
 
 **Flow:**
-1. Validate args; validate `tag`.
+1. Validate args; validate `name`.
 2. Check registry initialised.
-3. If tag exists and not `--force` → error.
-4. `exec.Cmd("cp", "-r", srcPath, registryPath/tag)`.
-5. `serializeMetadata(tag, srcPath, now)`.
+3. If name exists and not `--force` → error.
+4. `exec.Cmd("cp", "-r", srcPath, registryPath/name)`.
+5. `serializeMetadata(name, srcPath, now)`.
 
 ---
 
@@ -83,7 +83,7 @@ boilr template save <template-path> <tag>
 Executes a registered template and writes output to a target directory.
 
 ```
-boilr template use <tag> <target-dir>
+boilr template use <name> <target-dir>
 ```
 
 | Flag | Short | Default | Description |
@@ -92,8 +92,8 @@ boilr template use <tag> <target-dir>
 | `--log-level` | `-l` | `error` | Logging verbosity |
 
 **Flow:**
-1. Validate args; check registry; check tag exists.
-2. `template.Get(registryPath/tag)` → loads `project.json` + `__metadata.json`.
+1. Validate args; check registry; check name exists.
+2. `template.Get(registryPath/name)` → loads `project.json` + `__metadata.json`.
 3. If `--use-defaults` → `tmpl.UseDefaultValues()`.
 4. `os.MkdirTemp(...)` → temporary staging directory.
 5. `tmpl.Execute(tmpDir)` → renders template into staging dir.
@@ -116,7 +116,7 @@ boilr template list [--dont-prettify]
 |------|---------|-------------|
 | `--dont-prettify` | `false` | Raw output instead of coloured table |
 
-**Output columns:** Tag · Repository · Age
+**Output columns:** Name · Repository · Age
 
 **Also returns** a `map[string]bool` used by other commands for quick existence checks.
 
@@ -129,12 +129,12 @@ boilr template list [--dont-prettify]
 Removes one or more registered templates.
 
 ```
-boilr template delete <tag> [<tag>...]
+boilr template delete <name> [<name>...]
 ```
 
 **Flow:**
-1. Validate at least 1 arg; each tag alphanumeric-ext.
-2. For each tag: `os.RemoveAll(registryPath/tag)`.
+1. Validate at least 1 arg; each name alphanumeric-ext.
+2. For each name: `os.RemoveAll(registryPath/name)`.
 
 ---
 
@@ -160,7 +160,7 @@ boilr template validate <template-path>
 **File:** `pkg/cmd/rename.go`
 
 ```
-boilr template rename <old-tag> <new-tag>
+boilr template rename <old-name> <new-name>
 ```
 
 Renames a template entry in the registry by moving its directory.
@@ -212,7 +212,7 @@ All `Must*` functions call `exit.Fatal(err)` on failure — no error propagation
 ### `pkg/cmd/metadata.go`
 
 ```go
-serializeMetadata(tag, repository string, t time.Time) error
+serializeMetadata(name, repository string, t time.Time) error
 ```
 
 Writes `__metadata.json` alongside a newly saved or downloaded template.

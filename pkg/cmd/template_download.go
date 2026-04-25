@@ -16,13 +16,13 @@ func newTemplateDownloadCmd() *cobra.Command {
 	var force bool
 
 	cmd := &cobra.Command{
-		Use:   "download <source> <tag>",
+		Use:   "download <source> <name>",
 		Short: "Download a template from a remote repository",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			rawSource, tag := args[0], args[1]
+			rawSource, name := args[0], args[1]
 
-			if err := validate.Tag(tag); err != nil {
+			if err := validate.Name(name); err != nil {
 				return err
 			}
 			if err := specs.EnsureRegistry(); err != nil {
@@ -37,7 +37,7 @@ func newTemplateDownloadCmd() *cobra.Command {
 				return fmt.Errorf("use 'specs template save' to register a local path")
 			}
 
-			dest := specs.TemplatePath(tag)
+			dest := specs.TemplatePath(name)
 			if _, err := os.Stat(dest); err == nil && !force {
 				return specs.ErrTemplateAlreadyExists
 			}
@@ -49,11 +49,11 @@ func newTemplateDownloadCmd() *cobra.Command {
 			if err := pkggit.Clone(src.CloneURL, dest, pkggit.CloneOptions{Branch: src.Branch}); err != nil {
 				return err
 			}
-			if err := writeMetadata(dest, tag, src.CloneURL); err != nil {
+			if err := writeMetadata(dest, name, src.CloneURL); err != nil {
 				return err
 			}
 
-			output.Info("template %q downloaded", tag)
+			output.Info("template %q downloaded", name)
 			return nil
 		},
 	}

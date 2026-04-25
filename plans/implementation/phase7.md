@@ -8,7 +8,7 @@ target directory.
 
 ## Done criteria
 
-- `specs template use <tag> <target-dir>` prompts the user for each context key.
+- `specs template use <name> <target-dir>` prompts the user for each context key.
 - `--use-defaults` skips all prompts and uses the schema defaults.
 - `--values <file>` pre-fills answers from a JSON file; matching keys are not prompted.
 - `--arg Key=Value` (repeatable) pre-fills individual keys; takes precedence over `--values`.
@@ -157,7 +157,7 @@ var (
 )
 
 var templateUseCmd = &cobra.Command{
-    Use:   "use <tag> <target-dir>",
+    Use:   "use <name> <target-dir>",
     Short: "Execute a registered template",
     Args:  cobra.ExactArgs(2),
     RunE:  runTemplateUse,
@@ -172,18 +172,15 @@ func init() {
 }
 
 func runTemplateUse(cmd *cobra.Command, args []string) error {
-    tag, targetDir := args[0], args[1]
+    name, targetDir := args[0], args[1]
 
-    if err := validate.Tag(tag); err != nil {
+    if err := validate.Name(name); err != nil {
         return err
     }
-    if !specs.IsRegistryInitialised() {
-        return specs.ErrRegistryNotInitialised
-    }
 
-    templateRoot := specs.TemplatePath(tag)
+    templateRoot := specs.TemplatePath(name)
     if _, err := os.Stat(templateRoot); os.IsNotExist(err) {
-        return fmt.Errorf("%w: %s", specs.ErrTemplateNotFound, tag)
+        return fmt.Errorf("%w: %s", specs.ErrTemplateNotFound, name)
     }
 
     return executeTemplate(templateRoot, targetDir, executeOpts{
@@ -456,7 +453,7 @@ All tests build a real template directory in `t.TempDir()` and invoke the comman
 | `TestTemplateUse_ArgOverride` | `--arg Name=test` | rendered file contains "test" |
 | `TestTemplateUse_ValuesFile` | `--values` JSON file with `{"Name":"from-file"}` | rendered content matches |
 | `TestTemplateUse_ArgBeatsValues` | `--values` sets Name=file, `--arg Name=arg` | arg value wins |
-| `TestTemplateUse_NotFound` | unknown tag | returns `ErrTemplateNotFound` |
+| `TestTemplateUse_NotFound` | unknown name | returns `ErrTemplateNotFound` |
 | `TestTemplateUse_NoHooks` | template with post-use hook, `--no-hooks` | hook script not executed |
 | `TestTemplateUse_ComputedAvailable` | template with `computed:` section | computed key rendered in output |
 

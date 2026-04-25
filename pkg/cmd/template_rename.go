@@ -12,34 +12,34 @@ import (
 
 func newTemplateRenameCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "rename <old-tag> <new-tag>",
+		Use:   "rename <old-name> <new-name>",
 		Short: "Rename a registered template",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			oldTag, newTag := args[0], args[1]
+			oldName, newName := args[0], args[1]
 
-			if err := validate.Tag(newTag); err != nil {
+			if err := validate.Name(newName); err != nil {
 				return err
 			}
 			if err := specs.EnsureRegistry(); err != nil {
 				return err
 			}
 
-			src := specs.TemplatePath(oldTag)
+			src := specs.TemplatePath(oldName)
 			if _, err := os.Stat(src); os.IsNotExist(err) {
-				return fmt.Errorf("%w: %s", specs.ErrTemplateNotFound, oldTag)
+				return fmt.Errorf("%w: %s", specs.ErrTemplateNotFound, oldName)
 			}
 
-			dst := specs.TemplatePath(newTag)
+			dst := specs.TemplatePath(newName)
 			if _, err := os.Stat(dst); err == nil {
-				return fmt.Errorf("tag %q already exists — delete it first", newTag)
+				return fmt.Errorf("name %q already exists — delete it first", newName)
 			}
 
 			if err := os.Rename(src, dst); err != nil {
 				return err
 			}
 
-			output.Info("template %q renamed to %q", oldTag, newTag)
+			output.Info("template %q renamed to %q", oldName, newName)
 			return nil
 		},
 	}

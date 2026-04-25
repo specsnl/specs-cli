@@ -85,17 +85,17 @@ func EnsureRegistry() error {
 
 ### `pkg/util/validate/validate.go`
 
-Tag names must be alphanumeric with hyphens and underscores.
+Template names must be alphanumeric with hyphens and underscores.
 
 ```go
-var tagPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+var namePattern = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 
-func Tag(name string) error {
+func Name(name string) error {
     if name == "" {
-        return fmt.Errorf("tag must not be empty")
+        return fmt.Errorf("name must not be empty")
     }
-    if !tagPattern.MatchString(name) {
-        return fmt.Errorf("tag %q contains invalid characters (allowed: a-z A-Z 0-9 _ -)", name)
+    if !namePattern.MatchString(name) {
+        return fmt.Errorf("name %q contains invalid characters (allowed: a-z A-Z 0-9 _ -)", name)
     }
     return nil
 }
@@ -126,11 +126,11 @@ specs reset-registry
 Reads all subdirectories from the registry, loads their `__metadata.json`, renders a
 table. With `--dont-prettify`, outputs tab-separated plain text for scripting.
 
-### `specs template save [--force] <path> <tag>`
+### `specs template save [--force] <path> <name>`
 
-Copies a local directory into the registry under the given tag.
+Copies a local directory into the registry under the given name.
 
-### `specs template download [--force] <source> <tag>`
+### `specs template download [--force] <source> <name>`
 
 Clones a remote repository into the registry. `<source>` accepts any format that
 `host.Parse()` understands (github shorthand, HTTPS URL, SSH URL).
@@ -140,11 +140,11 @@ Clones a remote repository into the registry. `<source>` accepts any format that
 Validates a template directory without registering it. Dry-executes into a temp dir
 using all default values.
 
-### `specs template rename <old-tag> <new-tag>`
+### `specs template rename <old-name> <new-name>`
 
 Renames a registry entry using `os.Rename` (atomic on the same filesystem).
 
-### `specs template delete <tag>...`
+### `specs template delete <name>...`
 
 Removes one or more registry entries.
 

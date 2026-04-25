@@ -13,7 +13,7 @@ func TestResetRegistry_WipesAndRecreates(t *testing.T) {
 
 	// Place a sentinel file inside the registry via a save
 	src := makeFakeTemplate(t)
-	if _, err := executeCmd("template", "save", src, "my-tag"); err != nil {
+	if _, err := executeCmd("template", "save", src, "my-tpl"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -26,8 +26,8 @@ func TestResetRegistry_WipesAndRecreates(t *testing.T) {
 		t.Errorf("expected registry dir to exist after reset: %v", err)
 	}
 	// Saved template must be gone
-	if _, err := os.Stat(filepath.Join(specs.TemplateDir(), "my-tag")); !os.IsNotExist(err) {
-		t.Error("expected my-tag to be wiped by reset-registry")
+	if _, err := os.Stat(filepath.Join(specs.TemplateDir(), "my-tpl")); !os.IsNotExist(err) {
+		t.Error("expected my-tpl to be wiped by reset-registry")
 	}
 }
 
