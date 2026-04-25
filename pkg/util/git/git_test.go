@@ -43,6 +43,22 @@ func TestClone_SpecificBranch(t *testing.T) {
 	}
 }
 
+func TestClone_SpecificTag(t *testing.T) {
+	dir := t.TempDir()
+
+	err := pkggit.Clone("https://github.com/specsnl/boilr-laravel-project", dir, pkggit.CloneOptions{
+		Branch: "0.1.0",
+		Depth:  1,
+	})
+	if err != nil {
+		t.Fatalf("Clone with tag: %v", err)
+	}
+
+	if _, err := os.Stat(dir + "/composer.json"); os.IsNotExist(err) {
+		t.Error("cloned repo missing composer.json")
+	}
+}
+
 func TestClone_InvalidURL(t *testing.T) {
 	dir := t.TempDir()
 

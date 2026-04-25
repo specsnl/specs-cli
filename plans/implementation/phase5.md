@@ -12,7 +12,8 @@ These packages form the foundation for `specs template download` and `specs use`
 - `host.Parse()` correctly identifies all source formats and returns a populated `Source`.
 - `host.Source.IsSSH()` correctly identifies SSH sources.
 - `git.Clone()` clones a remote repository to a target directory.
-- `git.Clone()` supports cloning a specific branch.
+- `git.Clone()` supports cloning a specific branch or git tag via the `Branch` field.
+- `git.Clone()` resolves the ref as a git tag first (`refs/tags/<ref>`); falls back to a branch (`refs/heads/<ref>`) if the tag is not found.
 - `git.Clone()` automatically builds SSH auth from the URL — no caller changes needed.
 - Auth strategy: SSH agent first, then `~/.ssh/id_ed25519` / `id_rsa` / `id_ecdsa`.
 - Host key verification uses `~/.ssh/known_hosts` — verification is never skipped.
@@ -54,10 +55,11 @@ pkg/
 
 ## Source formats
 
-| Input | Kind | CloneURL stored | Branch |
+| Input | Kind | CloneURL stored | Branch/Tag |
 |---|---|---|---|
 | `github:user/repo` | GitHub shorthand | `https://github.com/user/repo` | default |
 | `github:user/repo:main` | GitHub shorthand + branch | `https://github.com/user/repo` | `main` |
+| `github:user/repo:0.1.0` | GitHub shorthand + tag | `https://github.com/user/repo` | `0.1.0` |
 | `https://github.com/user/repo` | Full HTTPS URL | as-is | default |
 | `https://github.com/user/repo.git` | Full HTTPS URL with .git | stripped | default |
 | `git@github.com:user/repo` | SCP-style SSH | `git@github.com:user/repo` | default |
@@ -78,6 +80,11 @@ Any other input is an error.
 - **No insecure host key skip.** `~/.ssh/known_hosts` is required for SSH clones.
 - **No passphrase prompting.** Encrypted key files without an agent are skipped silently.
   Users with passphrase-protected keys should use `ssh-agent`.
+- **Tag-first ref resolution.** `cloneWithRef` tries `refs/tags/<ref>` first. If go-git
+  returns "couldn't find remote ref", it cleans up the partial clone and retries as
+  `refs/heads/<ref>`. This matches native `git clone -b` priority (tags win over same-named
+  branches) while keeping the API simple — callers just pass the ref string without caring
+  whether it is a branch or tag.
 - **SSH clone not integration-tested.** Wiring up a self-contained SSH server requires
   credentials or a local sshd. SSH URL parsing is covered by `pkg/host` unit tests;
   SSH transport correctness is delegated to go-git's own test suite. See `TestClone_SSH`.

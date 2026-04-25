@@ -33,11 +33,6 @@ func Clone(url, dir string, opts CloneOptions) error {
 		Progress: nil, // callers that want progress attach a writer before calling
 	}
 
-	if opts.Branch != "" {
-		cloneOpts.ReferenceName = plumbing.NewBranchReferenceName(opts.Branch)
-		cloneOpts.SingleBranch = true
-	}
-
 	if cloneOpts.Depth == 0 {
 		cloneOpts.Depth = 1 // default: shallow clone for speed
 	}
@@ -50,7 +45,35 @@ func Clone(url, dir string, opts CloneOptions) error {
 		cloneOpts.Auth = auth
 	}
 
+	if opts.Branch != "" {
+		cloneOpts.SingleBranch = true
+		return cloneWithRef(url, dir, cloneOpts, opts.Branch)
+	}
+
 	_, err := gogit.PlainClone(dir, false, cloneOpts)
+	if err != nil {
+		return fmt.Errorf("cloning %s: %w", url, err)
+	}
+	return nil
+}
+
+// cloneWithRef tries the given ref as a Git tag first, then as a branch.
+// This lets callers pass version tags ("0.1.0", "v1.2.3") or branch names
+// ("main") without needing to know which kind of ref it is.
+func cloneWithRef(url, dir string, cloneOpts *gogit.CloneOptions, ref string) error {
+	cloneOpts.ReferenceName = plumbing.NewTagReferenceName(ref)
+	_, err := gogit.PlainClone(dir, false, cloneOpts)
+	if err == nil {
+		return nil
+	}
+	if !strings.Contains(err.Error(), "couldn't find remote ref") {
+		return fmt.Errorf("cloning %s: %w", url, err)
+	}
+
+	// Tag ref not found — retry as a branch.
+	os.RemoveAll(dir)
+	cloneOpts.ReferenceName = plumbing.NewBranchReferenceName(ref)
+	_, err = gogit.PlainClone(dir, false, cloneOpts)
 	if err != nil {
 		return fmt.Errorf("cloning %s: %w", url, err)
 	}
