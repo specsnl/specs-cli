@@ -39,6 +39,12 @@ type Template struct {
 	verbatim     *VerbatimRules
 }
 
+// FuncMap returns the template's function map. Used by callers that need to pass
+// the same FuncMap to hooks or ApplyComputed.
+func (t *Template) FuncMap() texttemplate.FuncMap {
+	return t.funcMap
+}
+
 // Get loads a template from templateRoot. The root must contain either project.yaml or
 // project.json, and a template/ subdirectory.
 func Get(templateRoot string, cfg Config, logger *slog.Logger) (*Template, error) {
