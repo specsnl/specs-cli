@@ -3,10 +3,6 @@ package specs
 import "errors"
 
 var (
-	// ErrRegistryNotInitialised is returned when the template directory does not exist.
-	// Fix: run `specs init`.
-	ErrRegistryNotInitialised = errors.New("template registry is not initialised — run 'specs init'")
-
 	// ErrTemplateNotFound is returned when a tag is given that has no matching directory.
 	ErrTemplateNotFound = errors.New("template not found")
 

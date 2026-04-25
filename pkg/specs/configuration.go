@@ -43,3 +43,8 @@ func IsRegistryInitialised() bool {
 	info, err := os.Stat(TemplateDir())
 	return err == nil && info.IsDir()
 }
+
+// EnsureRegistry creates the template registry directory if it does not already exist.
+func EnsureRegistry() error {
+	return os.MkdirAll(TemplateDir(), 0755)
+}

@@ -158,7 +158,7 @@ combinations, missing-arg errors, and happy paths.
 Files remaining:
 
 - `pkg/util/osutil/` — `CopyDir()` recursive copy
-- `pkg/util/validate/` — `Tag()` validator (`AlphanumericExt` — fixes tmrts#61)
+- `pkg/util/validate/` — `Tag()` validator (alphanumeric + hyphens + underscores)
 - `pkg/cmd/metadata.go` — `writeMetadata()` helper
 - `pkg/cmd/init.go` — `specs init [--force]`
 - `pkg/cmd/template_list.go` — `specs template list [--dont-prettify]`

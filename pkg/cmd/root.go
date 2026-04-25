@@ -39,7 +39,8 @@ Use "specs <command> --help" for more information about a command.`,
 	cmd.PersistentFlags().Bool("safe-mode", false, "Disable env/filesystem template functions and hooks")
 	cmd.PersistentFlags().Bool("no-env-prefix", false, "Disable the SPECS_ prefix on hook environment variables")
 
-	cmd.AddCommand(newTemplateCmd())
+	cmd.AddCommand(newResetRegistryCmd())
+	cmd.AddCommand(newTemplateCmd(app))
 	cmd.AddCommand(newVersionCmd())
 
 	return cmd
