@@ -12,8 +12,9 @@ import (
 
 func newTemplateDeleteCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "delete <name> [<name>...]",
-		Short: "Delete one or more registered templates",
+		Use:     "delete <name> [<name>...]",
+		Aliases: []string{"remove", "rm", "del"},
+		Short:   "Delete one or more registered templates",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := specs.EnsureRegistry(); err != nil {

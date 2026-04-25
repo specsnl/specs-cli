@@ -7,6 +7,14 @@ import (
 	"testing"
 )
 
+func TestList_LsAlias(t *testing.T) {
+	withTempRegistry(t)
+
+	if _, err := executeCmd("template", "ls"); err != nil {
+		t.Fatalf("template ls: %v", err)
+	}
+}
+
 func TestList_Empty(t *testing.T) {
 	withTempRegistry(t)
 

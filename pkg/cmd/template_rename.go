@@ -12,8 +12,9 @@ import (
 
 func newTemplateRenameCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "rename <old-name> <new-name>",
-		Short: "Rename a registered template",
+		Use:     "rename <old-name> <new-name>",
+		Aliases: []string{"mv"},
+		Short:   "Rename a registered template",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			oldName, newName := args[0], args[1]

@@ -16,8 +16,9 @@ func newTemplateListCmd() *cobra.Command {
 	var dontPrettify bool
 
 	cmd := &cobra.Command{
-		Use:   "list",
-		Short: "List registered templates",
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "List registered templates",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := specs.EnsureRegistry(); err != nil {

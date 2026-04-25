@@ -82,10 +82,10 @@ boilr
 │   │     [--arg Key=Value]...
 │   │     [--use-defaults]
 │   │     [--no-hooks]
-│   ├── list     [--dont-prettify]
-│   ├── delete   <name>...
+│   ├── list|ls  [--dont-prettify]
+│   ├── delete|remove|rm|del <name>...
 │   ├── validate <path>
-│   └── rename   <old> <new>
+│   └── rename|mv <old> <new>
 │
 ├── init    [--force]
 └── version [--dont-prettify]

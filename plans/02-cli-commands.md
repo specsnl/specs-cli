@@ -105,6 +105,7 @@ boilr template use <name> <target-dir>
 ## `boilr template list`
 
 **File:** `pkg/cmd/list.go`
+**Aliases:** `ls`
 
 Displays all registered templates.
 
@@ -125,6 +126,7 @@ boilr template list [--dont-prettify]
 ## `boilr template delete`
 
 **File:** `pkg/cmd/delete.go`
+**Aliases:** `remove`, `rm`, `del`
 
 Removes one or more registered templates.
 
@@ -158,6 +160,7 @@ boilr template validate <template-path>
 ## `boilr template rename` *(hidden)*
 
 **File:** `pkg/cmd/rename.go`
+**Aliases:** `mv`
 
 ```
 boilr template rename <old-name> <new-name>

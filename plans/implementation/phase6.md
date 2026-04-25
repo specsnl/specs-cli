@@ -121,7 +121,7 @@ Wipes and recreates the local template registry. Not shown in `specs --help`.
 specs reset-registry
 ```
 
-### `specs template list [--dont-prettify]`
+### `specs template list|ls [--dont-prettify]`
 
 Reads all subdirectories from the registry, loads their `__metadata.json`, renders a
 table. With `--dont-prettify`, outputs tab-separated plain text for scripting.
@@ -140,11 +140,11 @@ Clones a remote repository into the registry. `<source>` accepts any format that
 Validates a template directory without registering it. Dry-executes into a temp dir
 using all default values.
 
-### `specs template rename <old-name> <new-name>`
+### `specs template rename|mv <old-name> <new-name>`
 
 Renames a registry entry using `os.Rename` (atomic on the same filesystem).
 
-### `specs template delete <name>...`
+### `specs template delete|remove|rm|del <name>...`
 
 Removes one or more registry entries.
 

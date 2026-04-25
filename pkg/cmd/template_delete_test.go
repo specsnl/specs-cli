@@ -24,6 +24,24 @@ func TestDelete_Success(t *testing.T) {
 	}
 }
 
+func TestDelete_Aliases(t *testing.T) {
+	for _, alias := range []string{"rm", "remove", "del"} {
+		t.Run(alias, func(t *testing.T) {
+			withTempRegistry(t)
+			src := makeFakeTemplate(t)
+			if _, err := executeCmd("template", "save", src, "my-tpl"); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := executeCmd("template", alias, "my-tpl"); err != nil {
+				t.Fatalf("template %s: %v", alias, err)
+			}
+			if _, err := os.Stat(specs.TemplatePath("my-tpl")); !os.IsNotExist(err) {
+				t.Errorf("expected my-tpl to be deleted via %q", alias)
+			}
+		})
+	}
+}
+
 func TestDelete_NotFound(t *testing.T) {
 	withTempRegistry(t)
 

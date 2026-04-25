@@ -161,12 +161,12 @@ Files remaining:
 - `pkg/util/validate/` — `Name()` validator (alphanumeric + hyphens + underscores)
 - `pkg/cmd/metadata.go` — `writeMetadata()` helper
 - `pkg/cmd/init.go` — `specs init [--force]`
-- `pkg/cmd/template_list.go` — `specs template list [--dont-prettify]`
+- `pkg/cmd/template_list.go` — `specs template list|ls [--dont-prettify]`
 - `pkg/cmd/template_save.go` — `specs template save [--force] <path> <name>`
 - `pkg/cmd/template_download.go` — `specs template download [--force] <source> <name>`
 - `pkg/cmd/template_validate.go` — `specs template validate <path>`
-- `pkg/cmd/template_rename.go` — `specs template rename <old> <new>`
-- `pkg/cmd/template_delete.go` — `specs template delete <name>...`
+- `pkg/cmd/template_rename.go` — `specs template rename|mv <old> <new>`
+- `pkg/cmd/template_delete.go` — `specs template delete|remove|rm|del <name>...`
 
 ---
 
@@ -217,10 +217,10 @@ specs
 │   │     [--arg Key=Value]...
 │   │     [--use-defaults]
 │   │     [--no-hooks]
-│   ├── list     [--dont-prettify]
-│   ├── delete   <name>...
+│   ├── list|ls  [--dont-prettify]
+│   ├── delete|remove|rm|del <name>...
 │   ├── validate <path>
-│   └── rename   <old> <new>
+│   └── rename|mv <old> <new>
 │
 ├── init    [--force]
 └── version [--dont-prettify]
