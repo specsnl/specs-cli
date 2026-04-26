@@ -38,12 +38,17 @@ pkg/
 
 ### `pkg/cmd/use.go`
 
+> **Implementation note:** The codebase uses constructor functions (e.g. `newTemplateCmd(app)`)
+> rather than package-level vars + `init()`. `use.go` follows this pattern. `opts executeOpts`
+> is a local variable inside `newUseCmd`; flag bindings write into its fields directly.
+
 ```go
 package cmd
 
 import (
     "fmt"
     "os"
+    "path/filepath"
 
     "github.com/spf13/cobra"
 
@@ -53,72 +58,65 @@ import (
     "github.com/specsnl/specs-cli/pkg/util/output"
 )
 
-var (
-    useValuesFile string
-    useArgs       []string
-    useDefaults   bool
-    useNoHooks    bool
-)
+func newUseCmd(app *App) *cobra.Command {
+    var opts executeOpts
 
-var useCmd = &cobra.Command{
-    Use:   "use <source> <target-dir>",
-    Short: "Fetch and execute a template in one step (no registry entry created)",
-    Long: `Download a template from a remote repository (or copy a local path) and
-execute it directly into <target-dir>. No entry is added to the local registry.
+    cmd := &cobra.Command{
+        Use:   "use <source> <target-dir>",
+        Short: "Fetch and execute a template in one step (no registry entry created)",
+        Long: `...`,
+        Args: cobra.ExactArgs(2),
+        RunE: func(cmd *cobra.Command, args []string) error {
+            return runUse(app, args[0], args[1], opts)
+        },
+    }
 
-Source formats:
-  github:user/repo            GitHub shorthand (default branch)
-  github:user/repo:branch     GitHub shorthand with specific branch
-  https://github.com/user/repo  Full HTTPS URL
-  ./path  ../path  /path      Local path
-  file:./path                 Local path with explicit prefix`,
-    Args: cobra.ExactArgs(2),
-    RunE: runUse,
+    cmd.Flags().StringVar(&opts.valuesFile, "values", "", "JSON file of pre-filled values")
+    cmd.Flags().StringArrayVar(&opts.argPairs, "arg", nil, "Key=Value pair (repeatable)")
+    cmd.Flags().BoolVar(&opts.useDefaults, "use-defaults", false, "Skip prompts; use schema defaults")
+    cmd.Flags().BoolVar(&opts.noHooks, "no-hooks", false, "Skip pre/post-use hooks")
+
+    return cmd
 }
 
-func init() {
-    useCmd.Flags().StringVar(&useValuesFile, "values", "", "JSON file of pre-filled values")
-    useCmd.Flags().StringArrayVar(&useArgs, "arg", nil, "Key=Value pair (repeatable)")
-    useCmd.Flags().BoolVar(&useDefaults, "use-defaults", false, "Skip prompts; use schema defaults")
-    useCmd.Flags().BoolVar(&useNoHooks, "no-hooks", false, "Skip pre/post-use hooks")
-    rootCmd.AddCommand(useCmd)
-}
-
-func runUse(cmd *cobra.Command, args []string) error {
-    rawSource, targetDir := args[0], args[1]
-
+func runUse(app *App, rawSource, targetDir string, opts executeOpts) error {
     src, err := host.Parse(rawSource)
     if err != nil {
         return err
     }
 
-    // Obtain the template into a temp directory.
+    // Parent temp dir — always cleaned up, even on error.
     tmp, err := os.MkdirTemp("", "specs-use-src-*")
     if err != nil {
         return err
     }
     defer os.RemoveAll(tmp)
 
+    var templateRoot string
+
     if src.IsLocal() {
-        output.Debug("copying local template from %s", src.LocalPath)
         if err := osutil.CopyDir(src.LocalPath, tmp); err != nil {
             return fmt.Errorf("copying local template: %w", err)
         }
+        templateRoot = tmp
     } else {
+        // go-git requires the destination to not exist; use a subdirectory.
+        cloneDir := filepath.Join(tmp, "repo")
         output.Info("cloning %s…", src.CloneURL)
-        if err := pkggit.Clone(src.CloneURL, tmp, pkggit.CloneOptions{Branch: src.Branch}); err != nil {
+        if err := pkggit.Clone(src.CloneURL, cloneDir, pkggit.CloneOptions{Branch: src.Branch}); err != nil {
             return err
         }
+        templateRoot = cloneDir
     }
 
-    // Reuse the shared executeTemplate function from phase 7.
-    return executeTemplate(tmp, targetDir, executeOpts{
-        valuesFile:  useValuesFile,
-        argPairs:    useArgs,
-        useDefaults: useDefaults,
-        noHooks:     useNoHooks,
-    })
+    return app.executeTemplate(templateRoot, targetDir, opts)
 }
+```
+
+Register in `pkg/cmd/root.go` by adding:
+
+```go
+cmd.AddCommand(newUseCmd(app))
 ```
 
 ---
@@ -127,54 +125,50 @@ func runUse(cmd *cobra.Command, args []string) error {
 
 ### `pkg/cmd/use_test.go`
 
-All tests use local template directories in `t.TempDir()` — no network access. Remote
-clone paths are tested at the integration level (see phase 5 integration tests).
+> **Implementation note:** The `executeCmd` test helper signature is `executeCmd(args ...string)`
+> — it does **not** take `*testing.T` as its first argument.
 
 ```go
 // buildMinimalTemplate creates a valid template root in dir with the given project.yaml
 // content and a single template file.
-func buildMinimalTemplate(t *testing.T, dir, yaml, filename, content string) {
+func buildMinimalTemplate(t *testing.T, dir, yamlContent, filename, fileContent string) {
     t.Helper()
-    os.WriteFile(filepath.Join(dir, "project.yaml"), []byte(yaml), 0644)
-    tplDir := filepath.Join(dir, "template")
+    os.WriteFile(filepath.Join(dir, specs.ProjectYAMLFile), []byte(yamlContent), 0644)
+    tplDir := filepath.Join(dir, specs.TemplateDirFile)
     os.MkdirAll(tplDir, 0755)
-    os.WriteFile(filepath.Join(tplDir, filename), []byte(content), 0644)
+    os.WriteFile(filepath.Join(tplDir, filename), []byte(fileContent), 0644)
 }
 ```
 
 | Test | Setup | Expected |
 |---|---|---|
 | `TestUse_LocalPath` | local template dir, `file:./path` source | target has rendered output |
-| `TestUse_RelativePath` | local template, `./path` source | target has rendered output |
+| `TestUse_RelativePath` | local template, absolute path source | target has rendered output |
 | `TestUse_UseDefaults` | `--use-defaults` flag | rendered with schema defaults, no prompt |
 | `TestUse_ArgOverride` | `--arg Name=test` | rendered content contains "test" |
 | `TestUse_ValuesFile` | `--values` JSON file | rendered content from file values |
 | `TestUse_InvalidSource` | `"not-a-valid-source"` | returns parse error |
 | `TestUse_TempDirCleanedUp` | any successful run | temp clone dir no longer exists after |
-| `TestUse_TempDirCleanedOnError` | invalid project.yaml (parse fails) | temp dir still cleaned up |
+| `TestUse_TempDirCleanedOnError` | missing `template/` subdir (parse fails) | temp dir still cleaned up |
 | `TestUse_NoRegistryEntry` | successful run | registry dir untouched (no entry created) |
 
 ### Verifying no registry entry is created
 
 ```go
 func TestUse_NoRegistryEntry(t *testing.T) {
-    // Set up XDG + init registry.
-    tmp := t.TempDir()
-    t.Setenv("XDG_CONFIG_HOME", tmp)
-    xdg.Reload()
-    t.Cleanup(func() { xdg.Reload() })
-    executeCmd(t, "init")
+    // withTempRegistry sets XDG_CONFIG_HOME to a temp dir and reloads xdg.
+    // No separate init command is needed — os.ReadDir on a missing dir returns nil.
+    withTempRegistry(t)
 
-    // Build a local template and run specs use.
     srcDir := t.TempDir()
     buildMinimalTemplate(t, srcDir, "Name: world\n", "hello.txt", "Hello [[.Name]]")
     targetDir := t.TempDir()
-    _, err := executeCmd(t, "use", "--use-defaults", "file:"+srcDir, targetDir)
+    _, err := executeCmd("use", "--use-defaults", "file:"+srcDir, targetDir)
     if err != nil {
         t.Fatalf("use: %v", err)
     }
 
-    // Registry template dir should still be empty.
+    // TemplateDir may not exist at all, or may exist but be empty — either is correct.
     entries, _ := os.ReadDir(specs.TemplateDir())
     if len(entries) != 0 {
         t.Errorf("registry should be empty after specs use, got %d entries", len(entries))
@@ -186,6 +180,17 @@ func TestUse_NoRegistryEntry(t *testing.T) {
 
 ## Key notes
 
+- **Constructor pattern:** `newUseCmd(app *App) *cobra.Command` — not a global `var useCmd`.
+  Registered in `root.go` alongside the other root-level commands. `opts executeOpts` is a
+  local variable; flag bindings write directly into its fields via `&opts.valuesFile` etc.
+- **`output.Debug` does not exist.** The `output` package exposes only `Info`, `Warn`, and
+  `Error`. The local-copy debug log call in earlier drafts was removed. Use `output.Info` for
+  user-facing messages and `app.Logger.Debug` (slog) if debug-level logging is ever needed.
+- **`runUse` signature:** `runUse(app *App, rawSource, targetDir string, opts executeOpts) error`
+  — extracted so flags are bound via the `newUseCmd` closure and the function remains testable.
+- **No `init` command.** Phase 6 lists `specs init [--force]` but it has not been implemented.
+  Tests that need an empty registry use `withTempRegistry(t)` directly and do not call a CLI
+  `init` command.
 - **`osutil.CopyDir` into a fresh temp dir for local sources.** Even for local paths the
   template is copied into a temp directory before execution. This ensures the template engine
   always sees a stable, isolated tree — hooks running in `pre-use` cannot accidentally modify
@@ -198,8 +203,7 @@ func TestUse_NoRegistryEntry(t *testing.T) {
   temp dir is managed inside `executeTemplate` (Phase 7). Both are always cleaned up.
 - **`git clone` writes into a non-existent directory:** `gogit.PlainClone` requires that
   the destination directory does not already exist. `os.MkdirTemp` creates the directory, so
-  it must be removed before cloning. Either remove it immediately after creation and pass the
-  path to Clone, or pass a subdirectory:
+  use a subdirectory:
 
   ```go
   tmp, _ := os.MkdirTemp("", "specs-use-src-*")

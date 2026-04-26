@@ -41,6 +41,7 @@ Use "specs <command> --help" for more information about a command.`,
 
 	cmd.AddCommand(newResetRegistryCmd())
 	cmd.AddCommand(newTemplateCmd(app))
+	cmd.AddCommand(newUseCmd(app))
 	cmd.AddCommand(newVersionCmd())
 
 	return cmd
