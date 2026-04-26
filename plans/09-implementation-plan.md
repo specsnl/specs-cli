@@ -199,6 +199,25 @@ Files:
 
 ---
 
+## Phase 9 — Conditional variable prompting
+
+**Goal:** Skip prompting for variables that will never be reached during template rendering.
+Before prompting, analyse the template file tree and build a condition map from the AST.
+Prompting is split into two passes: unconditional variables first, then conditional variables
+whose condition is satisfied by the first-pass results.
+**You learn:** `text/template/parse` AST walking, recursive expression trees, two-pass form composition.
+**Tests:** Unit tests for every `Cond` type and the AST analyser; integration tests for
+conditional skip and include behaviour.
+
+Files:
+
+- `pkg/template/cond.go` — `Cond` interface with `condField`, `condNot`, `condEq`, `condNe`, `condAnd`, `condOr`
+- `pkg/template/analysis.go` — `AnalyzeConditionals()`, AST walker, `parsePipeCond()`
+- `pkg/template/template.go` — `Conditionals` field added to `Template`; analysis called in `Get()`
+- `pkg/cmd/template_use.go` — two-pass `promptContext()`
+
+---
+
 ## CLI command tree
 
 ```
@@ -240,6 +259,7 @@ specs
 | 6 | Cobra command wiring, `osutil`, `validate`, registry operations; `App` struct + slog already wired |
 | 7 | huh — `Input`, `Confirm`, `Select` fields, form composition, `--values`/`--arg` |
 | 8 | Composing phases 5–7; temp directory lifecycle |
+| 9 | `text/template/parse` AST walking, recursive condition trees, two-pass prompting |
 
 ---
 
