@@ -30,7 +30,7 @@ func newTemplateListCmd() *cobra.Command {
 				return err
 			}
 
-			headers := []string{"Name", "Repository", "Created"}
+			headers := []string{"Name", "Repository", "Version", "Created"}
 			var rows [][]string
 
 			for _, e := range entries {
@@ -39,12 +39,15 @@ func newTemplateListCmd() *cobra.Command {
 				}
 				tmplName := e.Name()
 				meta, _ := loadMetadataForListing(specs.TemplatePath(tmplName))
-				repo, created := "-", "-"
+				repo, version, created := "-", "-", "-"
 				if meta != nil {
 					repo = meta.Repository
 					created = meta.Created.String()
+					if meta.Version != "" {
+						version = meta.Version
+					}
 				}
-				rows = append(rows, []string{tmplName, repo, created})
+				rows = append(rows, []string{tmplName, repo, version, created})
 			}
 
 			if len(rows) == 0 {
@@ -54,7 +57,7 @@ func newTemplateListCmd() *cobra.Command {
 
 			if dontPrettify {
 				for _, row := range rows {
-					fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\t%s\n", row[0], row[1], row[2])
+					fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\t%s\t%s\n", row[0], row[1], row[2], row[3])
 				}
 				return nil
 			}

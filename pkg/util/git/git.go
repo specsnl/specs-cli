@@ -8,6 +8,8 @@ import (
 
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v5/plumbing/storer"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	gogitssh "github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
@@ -78,6 +80,96 @@ func cloneWithRef(url, dir string, cloneOpts *gogit.CloneOptions, ref string) er
 		return fmt.Errorf("cloning %s: %w", url, err)
 	}
 	return nil
+}
+
+// DescribeResult holds version information about the state of a git repository.
+type DescribeResult struct {
+	// Commit is the full 40-character SHA-1 hash of HEAD.
+	Commit string
+	// Version is similar to `git describe --tags --dirty`: the nearest ancestor tag,
+	// optionally followed by "-<n>-g<short-hash>" when HEAD is not directly on a tag,
+	// and "-dirty" when the working tree has uncommitted changes.
+	// Falls back to the short hash when no tags are reachable.
+	Version string
+}
+
+// Describe returns version information for the repository at dir.
+// Returns an error only when dir is not a git repository or HEAD cannot be read.
+func Describe(dir string) (DescribeResult, error) {
+	repo, err := gogit.PlainOpen(dir)
+	if err != nil {
+		return DescribeResult{}, fmt.Errorf("opening repository at %s: %w", dir, err)
+	}
+
+	head, err := repo.Head()
+	if err != nil {
+		return DescribeResult{}, fmt.Errorf("reading HEAD: %w", err)
+	}
+
+	commit := head.Hash().String()
+	shortHash := commit[:7]
+
+	dirty := false
+	if wt, err := repo.Worktree(); err == nil {
+		if st, err := wt.Status(); err == nil {
+			for _, s := range st {
+				// Purely untracked files don't count as dirty — matches git describe --dirty.
+				if s.Staging == gogit.Untracked && s.Worktree == gogit.Untracked {
+					continue
+				}
+				dirty = true
+				break
+			}
+		}
+	}
+
+	return DescribeResult{
+		Commit:  commit,
+		Version: buildVersion(repo, head.Hash(), shortHash, dirty),
+	}, nil
+}
+
+// buildVersion constructs a version string in git-describe style.
+func buildVersion(repo *gogit.Repository, headHash plumbing.Hash, shortHash string, dirty bool) string {
+	// Map each tagged commit hash to its tag name (dereference annotated tags).
+	tagMap := make(map[plumbing.Hash]string)
+	if tags, err := repo.Tags(); err == nil {
+		_ = tags.ForEach(func(ref *plumbing.Reference) error {
+			h := ref.Hash()
+			if obj, err := repo.TagObject(h); err == nil {
+				h = obj.Target
+			}
+			tagMap[h] = ref.Name().Short()
+			return nil
+		})
+	}
+
+	// Walk commits from HEAD to find the nearest tagged ancestor.
+	foundTag, distance := "", 0
+	if iter, err := repo.Log(&gogit.LogOptions{From: headHash}); err == nil {
+		_ = iter.ForEach(func(c *object.Commit) error {
+			if tag, ok := tagMap[c.Hash]; ok {
+				foundTag = tag
+				return storer.ErrStop
+			}
+			distance++
+			return nil
+		})
+	}
+
+	var v string
+	switch {
+	case foundTag == "":
+		v = shortHash
+	case distance == 0:
+		v = foundTag
+	default:
+		v = fmt.Sprintf("%s-%d-g%s", foundTag, distance, shortHash)
+	}
+	if dirty {
+		v += "-dirty"
+	}
+	return v
 }
 
 // isSSHURL reports whether url requires SSH transport.

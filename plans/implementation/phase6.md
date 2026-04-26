@@ -23,13 +23,15 @@ The following were implemented as a pre-phase-6 setup step and do not need to be
 ## Done criteria
 
 - All template commands auto-create the registry on first use.
-- `specs template list` prints a table of registered templates.
+- `specs template list` prints a table of registered templates including the Version column.
 - `specs template save` copies a local path into the registry.
 - `specs template download` clones a remote repo into the registry.
 - `specs template validate` validates a template directory.
 - `specs template rename` renames a registry entry.
 - `specs template delete` removes one or more registry entries.
 - `reset-registry` (hidden) wipes and recreates the registry.
+- `__metadata.json` stores `Commit` (full SHA-1) and `Version` (git-describe style) in addition to `Name`, `Repository`, and `Created`.
+- Both fields are populated after `download` (from the cloned repo) and after `save` (from the source path if it is a git repo; empty otherwise).
 - All tests pass.
 
 ---
@@ -107,7 +109,9 @@ Recursive directory copy. Used by `specs template save` and `specs template use`
 
 ### `pkg/cmd/metadata.go`
 
-Writes `__metadata.json` after a template is saved or downloaded.
+Writes `__metadata.json` after a template is saved or downloaded. Accepts `commit` and
+`version` strings in addition to `name` and `repository`; both are stored under `"Commit"`
+and `"Version"` keys (omitted from JSON when empty).
 
 ---
 
@@ -124,7 +128,8 @@ specs reset-registry
 ### `specs template list|ls [--dont-prettify]`
 
 Reads all subdirectories from the registry, loads their `__metadata.json`, renders a
-table. With `--dont-prettify`, outputs tab-separated plain text for scripting.
+table with columns: Name, Repository, Version, Created. With `--dont-prettify`, outputs
+tab-separated plain text for scripting.
 
 ### `specs template save [--force] <path> <name>`
 

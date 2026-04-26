@@ -49,7 +49,8 @@ func newTemplateDownloadCmd() *cobra.Command {
 			if err := pkggit.Clone(src.CloneURL, dest, pkggit.CloneOptions{Branch: src.Branch}); err != nil {
 				return err
 			}
-			if err := writeMetadata(dest, name, src.CloneURL); err != nil {
+			desc, _ := pkggit.Describe(dest)
+			if err := writeMetadata(dest, name, src.CloneURL, desc.Commit, desc.Version); err != nil {
 				return err
 			}
 

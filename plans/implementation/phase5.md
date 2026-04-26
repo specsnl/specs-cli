@@ -17,7 +17,10 @@ These packages form the foundation for `specs template download` and `specs use`
 - `git.Clone()` automatically builds SSH auth from the URL — no caller changes needed.
 - Auth strategy: SSH agent first, then `~/.ssh/id_ed25519` / `id_rsa` / `id_ecdsa`.
 - Host key verification uses `~/.ssh/known_hosts` — verification is never skipped.
+- `git.Describe()` returns the HEAD commit hash and a version string in `git describe --tags --dirty` style.
+- `git.Describe()` dirty detection only counts tracked file changes (untracked files do not trigger `-dirty`).
 - All `pkg/host` tests pass without network access.
+- `pkg/util/git` unit tests (`describe_test.go`) pass without network access using programmatically created temp repos.
 - The `pkg/util/git` integration tests are guarded by a build tag and only run inside the
   Docker container (`/.dockerenv` must be present).
 
@@ -48,7 +51,8 @@ pkg/
 └── util/
     └── git/
         ├── git.go
-        └── git_test.go
+        ├── describe_test.go    (unit tests for Describe — no network)
+        └── git_test.go         (integration tests for Clone — build tag: integration)
 ```
 
 ---
@@ -95,6 +99,15 @@ Any other input is an error.
   handlers unless there is a specific reason for a full history.
 - **`go-git` does not need `git` on PATH.** It is a pure-Go implementation.
 - **`host` package is import-only.** No side effects, no global state — safe from any goroutine.
+- **`go-git` does not implement `git describe`.** It is explicitly listed as unsupported in
+  go-git's COMPATIBILITY.md. `git.Describe()` is a manual implementation: it builds a
+  commit-hash → tag-name map (dereferencing annotated tags to their target commit), walks
+  the commit log from HEAD to find the nearest tagged ancestor, and constructs the version
+  string. Dirty detection skips `Untracked/Untracked` entries to match `git describe --dirty`
+  semantics — untracked files do not count.
+- **`Describe()` is best-effort on shallow clones.** With `Depth: 1` only the HEAD commit
+  is available; if it is not directly tagged the version falls back to the short hash.
+  The commit hash is always accurate regardless of clone depth.
 
 ---
 
@@ -103,6 +116,7 @@ Any other input is an error.
 ```bash
 # Unit tests (no network required)
 go test ./pkg/host/...
+go test ./pkg/util/git/...
 
 # Build check
 go build ./...

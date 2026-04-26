@@ -98,7 +98,7 @@ produce non-empty strings at each level.
 
 Files:
 
-- `pkg/template/metadata.go` — `Metadata` struct, `JSONTime`
+- `pkg/template/metadata.go` — `Metadata` struct (`Name`, `Repository`, `Created`, `Commit`, `Version`), `JSONTime`
 - `pkg/template/functions.go` — FuncMap: builds sprout handler with all registries; excludes env/filesystem in safe mode
 - `pkg/template/specsregistry.go` — `SpecsRegistry` sprout registry: custom functions (`hostname`, `username`, `toBinary`, `formatFilesize`, `password`)
 - `pkg/template/context.go` — parse `project.yaml` (fallback `project.json`), referenced
@@ -138,7 +138,7 @@ Files:
 
 Files:
 
-- `pkg/util/git/` — `Clone(url, dir)` wrapper around go-git
+- `pkg/util/git/` — `Clone(url, dir)` wrapper around go-git; `Describe(dir)` returns HEAD commit hash and a `git describe --tags --dirty`-style version string (manual implementation — go-git does not support describe natively)
 - `pkg/host/source.go` — parse `github:user/repo[:branch]`, full HTTPS URLs, and local paths into a `Source` type
 
 ---

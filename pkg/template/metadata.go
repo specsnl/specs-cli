@@ -15,6 +15,8 @@ type Metadata struct {
 	Name       string   `json:"Name"`
 	Repository string   `json:"Repository"`
 	Created    JSONTime `json:"Created"`
+	Commit     string   `json:"Commit,omitempty"`
+	Version    string   `json:"Version,omitempty"`
 }
 
 // JSONTime wraps time.Time with RFC1123Z serialisation and a human-readable display.
