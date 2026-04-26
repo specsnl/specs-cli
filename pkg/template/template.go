@@ -32,6 +32,8 @@ type Template struct {
 	Root         string                 // path to the template root (contains project.yaml + template/)
 	Context      map[string]any         // user input map with referenced defaults resolved
 	ComputedDefs map[string]string      // raw computed definitions; resolved by ApplyComputed post-prompt
+	Conditionals Conditionals           // varName → Cond; absent means always prompt
+	Referenced   map[string]bool        // schema variables referenced in template files or computed expressions
 	Metadata     *Metadata              // nil if __metadata.json is absent
 	cfg          Config
 	logger       *slog.Logger
@@ -55,6 +57,20 @@ func Get(templateRoot string, cfg Config, logger *slog.Logger) (*Template, error
 		return nil, err
 	}
 
+	conds, referenced, err := AnalyzeConditionals(templateRoot, userCtx, funcMap)
+	if err != nil {
+		return nil, err
+	}
+
+	// Also count variables that only appear in computed expressions as referenced.
+	for _, expr := range computedDefs {
+		for _, key := range extractRefs(expr, funcMap) {
+			if _, inSchema := userCtx[key]; inSchema {
+				referenced[key] = true
+			}
+		}
+	}
+
 	verbatim, err := LoadVerbatim(templateRoot)
 	if err != nil {
 		return nil, err
@@ -66,6 +82,8 @@ func Get(templateRoot string, cfg Config, logger *slog.Logger) (*Template, error
 		Root:         templateRoot,
 		Context:      userCtx,
 		ComputedDefs: computedDefs,
+		Conditionals: conds,
+		Referenced:   referenced,
 		Metadata:     meta,
 		cfg:          cfg,
 		logger:       logger,

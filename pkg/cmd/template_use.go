@@ -99,7 +99,7 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 	}
 
 	if !opts.useDefaults {
-		if err := promptContext(ctx, tmpl.Context, provided); err != nil {
+		if err := promptContext(ctx, tmpl.Context, tmpl.Conditionals, tmpl.Referenced, provided); err != nil {
 			return err
 		}
 	}
@@ -146,11 +146,107 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 	return nil
 }
 
-// promptContext builds and runs a huh form for all schema keys not already in provided.
-// Results are written directly into ctx.
-func promptContext(ctx map[string]any, schema map[string]any, provided map[string]bool) error {
-	keys := sortedKeys(schema)
+// promptContext prompts the user for schema variables not already in provided.
+//
+// Only variables present in referenced are considered — schema variables not
+// referenced anywhere in the template files or computed expressions are skipped.
+//
+// Pass 1 prompts always-needed variables (those absent from conditionals).
+// Pass 2+ iterates in dependency order: each round finds conditional variables
+// whose gate variables are all resolved, evaluates their condition against the
+// now-final ctx, and prompts those that are needed. This correctly handles
+// nested eq/ne gates where the gate variable is itself conditional.
+func promptContext(
+	ctx        map[string]any,
+	schema     map[string]any,
+	conds      pkgtemplate.Conditionals,
+	referenced map[string]bool,
+	provided   map[string]bool,
+) error {
+	schemaKeys := make(map[string]bool, len(schema))
+	for k := range schema {
+		schemaKeys[k] = true
+	}
 
+	var alwaysKeys []string
+	remaining := make(map[string]bool) // conditional keys not yet resolved
+
+	for _, k := range sortedKeys(schema) {
+		if !referenced[k] {
+			continue // never used in templates or computed expressions
+		}
+		if _, conditional := conds[k]; conditional {
+			remaining[k] = true
+		} else {
+			alwaysKeys = append(alwaysKeys, k)
+		}
+	}
+
+	// Pass 1: always-needed variables.
+	if err := runPromptPass(ctx, schema, alwaysKeys, provided); err != nil {
+		return err
+	}
+
+	// resolved tracks which schema keys have a final value in ctx.
+	resolved := make(map[string]bool, len(alwaysKeys)+len(provided))
+	for _, k := range alwaysKeys {
+		resolved[k] = true
+	}
+	for k := range provided {
+		resolved[k] = true
+	}
+
+	// Iterative conditional passes: each round handles one dependency layer.
+	for len(remaining) > 0 {
+		// Find keys whose gate variables are all resolved (or not in schema).
+		var ready []string
+		for k := range remaining {
+			allResolved := true
+			for _, gk := range conds[k].Keys() {
+				if schemaKeys[gk] && !resolved[gk] {
+					allResolved = false
+					break
+				}
+			}
+			if allResolved {
+				ready = append(ready, k)
+			}
+		}
+
+		if len(ready) == 0 {
+			break // no progress: remaining keys have unresolvable dependencies
+		}
+
+		sort.Strings(ready)
+
+		var toPrompt []string
+		for _, k := range ready {
+			if conds[k].Eval(ctx) {
+				toPrompt = append(toPrompt, k)
+			}
+		}
+
+		if err := runPromptPass(ctx, schema, toPrompt, provided); err != nil {
+			return err
+		}
+
+		for _, k := range ready {
+			resolved[k] = true
+			delete(remaining, k)
+		}
+	}
+
+	return nil
+}
+
+// runPromptPass builds a huh form for the given keys and runs it.
+// Results are written back into ctx.
+func runPromptPass(
+	ctx map[string]any,
+	schema map[string]any,
+	keys []string,
+	provided map[string]bool,
+) error {
 	var fields []huh.Field
 	stringResults := make(map[string]*string)
 	boolResults := make(map[string]*bool)

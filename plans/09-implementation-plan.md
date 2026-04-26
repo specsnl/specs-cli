@@ -199,7 +199,7 @@ Files:
 
 ---
 
-## Phase 9 — Conditional variable prompting
+## Phase 9 — Conditional variable prompting ✓
 
 **Goal:** Skip prompting for variables that will never be reached during template rendering.
 Before prompting, analyse the template file tree and build a condition map from the AST.
@@ -212,9 +212,9 @@ conditional skip and include behaviour.
 Files:
 
 - `pkg/template/cond.go` — `Cond` interface with `condField`, `condNot`, `condEq`, `condNe`, `condAnd`, `condOr`
-- `pkg/template/analysis.go` — `AnalyzeConditionals()`, AST walker, `parsePipeCond()`
+- `pkg/template/analysis.go` — `Conditionals` type (exported), `AnalyzeConditionals()`, AST walker, `parsePipeCond()`
 - `pkg/template/template.go` — `Conditionals` field added to `Template`; analysis called in `Get()`
-- `pkg/cmd/template_use.go` — two-pass `promptContext()`
+- `pkg/cmd/template_use.go` — two-pass `promptContext()` with `runPromptPass()` helper
 
 ---
 

@@ -1,5 +1,7 @@
 # Phase 9 — Conditional variable prompting
 
+**Status: implemented** (2026-04-26)
+
 ## Goal
 
 Before prompting the user, statically analyse the template's file tree to determine which
@@ -597,3 +599,21 @@ if err := promptContext(ctx, tmpl.Context, tmpl.Conditionals, provided); err != 
   explicitly provided via `--arg` is marked as provided and skipped in both passes.
 - Computed values are resolved after both prompt passes, so they can safely reference
   conditional variables regardless of whether they were prompted.
+
+---
+
+## Implementation deviations
+
+### `Conditionals` is exported (not unexported as planned)
+
+The plan described `conditionals` as an unexported type. In practice, `pkg/cmd/template_use.go`
+passes it as a function parameter in `promptContext`, which requires the type to be visible
+from outside `pkg/template`. The type was therefore exported as `Conditionals`.
+
+### `analyseExpr` uses `texttemplate.New` instead of `parse.New`
+
+The plan showed `parse.New("").Parse(src, "[[", "]]", ...)` for the low-level parser call.
+This fails for templates containing Go's built-in functions (`not`, `eq`, `and`, `or`, etc.)
+because the raw parser requires those names to be present in the provided funcMap.
+`texttemplate.New("").Delims("[[","]]").Funcs(funcMap).Parse(src)` was used instead; it
+merges the built-ins automatically before parsing, and the resulting `.Tree` is equivalent.
