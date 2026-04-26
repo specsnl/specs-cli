@@ -218,6 +218,32 @@ Files:
 
 ---
 
+## Phase 10 — Template status tracking, update & upgrade
+
+**Goal:** Show whether registered templates are outdated and let users apply updates.
+Remote checks use `Remote.List()` (read-only, no local modifications) and are cached in
+`__status.json` per template, refreshed at most once per day automatically or on demand.
+**You learn:** go-git `Remote.List()`, `transport` error sentinels, `net.OpError` detection,
+concurrent status fetches with `sync.WaitGroup`.
+**Tests:** Unit tests for error classification and status staleness; command tests for the
+Status column, network-error grouping, and upgrade mutual-exclusion flag logic.
+
+Files:
+
+- `pkg/specs/configuration.go` — add `StatusFile` constant
+- `pkg/template/metadata.go` — add `Branch` field
+- `pkg/template/status.go` — `TemplateStatus` struct with `IsStale()`, `LoadStatus()`, `SaveStatus()`
+- `pkg/util/git/git.go` — add `CheckErrorKind`, `RemoteCheckResult`, `CheckRemote()`, `classifyRemoteError()`
+- `pkg/cmd/metadata.go` — add `branch` parameter to `writeMetadata()`
+- `pkg/cmd/template_download.go` — pass `src.Branch` to `writeMetadata()`
+- `pkg/cmd/template_save.go` — pass `""` for branch
+- `pkg/cmd/template_list.go` — Status column, parallel stale-check refresh, network-error grouping
+- `pkg/cmd/template_update.go` — `specs template update [name]`
+- `pkg/cmd/template_upgrade.go` — `specs template upgrade <name> | --all`
+- `pkg/cmd/template.go` — register `update` and `upgrade` subcommands
+
+---
+
 ## CLI command tree
 
 ```
@@ -237,6 +263,8 @@ specs
 │   │     [--use-defaults]
 │   │     [--no-hooks]
 │   ├── list|ls  [--dont-prettify]
+│   ├── update   [name]
+│   ├── upgrade  (<name> | --all)
 │   ├── delete|remove|rm|del <name>...
 │   ├── validate <path>
 │   └── rename|mv <old> <new>
@@ -260,6 +288,7 @@ specs
 | 7 | huh — `Input`, `Confirm`, `Select` fields, form composition, `--values`/`--arg` |
 | 8 | Composing phases 5–7; temp directory lifecycle |
 | 9 | `text/template/parse` AST walking, recursive condition trees, two-pass prompting |
+| 10 | go-git `Remote.List()`, transport error sentinels, `net.OpError`, concurrent `sync.WaitGroup` |
 
 ---
 

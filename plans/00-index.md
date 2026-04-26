@@ -30,6 +30,7 @@ This directory contains the architectural documentation and planning documents f
 | [implementation/phase7.md](./implementation/phase7.md) | Phase 7 — `specs template use` (huh prompts, --values/--arg, hooks) |
 | [implementation/phase8.md](./implementation/phase8.md) | Phase 8 — `specs use` (one-step: clone/copy → execute → discard) |
 | [implementation/phase9.md](./implementation/phase9.md) | Phase 9 — Conditional variable prompting (AST analysis, skip unused variables) |
+| [implementation/phase10.md](./implementation/phase10.md) | Phase 10 — Template status tracking, update & upgrade |
 
 ## Operations
 
