@@ -7,7 +7,6 @@ A general-purpose developer CLI for scaffolding projects from templates. Define 
 - [Commands](#commands)
   - [`specs use`](#specs-use-source-target-dir)
   - [`specs template`](#specs-template-subcommand)
-  - [`specs init`](#specs-init)
   - [Global flags](#global-flags)
 - [Template structure](#template-structure)
   - [Template delimiters](#template-delimiters)
@@ -95,10 +94,6 @@ Manage a local registry of named templates.
 | `delete` / `rm <name>...` | Remove one or more templates from the registry |
 | `update [name]` | Check for upstream updates |
 | `upgrade <name>` / `--all` | Apply available updates |
-
-### `specs init`
-
-Initialize the template registry directory (run once after install).
 
 ### Global flags
 
