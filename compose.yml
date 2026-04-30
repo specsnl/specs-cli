@@ -1,0 +1,32 @@
+volumes:
+  go-mod:
+  go-build-cache:
+
+services:
+  go-builder:
+    profiles: ["build"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder-download
+    volumes:
+      - .:/src
+      - go-mod:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
+
+  go-binary:
+    profiles: ["build"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: export
+
+  goreleaser:
+    profiles: ["build"]
+    # Latest version: https://hub.docker.com/r/goreleaser/goreleaser/tags
+    image: goreleaser/goreleaser:v2.15.1
+    working_dir: /src
+    volumes:
+      - .:/src
+      - go-mod:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
