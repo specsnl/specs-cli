@@ -6,6 +6,7 @@ import (
 	"net"
 	"testing"
 
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 )
 
@@ -42,6 +43,71 @@ func TestClassifyRemoteError_Unknown(t *testing.T) {
 	got := classifyRemoteError(errors.New("some unexpected error"))
 	if got != CheckErrorUnknown {
 		t.Errorf("classifyRemoteError(unknown): got %q, want %q", got, CheckErrorUnknown)
+	}
+}
+
+var (
+	hashA = plumbing.NewHash("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+	hashB = plumbing.NewHash("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+)
+
+func TestResolveStatus_BranchUpToDate(t *testing.T) {
+	refs := []*plumbing.Reference{
+		plumbing.NewHashReference(plumbing.NewBranchReferenceName("main"), hashA),
+	}
+	result := resolveStatus(refs, hashA, "main")
+	if !result.IsUpToDate {
+		t.Error("expected IsUpToDate = true when branch hash matches local HEAD")
+	}
+	if result.ErrorKind != CheckErrorNone {
+		t.Errorf("expected no error, got %q", result.ErrorKind)
+	}
+}
+
+func TestResolveStatus_BranchBehind(t *testing.T) {
+	refs := []*plumbing.Reference{
+		plumbing.NewHashReference(plumbing.NewBranchReferenceName("main"), hashB),
+	}
+	result := resolveStatus(refs, hashA, "main")
+	if result.IsUpToDate {
+		t.Error("expected IsUpToDate = false when branch hash differs from local HEAD")
+	}
+	if result.ErrorKind != CheckErrorNone {
+		t.Errorf("expected no error, got %q", result.ErrorKind)
+	}
+}
+
+func TestResolveStatus_TagAlreadyLatest(t *testing.T) {
+	refs := []*plumbing.Reference{
+		plumbing.NewHashReference(plumbing.NewTagReferenceName("v1.0.0"), hashA),
+	}
+	result := resolveStatus(refs, hashA, "v1.0.0")
+	if !result.IsUpToDate {
+		t.Error("expected IsUpToDate = true when on latest semver tag")
+	}
+	if result.LatestVersion != "" {
+		t.Errorf("expected empty LatestVersion, got %q", result.LatestVersion)
+	}
+}
+
+func TestResolveStatus_TagNewerExists(t *testing.T) {
+	refs := []*plumbing.Reference{
+		plumbing.NewHashReference(plumbing.NewTagReferenceName("v1.0.0"), hashA),
+		plumbing.NewHashReference(plumbing.NewTagReferenceName("v2.0.0"), hashB),
+	}
+	result := resolveStatus(refs, hashA, "v1.0.0")
+	if result.IsUpToDate {
+		t.Error("expected IsUpToDate = false when newer tag exists")
+	}
+	if result.LatestVersion != "v2.0.0" {
+		t.Errorf("LatestVersion: got %q, want %q", result.LatestVersion, "v2.0.0")
+	}
+}
+
+func TestResolveStatus_RefNotFound(t *testing.T) {
+	result := resolveStatus(nil, plumbing.ZeroHash, "main")
+	if result.ErrorKind != CheckErrorNotFound {
+		t.Errorf("expected CheckErrorNotFound, got %q", result.ErrorKind)
 	}
 }
 

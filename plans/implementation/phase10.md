@@ -338,9 +338,6 @@ func statusLabel(status *pkgtemplate.TemplateStatus, hasRemote bool) string {
     }
     switch status.ErrorKind {
     case pkggit.CheckErrorNetwork:
-        if status.IsUpToDate {
-            return "up-to-date (offline?)"
-        }
         return "unknown (offline?)"
     case pkggit.CheckErrorAuth:
         return "auth error"
@@ -430,17 +427,25 @@ cmd.AddCommand(newTemplateUpgradeCmd())
 
 ## Tests
 
-### `pkg/util/git/git.go` — `classifyRemoteError`
+### `pkg/util/git/remote_check_test.go` — `classifyRemoteError` and `resolveStatus`
 
-| Input error | Expected kind |
+| Test | Scenario |
 |---|---|
-| `&net.OpError{...}` | `CheckErrorNetwork` |
-| `transport.ErrAuthenticationRequired` | `CheckErrorAuth` |
-| `transport.ErrAuthorizationFailed` | `CheckErrorAuth` |
-| `transport.ErrRepositoryNotFound` | `CheckErrorNotFound` |
-| `errors.New("something else")` | `CheckErrorUnknown` |
+| `TestClassifyRemoteError_Network` | `&net.OpError{...}` → `CheckErrorNetwork` |
+| `TestClassifyRemoteError_Auth_AuthenticationRequired` | `transport.ErrAuthenticationRequired` → `CheckErrorAuth` |
+| `TestClassifyRemoteError_Auth_AuthorizationFailed` | `transport.ErrAuthorizationFailed` → `CheckErrorAuth` |
+| `TestClassifyRemoteError_NotFound` | `transport.ErrRepositoryNotFound` → `CheckErrorNotFound` |
+| `TestClassifyRemoteError_Unknown` | `errors.New("something else")` → `CheckErrorUnknown` |
+| `TestResolveStatus_BranchUpToDate` | branch hash matches local HEAD → `IsUpToDate: true` |
+| `TestResolveStatus_BranchBehind` | branch hash differs → `IsUpToDate: false` |
+| `TestResolveStatus_TagAlreadyLatest` | tag ref present, no newer semver tag → `IsUpToDate: true` |
+| `TestResolveStatus_TagNewerExists` | newer semver tag exists → `IsUpToDate: false, LatestVersion: "v2.0.0"` |
+| `TestResolveStatus_RefNotFound` | neither tag nor branch in remote refs → `CheckErrorNotFound` |
+| `TestLatestSemverTag_NewerExists` | v1.1.0 current, v2.0.0 available → returns `"v2.0.0"` |
+| `TestLatestSemverTag_AlreadyLatest` | v1.1.0 is highest → returns `""` |
+| `TestLatestSemverTag_InvalidCurrent` | non-semver current → returns `""` |
 
-### `pkg/template/status.go`
+### `pkg/template/status_test.go`
 
 | Test | Scenario |
 |---|---|
@@ -449,13 +454,22 @@ cmd.AddCommand(newTemplateUpgradeCmd())
 | `TestLoadStatus_Missing` | no `__status.json` → nil, nil |
 | `TestStatusRoundtrip` | save + load returns same struct |
 
-### `pkg/cmd/template_list.go`
+### `pkg/cmd/template_list_test.go`
 
 | Test | Scenario |
 |---|---|
-| `TestTemplateList_StatusColumn` | list with one remote template having a fresh `__status.json` showing up-to-date |
-| `TestTemplateList_LocalNoStatus` | local template shows `-` in status column |
-| `TestTemplateList_NetworkWarn` | status with `CheckErrorNetwork` triggers trailing warning, not per-row error |
+| `TestStatusLabel` | table-driven: all 9 branches of `statusLabel` (no remote, nil status, network/auth/not-found/unknown errors, up-to-date, update with version, update available) |
+| `TestList_StatusColumn_FreshUpToDate` | remote template with fresh `__status.json` showing up-to-date |
+| `TestList_StatusColumn_LocalNoStatus` | local template (no branch) shows `-` in status column |
+| `TestList_StatusColumn_NetworkWarn` | stale status causes CheckRemote call; command succeeds without panic |
+
+### `pkg/cmd/template_update_test.go`
+
+| Test | Scenario |
+|---|---|
+| `TestUpdate_NoArgs_EmptyRegistry` | no args on empty registry → succeeds |
+| `TestUpdate_NamedLocalTemplate_Skipped` | local template (no branch) is silently skipped |
+| `TestUpdate_TooManyArgs` | two positional args → error |
 
 ### `pkg/cmd/template_upgrade_test.go`
 
@@ -463,3 +477,5 @@ cmd.AddCommand(newTemplateUpgradeCmd())
 |---|---|
 | `TestUpgrade_LocalSkipped` | template with empty `Branch` → skipped with notice |
 | `TestUpgrade_AllFlagMutualExclusion` | `upgrade --all mytemplate` → error |
+| `TestUpgrade_NeitherAllNorName` | no args and no `--all` → error |
+| `TestUpgrade_NonexistentTemplate` | named template not in registry → error |

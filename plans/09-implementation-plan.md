@@ -218,7 +218,7 @@ Files:
 
 ---
 
-## Phase 10 — Template status tracking, update & upgrade
+## Phase 10 — Template status tracking, update & upgrade ✓
 
 **Goal:** Show whether registered templates are outdated and let users apply updates.
 Remote checks use `Remote.List()` (read-only, no local modifications) and are cached in

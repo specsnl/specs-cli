@@ -106,6 +106,33 @@ func TestList_StatusColumn_FreshUpToDate(t *testing.T) {
 	}
 }
 
+func TestStatusLabel(t *testing.T) {
+	tests := []struct {
+		name      string
+		status    *pkgtemplate.TemplateStatus
+		hasRemote bool
+		want      string
+	}{
+		{"no remote", nil, false, "-"},
+		{"nil status with remote", nil, true, "unknown"},
+		{"network error", &pkgtemplate.TemplateStatus{ErrorKind: pkggit.CheckErrorNetwork}, true, "unknown (offline?)"},
+		{"auth error", &pkgtemplate.TemplateStatus{ErrorKind: pkggit.CheckErrorAuth}, true, "auth error"},
+		{"not found", &pkgtemplate.TemplateStatus{ErrorKind: pkggit.CheckErrorNotFound}, true, "not found"},
+		{"unknown error", &pkgtemplate.TemplateStatus{ErrorKind: pkggit.CheckErrorUnknown}, true, "check failed"},
+		{"up-to-date", &pkgtemplate.TemplateStatus{IsUpToDate: true}, true, "up-to-date"},
+		{"update with version", &pkgtemplate.TemplateStatus{LatestVersion: "v2.0.0"}, true, "update: v2.0.0"},
+		{"update available", &pkgtemplate.TemplateStatus{}, true, "update available"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := statusLabel(tc.status, tc.hasRemote)
+			if got != tc.want {
+				t.Errorf("statusLabel(%+v, %v) = %q, want %q", tc.status, tc.hasRemote, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestList_StatusColumn_NetworkWarn(t *testing.T) {
 	registryDir := withTempRegistry(t)
 	tmplDir := filepath.Join(registryDir, "remote-tpl")
