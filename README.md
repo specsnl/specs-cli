@@ -7,7 +7,6 @@ A general-purpose developer CLI for scaffolding projects from templates. Define 
 - [Commands](#commands)
   - [`specs use`](#specs-use-source-target-dir)
   - [`specs template`](#specs-template-subcommand)
-  - [`specs init`](#specs-init)
   - [Global flags](#global-flags)
 - [Template structure](#template-structure)
   - [Template delimiters](#template-delimiters)
@@ -63,7 +62,7 @@ specs template use my-template ./my-project
 
 ### `specs use <source> <target-dir>`
 
-Fetch a template from any source, execute it into `<target-dir>`, and discard the download. Nothing is added to the registry.
+A one-off command: fetch a template from any source, execute it into `<target-dir>`, then discard the download. Nothing is saved to the registry. For templates you'll reuse, use `specs template download` instead.
 
 ```sh
 specs use github:specsnl/go-service ./new-service
@@ -82,23 +81,25 @@ specs use github:specsnl/go-service ./new-service --arg projectName=my-service
 
 ### `specs template <subcommand>`
 
-Manage a local registry of named templates.
+Manage a local registry of named templates. Unlike `specs use`, downloaded templates are stored persistently and can be reused.
 
 | Subcommand | Description |
 |------------|-------------|
-| `list` / `ls` | Show all registered templates with update status |
+| `list` / `ls` | List registered templates with update status. Stale statuses (older than 24 hours) are refreshed automatically on each run. |
 | `save <path> <name>` | Register a local directory as a template |
-| `download <source> <name>` | Clone a remote repo and register it |
+| `download <source> <name>` | Download a remote template and save it to the local registry |
 | `use <name> <target-dir>` | Execute a registered template |
 | `validate <path>` | Check if a template directory is valid |
 | `rename` / `mv <old> <new>` | Rename a registered template |
-| `delete` / `rm <name>...` | Remove one or more templates from the registry |
-| `update [name]` | Check for upstream updates |
-| `upgrade <name>` / `--all` | Apply available updates |
+| `delete` / `rm` / `remove` / `del <name>...` | Remove one or more templates from the registry |
+| `update [name]` | Force-refresh the cached update status for one or all templates |
+| `upgrade [name]` | Apply available updates; use `--all` to upgrade all remote templates |
 
-### `specs init`
+`template use` accepts the same flags as `specs use` (`--values`, `--arg`, `--use-defaults`, `--no-hooks`).
 
-Initialize the template registry directory (run once after install).
+`template download` and `template save` accept `-f` / `--force` to overwrite an existing template with the same name.
+
+`template list` accepts `--dont-prettify` to output tab-separated plain text instead of a styled table.
 
 ### Global flags
 
@@ -311,11 +312,19 @@ Templates are stored under the XDG config directory (respects `$XDG_CONFIG_HOME`
 
 ## Development
 
-**Requirements:** Go 1.26+, Docker, [Task](https://taskfile.dev)
+**Requirements:** [Task](https://taskfile.dev) and Docker — build and test commands run inside a Docker container, so no local Go installation is needed. If you prefer to run Go commands directly on your host instead, Go 1.26+ is required.
+
+Build the Docker images first (one-time setup):
 
 ```sh
-task build    # Build the binary
-task test     # Run all tests
+task dc:build
+```
+
+Then:
+
+```sh
+task build    # Build the binary for the current platform
+task test     # Run unit tests
 ```
 
 List all available tasks:
