@@ -11,10 +11,11 @@ import (
 )
 
 // writeMetadata writes __metadata.json into templateRoot.
-func writeMetadata(templateRoot, name, repository, commit, version string) error {
+func writeMetadata(templateRoot, name, repository, branch, commit, version string) error {
 	m := pkgtemplate.Metadata{
 		Name:       name,
 		Repository: repository,
+		Branch:     branch,
 		Created:    pkgtemplate.JSONTime{Time: time.Now().UTC()},
 		Commit:     commit,
 		Version:    version,

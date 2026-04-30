@@ -14,6 +14,7 @@ import (
 type Metadata struct {
 	Name       string   `json:"Name"`
 	Repository string   `json:"Repository"`
+	Branch     string   `json:"Branch,omitempty"`
 	Created    JSONTime `json:"Created"`
 	Commit     string   `json:"Commit,omitempty"`
 	Version    string   `json:"Version,omitempty"`

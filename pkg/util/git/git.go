@@ -1,11 +1,14 @@
 package git
 
 import (
+	"errors"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
 
+	semver "github.com/Masterminds/semver/v3"
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
@@ -230,4 +233,133 @@ func sshAuth(url string) (transport.AuthMethod, error) {
 	}
 
 	return nil, fmt.Errorf("no SSH authentication available: SSH agent not running and no usable key file found in ~/.ssh")
+}
+
+// CheckErrorKind classifies why a remote status check failed.
+type CheckErrorKind string
+
+const (
+	CheckErrorNone     CheckErrorKind = ""
+	CheckErrorNetwork  CheckErrorKind = "network"
+	CheckErrorAuth     CheckErrorKind = "auth"
+	CheckErrorNotFound CheckErrorKind = "not-found"
+	CheckErrorUnknown  CheckErrorKind = "unknown"
+)
+
+// RemoteCheckResult is the outcome of CheckRemote.
+type RemoteCheckResult struct {
+	IsUpToDate    bool
+	LatestVersion string
+	ErrorKind     CheckErrorKind
+}
+
+// CheckRemote queries the remote to determine whether the local repo at dir is
+// up-to-date for the given branch/tag ref. It uses Remote.List() and never
+// modifies the local repository. SSH auth is resolved automatically.
+//
+// On failure, ErrorKind is set in the result and error is nil.
+func CheckRemote(dir, url, branch string) (RemoteCheckResult, error) {
+	repo, err := gogit.PlainOpen(dir)
+	if err != nil {
+		return RemoteCheckResult{ErrorKind: CheckErrorUnknown}, nil
+	}
+
+	remote, err := repo.Remote("origin")
+	if err != nil {
+		return RemoteCheckResult{ErrorKind: CheckErrorUnknown}, nil
+	}
+
+	listOpts := &gogit.ListOptions{}
+	if isSSHURL(url) {
+		auth, err := sshAuth(url)
+		if err != nil {
+			return RemoteCheckResult{ErrorKind: CheckErrorAuth}, nil
+		}
+		listOpts.Auth = auth
+	}
+
+	refs, err := remote.List(listOpts)
+	if err != nil {
+		return RemoteCheckResult{ErrorKind: classifyRemoteError(err)}, nil
+	}
+
+	head, err := repo.Head()
+	if err != nil {
+		return RemoteCheckResult{ErrorKind: CheckErrorUnknown}, nil
+	}
+
+	return resolveStatus(refs, head.Hash(), branch), nil
+}
+
+// classifyRemoteError maps a remote.List error to a CheckErrorKind.
+func classifyRemoteError(err error) CheckErrorKind {
+	var netErr *net.OpError
+	if errors.As(err, &netErr) {
+		return CheckErrorNetwork
+	}
+	switch {
+	case errors.Is(err, transport.ErrAuthenticationRequired),
+		errors.Is(err, transport.ErrAuthorizationFailed):
+		return CheckErrorAuth
+	case errors.Is(err, transport.ErrRepositoryNotFound):
+		return CheckErrorNotFound
+	}
+	return CheckErrorUnknown
+}
+
+// resolveStatus compares remote refs against the local HEAD for the given ref.
+// Tag-first resolution is used, consistent with Clone behaviour.
+func resolveStatus(refs []*plumbing.Reference, localHead plumbing.Hash, ref string) RemoteCheckResult {
+	tagRef := plumbing.NewTagReferenceName(ref)
+	branchRef := plumbing.NewBranchReferenceName(ref)
+
+	remoteTags := map[string]struct{}{}
+	for _, r := range refs {
+		if r.Name().IsTag() {
+			remoteTags[r.Name().Short()] = struct{}{}
+		}
+	}
+
+	// Tag-first: if the remote has this ref as a tag, treat as semver template.
+	for _, r := range refs {
+		if r.Name() == tagRef {
+			latest := latestSemverTag(remoteTags, ref)
+			if latest == "" || latest == ref {
+				return RemoteCheckResult{IsUpToDate: true}
+			}
+			return RemoteCheckResult{IsUpToDate: false, LatestVersion: latest}
+		}
+	}
+
+	// Branch fallback.
+	for _, r := range refs {
+		if r.Name() == branchRef {
+			return RemoteCheckResult{IsUpToDate: r.Hash() == localHead}
+		}
+	}
+
+	return RemoteCheckResult{ErrorKind: CheckErrorNotFound}
+}
+
+// latestSemverTag returns the highest semver tag strictly greater than current.
+// Returns "" if current is already the latest or no valid semver tags exist.
+func latestSemverTag(tags map[string]struct{}, current string) string {
+	cur, err := semver.NewVersion(current)
+	if err != nil {
+		return ""
+	}
+	var latest *semver.Version
+	for tag := range tags {
+		v, err := semver.NewVersion(tag)
+		if err != nil {
+			continue
+		}
+		if v.GreaterThan(cur) && (latest == nil || v.GreaterThan(latest)) {
+			latest = v
+		}
+	}
+	if latest == nil {
+		return ""
+	}
+	return latest.Original()
 }

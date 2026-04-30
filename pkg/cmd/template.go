@@ -16,6 +16,8 @@ func newTemplateCmd(app *App) *cobra.Command {
 	cmd.AddCommand(newTemplateUseCmd(app))
 	cmd.AddCommand(newTemplateRenameCmd())
 	cmd.AddCommand(newTemplateDeleteCmd())
+	cmd.AddCommand(newTemplateUpdateCmd())
+	cmd.AddCommand(newTemplateUpgradeCmd())
 
 	return cmd
 }

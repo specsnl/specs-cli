@@ -40,7 +40,7 @@ func newTemplateSaveCmd() *cobra.Command {
 				return err
 			}
 			desc, _ := pkggit.Describe(srcPath)
-			if err := writeMetadata(dest, name, srcPath, desc.Commit, desc.Version); err != nil {
+			if err := writeMetadata(dest, name, srcPath, "", desc.Commit, desc.Version); err != nil {
 				return err
 			}
 
