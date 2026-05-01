@@ -26,7 +26,7 @@ forces an immediate refresh.
   refreshes a single template.
 - `specs template upgrade <name>` re-clones the template to the latest commit on its
   branch (or to the latest semver tag if the template was downloaded from a tag ref).
-- `specs template upgrade --all` upgrades every remote template; local templates are
+- `specs template upgrade` (no name) upgrades every remote template; local templates are
   skipped with an informational message.
 - Network failures (DNS errors, timeouts, no route) produce a **single** warning line
   below the table — not one error per template.
@@ -389,11 +389,11 @@ specs template update [name]
 ### `pkg/cmd/template_upgrade.go` (new)
 
 ```
-specs template upgrade <name>
-specs template upgrade --all
+specs template upgrade [name]
 ```
 
-- Errors if both a name and `--all` are given, or if neither is given.
+- No name: upgrades all remote templates (mirrors `template update` behaviour).
+- With name: upgrades that specific template only.
 - For each target template:
   1. Load `__metadata.json`. Skip with a notice if `Repository` or `Branch` is empty
      (local template, no upgrade path).
@@ -407,8 +407,8 @@ specs template upgrade --all
      For semver upgrades where the tag changed, update `meta.Branch` to the new tag.
   6. Remove `__status.json` (stale after re-clone; regenerated on next `template list`).
   7. Print `"template %q upgraded"` (or `"template %q is already up-to-date"` when no newer version).
-- `--all` flag: iterates all templates; errors (auth, not-found, network) are logged per
-  template and the command continues with remaining templates.
+- No-name (upgrade-all) mode: errors per template are logged as warnings and the command
+  continues with remaining templates.
 
 ---
 
@@ -476,6 +476,5 @@ cmd.AddCommand(newTemplateUpgradeCmd())
 | Test | Scenario |
 |---|---|
 | `TestUpgrade_LocalSkipped` | template with empty `Branch` → skipped with notice |
-| `TestUpgrade_AllFlagMutualExclusion` | `upgrade --all mytemplate` → error |
-| `TestUpgrade_NeitherAllNorName` | no args and no `--all` → error |
+| `TestUpgrade_NoArgs_EmptyRegistry` | no args on empty registry → succeeds |
 | `TestUpgrade_NonexistentTemplate` | named template not in registry → error |
