@@ -317,48 +317,6 @@ func TestTemplateDir_XDGOverride(t *testing.T) {
 > Call `xdg.Reload()` after `t.Setenv` and register `t.Cleanup(func() { xdg.Reload() })` to
 > restore it. The library exposes `Reload()` for exactly this purpose.
 
-### `pkg/util/output/log_test.go`
-
-```go
-func TestInfoOutputNonEmpty(t *testing.T) {
-    // Redirect stdout temporarily
-    old := os.Stdout
-    r, w, _ := os.Pipe()
-    os.Stdout = w
-
-    output.Info("hello %s", "world")
-
-    w.Close()
-    os.Stdout = old
-    var buf bytes.Buffer
-    buf.ReadFrom(r)
-
-    if buf.Len() == 0 {
-        t.Error("Info() produced no output")
-    }
-}
-```
-
-Test each level (Info, Warn, Error, Debug) similarly. For Debug, set `output.SetDebug(true)`
-before calling.
-
-### `pkg/util/output/table_test.go`
-
-```go
-func TestRenderTable_ContainsHeaders(t *testing.T) {
-    out := output.RenderTable(
-        []string{"Name", "Repository", "Created"},
-        [][]string{{"my-tpl", "user/repo", "2 days ago"}},
-    )
-    if !strings.Contains(out, "Name") {
-        t.Error("table output does not contain header 'Name'")
-    }
-    if !strings.Contains(out, "my-tpl") {
-        t.Error("table output does not contain row value 'my-tpl'")
-    }
-}
-```
-
 ---
 
 ## Key notes
