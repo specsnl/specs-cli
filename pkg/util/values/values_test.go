@@ -41,6 +41,35 @@ func TestLoadFile_InvalidJSON(t *testing.T) {
 	}
 }
 
+func TestLoadFile_ValidYAML(t *testing.T) {
+	for _, ext := range []string{".yaml", ".yml"} {
+		t.Run(ext, func(t *testing.T) {
+			f := filepath.Join(t.TempDir(), "vals"+ext)
+			if err := os.WriteFile(f, []byte("Name: acme\n"), 0644); err != nil {
+				t.Fatal(err)
+			}
+			m, err := values.LoadFile(f)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if m["Name"] != "acme" {
+				t.Errorf("Name = %v, want %q", m["Name"], "acme")
+			}
+		})
+	}
+}
+
+func TestLoadFile_InvalidYAML(t *testing.T) {
+	f := filepath.Join(t.TempDir(), "bad.yaml")
+	if err := os.WriteFile(f, []byte(":\tinvalid: yaml: [\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := values.LoadFile(f)
+	if err == nil {
+		t.Fatal("expected error for invalid YAML")
+	}
+}
+
 func TestParseArg_Valid(t *testing.T) {
 	k, v, err := values.ParseArg("Name=acme")
 	if err != nil {

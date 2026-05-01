@@ -74,7 +74,7 @@ specs use github:specsnl/go-service ./new-service --arg projectName=my-service
 
 | Flag | Description |
 |------|-------------|
-| `--values <file>` | Load variable values from a JSON file |
+| `--values <file>` | Load variable values from a JSON or YAML file (`.yaml`/`.yml` → YAML, otherwise JSON) |
 | `--arg <key=value>` | Set a single variable (repeatable) |
 | `--use-defaults` | Accept all defaults without prompting |
 | `--no-hooks` | Skip pre/post-use hooks |

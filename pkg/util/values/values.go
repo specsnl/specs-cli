@@ -4,18 +4,29 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
-// LoadFile reads a JSON file and returns a flat map of key/value overrides.
+// LoadFile reads a JSON or YAML file and returns a flat map of key/value overrides.
+// Files with a .yaml or .yml extension are parsed as YAML; all others as JSON.
 func LoadFile(path string) (map[string]any, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("reading values file %q: %w", path, err)
 	}
 	var m map[string]any
-	if err := json.Unmarshal(data, &m); err != nil {
-		return nil, fmt.Errorf("parsing values file %q: %w", path, err)
+	ext := strings.ToLower(filepath.Ext(path))
+	if ext == ".yaml" || ext == ".yml" {
+		if err := yaml.Unmarshal(data, &m); err != nil {
+			return nil, fmt.Errorf("parsing values file %q: %w", path, err)
+		}
+	} else {
+		if err := json.Unmarshal(data, &m); err != nil {
+			return nil, fmt.Errorf("parsing values file %q: %w", path, err)
+		}
 	}
 	return m, nil
 }

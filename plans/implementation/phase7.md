@@ -10,7 +10,7 @@ target directory.
 
 - `specs template use <name> <target-dir>` prompts the user for each context key.
 - `--use-defaults` skips all prompts and uses the schema defaults.
-- `--values <file>` pre-fills answers from a JSON file; matching keys are not prompted.
+- `--values <file>` pre-fills answers from a JSON or YAML file (`.yaml`/`.yml` → YAML, otherwise JSON); matching keys are not prompted.
 - `--arg Key=Value` (repeatable) pre-fills individual keys; takes precedence over `--values`.
 - `--no-hooks` skips pre/post-use hook execution.
 - Computed values are resolved after all user inputs are finalised.
@@ -64,7 +64,8 @@ pkg/
 
 ### `pkg/util/values/values.go`
 
-Loads a JSON `--values` file and parses `--arg Key=Value` strings.
+Loads a JSON or YAML `--values` file and parses `--arg Key=Value` strings.
+Files with a `.yaml` or `.yml` extension are parsed as YAML; all others are parsed as JSON.
 
 ```go
 package values
@@ -76,16 +77,23 @@ import (
     "strings"
 )
 
-// LoadFile reads a JSON file and returns a flat map of key/value overrides.
-// Only top-level string, bool, and number values are supported; nested objects are ignored.
+// LoadFile reads a JSON or YAML file and returns a flat map of key/value overrides.
+// Files with a .yaml or .yml extension are parsed as YAML; all others as JSON.
 func LoadFile(path string) (map[string]any, error) {
     data, err := os.ReadFile(path)
     if err != nil {
         return nil, fmt.Errorf("reading values file %q: %w", path, err)
     }
     var m map[string]any
-    if err := json.Unmarshal(data, &m); err != nil {
-        return nil, fmt.Errorf("parsing values file %q: %w", path, err)
+    ext := strings.ToLower(filepath.Ext(path))
+    if ext == ".yaml" || ext == ".yml" {
+        if err := yaml.Unmarshal(data, &m); err != nil {
+            return nil, fmt.Errorf("parsing values file %q: %w", path, err)
+        }
+    } else {
+        if err := json.Unmarshal(data, &m); err != nil {
+            return nil, fmt.Errorf("parsing values file %q: %w", path, err)
+        }
     }
     return m, nil
 }
@@ -437,6 +445,8 @@ func (t *Template) FuncMap() texttemplate.FuncMap {
 | `TestLoadFile_Valid` | JSON file `{"Name":"acme"}` | returns `map["Name":"acme"]` |
 | `TestLoadFile_NotFound` | non-existent path | returns error |
 | `TestLoadFile_InvalidJSON` | malformed JSON | returns error |
+| `TestLoadFile_ValidYAML` | `.yaml` and `.yml` files with `Name: acme` | returns `map["Name":"acme"]` |
+| `TestLoadFile_InvalidYAML` | malformed YAML | returns error |
 | `TestParseArg_Valid` | `"Name=acme"` | key=`Name`, value=`acme` |
 | `TestParseArg_WithEquals` | `"Url=http://x.com"` | key=`Url`, value=`http://x.com` |
 | `TestParseArg_NoEquals` | `"NoEquals"` | returns error |
@@ -475,9 +485,9 @@ All tests build a real template directory in `t.TempDir()` and invoke the comman
 - **`tmpl.FuncMap()` exposure:** the `funcMap` field is unexported; the new public
   `FuncMap()` method is the minimal change needed to let callers access it without
   restructuring the package.
-- **`--values` is JSON, not YAML.** The file format is JSON because the v1 plan specified
-  it and it is simpler to parse for one-off CI automation. If a YAML `--values` file is
-  desirable in future, `values.LoadFile` can be extended to detect by extension.
+- **`--values` supports both JSON and YAML.** Files with a `.yaml` or `.yml` extension are
+  parsed as YAML via `gopkg.in/yaml.v3`; all other extensions are parsed as JSON. Extension
+  detection happens in `values.LoadFile`.
 - **Temp directory cleanup:** `defer os.RemoveAll(tmp)` runs even if `Execute` or
   `CopyDir` fails — the partial output in `targetDir` may be incomplete, but the temp dir
   is always cleaned up.
