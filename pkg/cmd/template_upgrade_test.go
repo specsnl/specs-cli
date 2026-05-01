@@ -25,21 +25,13 @@ func TestUpgrade_LocalSkipped(t *testing.T) {
 	}
 }
 
-func TestUpgrade_AllFlagMutualExclusion(t *testing.T) {
+func TestUpgrade_NoArgs_EmptyRegistry(t *testing.T) {
 	withTempRegistry(t)
 
-	_, err := executeCmd("template", "upgrade", "--all", "mytemplate")
-	if err == nil {
-		t.Fatal("expected error when both --all and a name are given")
-	}
-}
-
-func TestUpgrade_NeitherAllNorName(t *testing.T) {
-	withTempRegistry(t)
-
+	// No args on an empty registry should succeed (nothing to upgrade).
 	_, err := executeCmd("template", "upgrade")
-	if err == nil {
-		t.Fatal("expected error when neither --all nor a name is given")
+	if err != nil {
+		t.Fatalf("template upgrade with no args on empty registry: %v", err)
 	}
 }
 

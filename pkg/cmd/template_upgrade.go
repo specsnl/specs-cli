@@ -11,26 +11,19 @@ import (
 )
 
 func newTemplateUpgradeCmd() *cobra.Command {
-	var all bool
-
 	cmd := &cobra.Command{
 		Use:   "upgrade [name]",
 		Short: "Upgrade registered templates to the latest version",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if all && len(args) > 0 {
-				return fmt.Errorf("cannot use --all with a template name")
-			}
-			if !all && len(args) == 0 {
-				return fmt.Errorf("provide a template name or use --all")
-			}
-
 			if err := specs.EnsureRegistry(); err != nil {
 				return err
 			}
 
+			upgradeAll := len(args) == 0
+
 			var names []string
-			if all {
+			if upgradeAll {
 				entries, err := os.ReadDir(specs.TemplateDir())
 				if err != nil {
 					return err
@@ -46,7 +39,7 @@ func newTemplateUpgradeCmd() *cobra.Command {
 
 			for _, name := range names {
 				if err := upgradeTemplate(name); err != nil {
-					if all {
+					if upgradeAll {
 						output.Warn("template %q: %v", name, err)
 						continue
 					}
@@ -57,8 +50,6 @@ func newTemplateUpgradeCmd() *cobra.Command {
 			return nil
 		},
 	}
-
-	cmd.Flags().BoolVar(&all, "all", false, "Upgrade all remote templates")
 
 	return cmd
 }
