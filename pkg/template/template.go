@@ -217,10 +217,8 @@ func isBinary(path string) bool {
 	n, _ := f.Read(buf)
 	buf = buf[:n]
 
-	for _, b := range buf {
-		if b == 0 {
-			return true
-		}
+	if slices.Contains(buf, 0) {
+		return true
 	}
 	return !utf8.Valid(buf)
 }
