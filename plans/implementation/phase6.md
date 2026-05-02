@@ -133,7 +133,9 @@ tab-separated plain text for scripting.
 
 ### `specs template save [--force] <path> <name>`
 
-Copies a local directory into the registry under the given name.
+Copies a local directory into the registry under the given name. The source path is
+resolved to an absolute path and stored in `__metadata.json` as `local:<absolute_path>`
+so the registry entry remains valid regardless of the working directory.
 
 ### `specs template download [--force] <source> <name>`
 
