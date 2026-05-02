@@ -111,6 +111,7 @@ Downloads to a temp directory, executes, discards. No registry entry created.
 ```
 <template-root>/
 ├── project.yaml              # variable schema, defaults, optional inline hooks
+│                             # (or project.yml — both cannot coexist)
 ├── .boilrignore              # verbatim-copy glob patterns
 ├── __metadata.json           # written by boilr on download/save
 ├── hooks/                    # optional script-based hooks (mutually exclusive with
@@ -162,7 +163,7 @@ validate args & flags
 check registry initialised + name exists
   │
 template.Get(registryPath/name)
-  ├── parse project.yaml (fallback: project.json)
+  ├── parse project.yaml or project.yml (error if both; fallback: project.json)
   ├── resolve referenced defaults (topological sort on [[ ]] in default values)
   ├── load .boilrignore patterns
   └── parse hooks definition (inline OR hooks/ directory, not both)

@@ -8,7 +8,7 @@ prompt layer is Phase 6). The engine must be fully testable in isolation.
 
 ## Done criteria
 
-- `template.Get(path)` returns a `*Template` loaded from `project.yaml` (fallback `project.json`).
+- `template.Get(path)` returns a `*Template` loaded from `project.yaml` or `project.yml` (errors if both exist; fallback `project.json`).
 - `template.Execute(targetDir)` renders all files to the target directory.
 - Conditional filenames, verbatim copy, binary detection, and whitespace-only deletion all
   work correctly.
@@ -231,7 +231,7 @@ func ApplyComputed(ctx map[string]any, defs map[string]string, funcMap template.
     // 4. Return error on cycle, unknown reference, or template execution failure.
 }
 
-// loadContextFile reads project.yaml; falls back to project.json.
+// loadContextFile reads project.yaml or project.yml (errors if both exist); falls back to project.json.
 func loadContextFile(templateRoot string) (map[string]any, error) {
     yamlPath := filepath.Join(templateRoot, specs.ProjectYAMLFile)
     if data, err := os.ReadFile(yamlPath); err == nil {
@@ -657,8 +657,7 @@ Each test case creates a minimal template directory structure in `t.TempDir()`, 
   is recoverable (skip + debug log), not fatal.
 - **`text/template` vs `html/template`**: always use `text/template`. `html/template` escapes
   HTML entities, which would corrupt non-HTML files.
-- **`project.json` fallback:** only the _presence_ of `project.yaml` is checked. If absent,
-  fall back to JSON. The internal representation is identical either way.
+- **`project.json` fallback:** both `project.yaml` and `project.yml` are checked. If both exist, an error is returned. If neither exists, fall back to JSON. The internal representation is identical either way.
 - **YAML type coercion gotcha:** unquoted `8.4` in YAML is parsed as `float64`. Warn template
   authors in `specs template validate` output: quote strings that look like numbers.
 - **Reserved keys stripped:** `LoadUserContext` removes both `hooks` and `computed` from the
