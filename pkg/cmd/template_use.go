@@ -102,6 +102,8 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 		if err := promptContext(ctx, tmpl.Context, tmpl.Conditionals, tmpl.Referenced, provided); err != nil {
 			return err
 		}
+	} else {
+		resolveSelectDefaults(ctx)
 	}
 
 	ctx, err = pkgtemplate.ApplyComputed(ctx, tmpl.ComputedDefs, tmpl.FuncMap())
@@ -330,6 +332,18 @@ func sortedKeys(m map[string]any) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// resolveSelectDefaults replaces any []any value in ctx with its first string element.
+// This mirrors what runPromptPass does for select fields when --use-defaults skips prompting.
+func resolveSelectDefaults(ctx map[string]any) {
+	for k, v := range ctx {
+		if arr, ok := v.([]any); ok {
+			if opts := toStringOptions(arr); len(opts) > 0 {
+				ctx[k] = opts[0]
+			}
+		}
+	}
 }
 
 // toStringOptions coerces a []any (from YAML) to a []string, skipping non-strings.
