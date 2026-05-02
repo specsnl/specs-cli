@@ -113,10 +113,16 @@ if err := writeMetadata(dest, name, src.CloneURL, src.Branch, desc.Commit, desc.
 
 ### `pkg/cmd/template_save.go`
 
-Pass `""` for branch (local saves have no remote branch):
+Pass `""` for branch (local saves have no remote branch). The source path is resolved to
+an absolute path and stored with a `local:` prefix so the registry entry remains valid
+regardless of the working directory from which the command is run:
 
 ```go
-if err := writeMetadata(dest, name, src.LocalPath, "", desc.Commit, desc.Version); err != nil {
+absPath, err := filepath.Abs(srcPath)
+if err != nil {
+    return err
+}
+if err := writeMetadata(dest, name, "local:"+absPath, "", desc.Commit, desc.Version); err != nil {
     return err
 }
 ```

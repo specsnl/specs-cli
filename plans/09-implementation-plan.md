@@ -264,7 +264,7 @@ specs
 │   │     [--no-hooks]
 │   ├── list|ls  [--dont-prettify]
 │   ├── update   [name]
-│   ├── upgrade  (<name> | --all)
+│   ├── upgrade  [name]
 │   ├── delete|remove|rm|del <name>...
 │   ├── validate <path>
 │   └── rename|mv <old> <new>
