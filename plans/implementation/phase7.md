@@ -397,13 +397,23 @@ func promptContext(ctx map[string]any, schema map[string]any) error {
 `LoadUserContext` strips. A thin re-read is the cleanest solution:
 
 ```go
-// loadRawConfig reads project.yaml (or project.json) without stripping any keys.
-// Used to pass the raw "hooks" value to hooks.Load.
+// loadRawConfig reads project.yaml or project.yml (errors if both exist; falls back to project.json)
+// without stripping any keys. Used to pass the raw "hooks" value to hooks.Load.
 func loadRawConfig(templateRoot string) (map[string]any, error) {
-    // Attempt YAML first, fall back to JSON — identical to context.go logic.
+    // Attempt YAML/YML first, fall back to JSON — identical to context.go logic.
     // Keep this function private to pkg/cmd; do not expose it via pkg/template.
     yamlPath := filepath.Join(templateRoot, specs.ProjectYAMLFile)
-    if data, err := os.ReadFile(yamlPath); err == nil {
+    ymlPath  := filepath.Join(templateRoot, specs.ProjectYMLFile)
+    _, hasYAML := os.Stat(yamlPath)
+    _, hasYML  := os.Stat(ymlPath)
+    if hasYAML == nil && hasYML == nil {
+        return nil, specs.ErrAmbiguousProjectFile
+    }
+    chosen := yamlPath
+    if hasYML == nil {
+        chosen = ymlPath
+    }
+    if data, err := os.ReadFile(chosen); err == nil {
         var m map[string]any
         _ = yaml.Unmarshal(data, &m)
         return m, nil

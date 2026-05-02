@@ -16,6 +16,7 @@ const (
 
 	// File names inside a template root
 	ProjectYAMLFile = "project.yaml"
+	ProjectYMLFile  = "project.yml"
 	ProjectJSONFile = "project.json" // backward-compat fallback
 	MetadataFile    = "__metadata.json"
 	StatusFile      = "__status.json"

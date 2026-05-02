@@ -77,13 +77,34 @@ func ApplyComputed(ctx map[string]any, defs map[string]string, funcMap texttempl
 	return result, nil
 }
 
-// loadContextFile reads project.yaml; falls back to project.json.
+// loadContextFile reads project.yaml or project.yml (falls back to project.json).
+// Returns ErrAmbiguousProjectFile if both YAML variants are present.
 func loadContextFile(templateRoot string) (map[string]any, error) {
 	yamlPath := filepath.Join(templateRoot, specs.ProjectYAMLFile)
-	if data, err := os.ReadFile(yamlPath); err == nil {
+	ymlPath := filepath.Join(templateRoot, specs.ProjectYMLFile)
+	_, yamlErr := os.Stat(yamlPath)
+	_, ymlErr := os.Stat(ymlPath)
+	hasYAML := yamlErr == nil
+	hasYML := ymlErr == nil
+
+	if hasYAML && hasYML {
+		return nil, specs.ErrAmbiguousProjectFile
+	}
+
+	if hasYAML || hasYML {
+		chosen := yamlPath
+		chosenName := specs.ProjectYAMLFile
+		if hasYML {
+			chosen = ymlPath
+			chosenName = specs.ProjectYMLFile
+		}
+		data, err := os.ReadFile(chosen)
+		if err != nil {
+			return nil, fmt.Errorf("reading %s: %w", chosenName, err)
+		}
 		var ctx map[string]any
 		if err := yaml.Unmarshal(data, &ctx); err != nil {
-			return nil, fmt.Errorf("parsing %s: %w", specs.ProjectYAMLFile, err)
+			return nil, fmt.Errorf("parsing %s: %w", chosenName, err)
 		}
 		return ctx, nil
 	}
@@ -91,7 +112,7 @@ func loadContextFile(templateRoot string) (map[string]any, error) {
 	jsonPath := filepath.Join(templateRoot, specs.ProjectJSONFile)
 	data, err := os.ReadFile(jsonPath)
 	if err != nil {
-		return nil, fmt.Errorf("no %s or %s found in %s", specs.ProjectYAMLFile, specs.ProjectJSONFile, templateRoot)
+		return nil, fmt.Errorf("no %s, %s, or %s found in %s", specs.ProjectYAMLFile, specs.ProjectYMLFile, specs.ProjectJSONFile, templateRoot)
 	}
 	var ctx map[string]any
 	if err := json.Unmarshal(data, &ctx); err != nil {

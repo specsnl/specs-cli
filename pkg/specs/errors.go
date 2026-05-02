@@ -16,4 +16,8 @@ var (
 	// ErrBothHookSources is returned when project.yaml contains inline hooks AND a hooks/
 	// directory also exists. Only one source is allowed.
 	ErrBothHookSources = errors.New("conflicting hook sources: found both inline hooks in project.yaml and a hooks/ directory")
+
+	// ErrAmbiguousProjectFile is returned when both project.yaml and project.yml exist in the
+	// template root. Only one is allowed.
+	ErrAmbiguousProjectFile = errors.New("ambiguous project file: both project.yaml and project.yml exist — remove one")
 )
