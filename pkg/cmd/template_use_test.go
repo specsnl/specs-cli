@@ -371,6 +371,59 @@ func TestTemplateUse_ComputedOnlyVar_IsUsed(t *testing.T) {
 	}
 }
 
+func makeTemplateWithSelectVar(t *testing.T, varName string, options []string) string {
+	t.Helper()
+	dir := t.TempDir()
+	tmplDir := filepath.Join(dir, specs.TemplateDirFile)
+	if err := os.MkdirAll(tmplDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	project := varName + ":\n"
+	for _, opt := range options {
+		project += "  - " + opt + "\n"
+	}
+	if err := os.WriteFile(filepath.Join(dir, specs.ProjectYAMLFile), []byte(project), 0644); err != nil {
+		t.Fatal(err)
+	}
+	content := "selected [[." + varName + "]]"
+	if err := os.WriteFile(filepath.Join(tmplDir, "out.txt"), []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+func TestTemplateUse_UseDefaults_SelectFirstItem(t *testing.T) {
+	withTempRegistry(t)
+	src := makeTemplateWithSelectVar(t, "foobar", []string{"one", "two", "three"})
+	target := t.TempDir()
+	if err := saveAndUse(t, src, "tpl", target, "--use-defaults"); err != nil {
+		t.Fatalf("template use: %v", err)
+	}
+	got, err := os.ReadFile(filepath.Join(target, "out.txt"))
+	if err != nil {
+		t.Fatalf("output file missing: %v", err)
+	}
+	if string(got) != "selected one" {
+		t.Errorf("got %q, want %q", string(got), "selected one")
+	}
+}
+
+func TestTemplateUse_UseDefaults_SelectArgOverride(t *testing.T) {
+	withTempRegistry(t)
+	src := makeTemplateWithSelectVar(t, "foobar", []string{"one", "two", "three"})
+	target := t.TempDir()
+	if err := saveAndUse(t, src, "tpl", target, "--use-defaults", "--arg", "foobar=two"); err != nil {
+		t.Fatalf("template use: %v", err)
+	}
+	got, err := os.ReadFile(filepath.Join(target, "out.txt"))
+	if err != nil {
+		t.Fatalf("output file missing: %v", err)
+	}
+	if string(got) != "selected two" {
+		t.Errorf("got %q, want %q", string(got), "selected two")
+	}
+}
+
 func TestTemplateUse_ComputedAvailable(t *testing.T) {
 	withTempRegistry(t)
 

@@ -158,6 +158,8 @@ Each variable is a top-level key whose value is the default. The prompt type is 
 | `false` / `true` (bool) | Yes/No confirm |
 | `["MIT", "Apache-2.0"]` (array) | Select list |
 
+For select lists, the first option is the default — it is pre-selected when prompting interactively and chosen automatically when using `--use-defaults`.
+
 ```yaml
 # Variables — value is the default; type is inferred from the YAML value
 projectName: "my-app"
