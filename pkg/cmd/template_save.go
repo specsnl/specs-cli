@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/specsnl/specs-cli/pkg/specs"
@@ -39,8 +40,12 @@ func newTemplateSaveCmd() *cobra.Command {
 			if err := osutil.CopyDir(srcPath, dest); err != nil {
 				return err
 			}
+			absPath, err := filepath.Abs(srcPath)
+			if err != nil {
+				return err
+			}
 			desc, _ := pkggit.Describe(srcPath)
-			if err := writeMetadata(dest, name, srcPath, "", desc.Commit, desc.Version); err != nil {
+			if err := writeMetadata(dest, name, "local:"+absPath, "", desc.Commit, desc.Version); err != nil {
 				return err
 			}
 

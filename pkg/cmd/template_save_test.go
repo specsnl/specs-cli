@@ -1,11 +1,14 @@
 package cmd
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/specsnl/specs-cli/pkg/specs"
+	pkgtemplate "github.com/specsnl/specs-cli/pkg/template"
 )
 
 // makeFakeTemplate creates a minimal template directory structure in dir.
@@ -67,5 +70,31 @@ func TestSave_InvalidName(t *testing.T) {
 	_, err := executeCmd("template", "save", src, "bad name")
 	if err == nil {
 		t.Fatal("expected error for invalid name")
+	}
+}
+
+func TestSave_StoresLocalAbsolutePath(t *testing.T) {
+	withTempRegistry(t)
+
+	src := makeFakeTemplate(t)
+	if _, err := executeCmd("template", "save", src, "my-tpl"); err != nil {
+		t.Fatalf("template save: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(specs.TemplatePath("my-tpl"), specs.MetadataFile))
+	if err != nil {
+		t.Fatalf("reading metadata: %v", err)
+	}
+	var meta pkgtemplate.Metadata
+	if err := json.Unmarshal(data, &meta); err != nil {
+		t.Fatalf("parsing metadata: %v", err)
+	}
+
+	if !strings.HasPrefix(meta.Repository, "local:") {
+		t.Errorf("Repository should start with \"local:\", got %q", meta.Repository)
+	}
+	absPath := strings.TrimPrefix(meta.Repository, "local:")
+	if !filepath.IsAbs(absPath) {
+		t.Errorf("path after \"local:\" should be absolute, got %q", absPath)
 	}
 }
