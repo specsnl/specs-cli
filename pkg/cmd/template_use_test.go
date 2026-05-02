@@ -399,3 +399,53 @@ func TestTemplateUse_ComputedAvailable(t *testing.T) {
 		t.Errorf("got %q, want %q", string(got), "HELLO")
 	}
 }
+
+func TestTemplateUse_ProjectYMLFile(t *testing.T) {
+	withTempRegistry(t)
+	dir := t.TempDir()
+	tmplDir := filepath.Join(dir, specs.TemplateDirFile)
+	if err := os.MkdirAll(tmplDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, specs.ProjectYMLFile), []byte("Name: from-yml\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmplDir, "out.txt"), []byte("[[.Name]]"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	target := t.TempDir()
+	if err := saveAndUse(t, dir, "tpl", target, "--use-defaults"); err != nil {
+		t.Fatalf("template use with project.yml: %v", err)
+	}
+	got, err := os.ReadFile(filepath.Join(target, "out.txt"))
+	if err != nil {
+		t.Fatalf("output file missing: %v", err)
+	}
+	if string(got) != "from-yml" {
+		t.Errorf("got %q, want %q", string(got), "from-yml")
+	}
+}
+
+func TestTemplateUse_AmbiguousProjectFiles(t *testing.T) {
+	withTempRegistry(t)
+	dir := t.TempDir()
+	tmplDir := filepath.Join(dir, specs.TemplateDirFile)
+	if err := os.MkdirAll(tmplDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, specs.ProjectYAMLFile), []byte("Name: yaml\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, specs.ProjectYMLFile), []byte("Name: yml\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := executeCmd("template", "save", dir, "tpl"); err != nil {
+		t.Fatalf("template save: %v", err)
+	}
+	_, err := executeCmd("template", "use", "--use-defaults", "tpl", t.TempDir())
+	if err == nil {
+		t.Fatal("expected error when both project.yaml and project.yml exist, got nil")
+	}
+}

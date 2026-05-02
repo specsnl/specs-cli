@@ -188,3 +188,49 @@ func TestUse_NoRegistryEntry(t *testing.T) {
 		t.Errorf("registry should be empty after specs use, got %d entries", len(entries))
 	}
 }
+
+func TestUse_ProjectYMLFile(t *testing.T) {
+	srcDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(srcDir, specs.ProjectYMLFile), []byte("Name: from-yml\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	tplDir := filepath.Join(srcDir, specs.TemplateDirFile)
+	if err := os.MkdirAll(tplDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tplDir, "out.txt"), []byte("[[.Name]]"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	targetDir := t.TempDir()
+
+	_, err := executeCmd("use", "--use-defaults", "file:"+srcDir, targetDir)
+	if err != nil {
+		t.Fatalf("use with project.yml: %v", err)
+	}
+	got, err := os.ReadFile(filepath.Join(targetDir, "out.txt"))
+	if err != nil {
+		t.Fatalf("output file missing: %v", err)
+	}
+	if string(got) != "from-yml" {
+		t.Errorf("got %q, want %q", string(got), "from-yml")
+	}
+}
+
+func TestUse_AmbiguousProjectFiles(t *testing.T) {
+	srcDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(srcDir, specs.ProjectYAMLFile), []byte("Name: yaml\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(srcDir, specs.ProjectYMLFile), []byte("Name: yml\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	tplDir := filepath.Join(srcDir, specs.TemplateDirFile)
+	if err := os.MkdirAll(tplDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := executeCmd("use", "--use-defaults", "file:"+srcDir, t.TempDir())
+	if err == nil {
+		t.Fatal("expected error when both project.yaml and project.yml exist, got nil")
+	}
+}

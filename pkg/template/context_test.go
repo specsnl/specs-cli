@@ -15,6 +15,13 @@ func writeProjectYAML(t *testing.T, dir, content string) {
 	}
 }
 
+func writeProjectYML(t *testing.T, dir, content string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(dir, "project.yml"), []byte(content), 0644); err != nil {
+		t.Fatalf("writeProjectYML: %v", err)
+	}
+}
+
 func writeProjectJSON(t *testing.T, dir, content string) {
 	t.Helper()
 	if err := os.WriteFile(filepath.Join(dir, "project.json"), []byte(content), 0644); err != nil {
@@ -245,5 +252,29 @@ func TestApplyComputed_NoDefs(t *testing.T) {
 	}
 	if result["Name"] != "test" {
 		t.Errorf("result[Name] = %q, want %q", result["Name"], "test")
+	}
+}
+
+func TestLoadUserContext_YMLExtension(t *testing.T) {
+	dir := t.TempDir()
+	writeProjectYML(t, dir, "Name: from-yml\n")
+
+	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if ctx["Name"] != "from-yml" {
+		t.Errorf("ctx[Name] = %q, want %q", ctx["Name"], "from-yml")
+	}
+}
+
+func TestLoadUserContext_AmbiguousProjectFile(t *testing.T) {
+	dir := t.TempDir()
+	writeProjectYAML(t, dir, "Name: from-yaml\n")
+	writeProjectYML(t, dir, "Name: from-yml\n")
+
+	_, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()))
+	if err == nil {
+		t.Fatal("expected error for ambiguous project file, got nil")
 	}
 }
