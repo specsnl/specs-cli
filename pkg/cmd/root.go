@@ -35,6 +35,9 @@ Use "specs <command> --help" for more information about a command.`,
 		},
 	}
 
+	cmd.Version = Version
+	cmd.SetVersionTemplate("{{.Version}}\n")
+
 	cmd.PersistentFlags().Bool("debug", false, "Enable debug output")
 	cmd.PersistentFlags().Bool("safe-mode", false, "Disable env/filesystem template functions and hooks")
 	cmd.PersistentFlags().Bool("no-env-prefix", false, "Disable the SPECS_ prefix on hook environment variables")

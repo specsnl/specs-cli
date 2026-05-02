@@ -247,7 +247,7 @@ Files:
 ## CLI command tree
 
 ```
-specs
+specs [--version|-v]                        print version and exit
 ├── use <source> <target-dir>               one-step, no registry entry
 │     [--values file.yaml]
 │     [--arg Key=Value]...

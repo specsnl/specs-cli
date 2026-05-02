@@ -9,7 +9,9 @@ A compilable binary that responds to `specs --help` and `specs version`. No busi
 
 - `go build ./...` succeeds with no errors.
 - `specs --help` exits 0 and lists the available commands.
-- `specs version` prints a version string.
+- `specs version` prints a version string (e.g. `specs version v0.0.3`).
+- `specs version --dont-prettify` prints just the version (e.g. `v0.0.3`).
+- `specs --version` and `specs -v` each print just the version and exit 0.
 - All tests pass.
 
 ---
@@ -125,8 +127,9 @@ Subcommands (`template list`, `template use`, etc.) are registered here in later
 
 ### `pkg/cmd/version.go`
 
-Prints the version string. `--dont-prettify` is reserved for Phase 2 when lipgloss is
-available; for now it's accepted but has no visual effect.
+Prints the version string. The version is set at build time and is expected to already carry
+a `v` prefix (e.g. from a `v0.0.3` git tag). `--dont-prettify` omits the `specs version`
+prefix.
 
 ```go
 package cmd
@@ -138,26 +141,34 @@ import (
 )
 
 // Version is the current binary version.
-// Set at build time via: -ldflags "-X github.com/specsnl/specs-cli/pkg/cmd.Version=1.0.0"
+// Set at build time via: -ldflags "-X github.com/specsnl/specs-cli/pkg/cmd.Version=v0.0.3"
 var Version = "dev"
 
-var dontPrettifyVersion bool
+func newVersionCmd() *cobra.Command {
+    var dontPrettify bool
 
-var versionCmd = &cobra.Command{
-    Use:   "version",
-    Short: "Print the specs version",
-    Args:  cobra.NoArgs,
-    RunE: func(cmd *cobra.Command, args []string) error {
-        fmt.Fprintf(cmd.OutOrStdout(), "specs version %s\n", Version)
-        return nil
-    },
-}
+    cmd := &cobra.Command{
+        Use:   "version",
+        Short: "Print the specs version",
+        Args:  cobra.NoArgs,
+        RunE: func(cmd *cobra.Command, args []string) error {
+            if dontPrettify {
+                fmt.Fprintln(cmd.OutOrStdout(), Version)
+            } else {
+                fmt.Fprintf(cmd.OutOrStdout(), "specs version %s\n", Version)
+            }
+            return nil
+        },
+    }
 
-func init() {
-    versionCmd.Flags().BoolVar(&dontPrettifyVersion, "dont-prettify", false,
-        "Print plain text without styling")
+    cmd.Flags().BoolVar(&dontPrettify, "dont-prettify", false, "Print plain text without styling")
+    return cmd
 }
 ```
+
+Setting `cmd.Version = Version` on the root command causes Cobra to register `--version` /
+`-v` flags automatically. A custom version template restricts their output to just the
+version string (matching `specs version --dont-prettify`).
 
 `cmd.OutOrStdout()` is used instead of `fmt.Println` so that tests can inject a buffer and
 capture output without redirecting `os.Stdout`.
@@ -201,25 +212,13 @@ func executeRoot(args ...string) (string, error) {
 
 | Test | Args | Expected |
 |------|------|----------|
-| `TestHelpExitsZero` | `--help` | exits 0, output contains `"specs"` |
-| `TestVersionCommand` | `version` | exits 0, output contains `"specs version"` |
-| `TestVersionDontPrettify` | `version --dont-prettify` | exits 0, output contains `"specs version"` |
-| `TestTemplateGroupHelp` | `template --help` | exits 0, output contains `"template"` |
-| `TestUnknownCommandError` | `nonexistent` | exits non-zero |
-
-### Example test
-
-```go
-func TestVersionCommand(t *testing.T) {
-    out, err := executeRoot("version")
-    if err != nil {
-        t.Fatalf("unexpected error: %v", err)
-    }
-    if !strings.Contains(out, "specs version") {
-        t.Errorf("expected output to contain 'specs version', got: %q", out)
-    }
-}
-```
+| `TestHelp_ExitsZero` | `--help` | exits 0, output contains `"specs"` |
+| `TestVersion_PrintsVersion` | `version` | exits 0, output contains `"specs version"` |
+| `TestVersion_DontPrettify` | `version --dont-prettify` | exits 0, output contains `Version`, does NOT contain `"specs version"` |
+| `TestVersionFlag_LongForm` | `--version` | exits 0, output contains `Version`, does NOT contain `"specs version"` |
+| `TestVersionFlag_ShortForm` | `-v` | exits 0, output contains `Version`, does NOT contain `"specs version"` |
+| `TestTemplateGroup_Help` | `template --help` | exits 0, output contains `"template"` |
+| `TestUnknownCommand_ReturnsError` | `nonexistent` | exits non-zero |
 
 ---
 

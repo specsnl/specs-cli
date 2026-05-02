@@ -40,6 +40,9 @@ tasks:
 
   build:
     desc: Build Specs cli
+    vars:
+      SPECS_VERSION:
+        sh: git describe --tags --always --dirty="-dev" 2>/dev/null || echo "dev"
     cmds:
       - task: dc:run:go-builder
         vars:
@@ -49,6 +52,7 @@ tasks:
         --set "go-binary.output=type=local,dest=."
         --set "go-binary.args.GOARCH={{ARCH}}"
         --set "go-binary.args.GOOS={{OS}}"
+        --set "go-binary.args.SPECS_VERSION={{.SPECS_VERSION}}"
         go-binary
 
   test:

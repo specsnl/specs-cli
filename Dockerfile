@@ -30,11 +30,11 @@ COPY . .
 ARG GOOS=linux
 ARG GOARCH=amd64
 ARG GO_MODULE=github.com/specsnl/specs-cli
+ARG SPECS_VERSION=dev
 
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    SPECS_VERSION=$(git describe --tags --always --dirty="-dev" 2>/dev/null || echo "dev") \
-    && go generate \
+    go generate \
     && CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH go build \
         -trimpath \
         -tags netgo \
