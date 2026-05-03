@@ -9,15 +9,15 @@ func newTemplateCmd(app *App) *cobra.Command {
 		Long:  "Download, save, list, use, and manage project templates.",
 	}
 
-	cmd.AddCommand(newTemplateListCmd())
-	cmd.AddCommand(newTemplateSaveCmd())
-	cmd.AddCommand(newTemplateDownloadCmd())
+	cmd.AddCommand(newTemplateListCmd(app))
+	cmd.AddCommand(newTemplateSaveCmd(app))
+	cmd.AddCommand(newTemplateDownloadCmd(app))
 	cmd.AddCommand(newTemplateValidateCmd(app))
 	cmd.AddCommand(newTemplateUseCmd(app))
-	cmd.AddCommand(newTemplateRenameCmd())
-	cmd.AddCommand(newTemplateDeleteCmd())
-	cmd.AddCommand(newTemplateUpdateCmd())
-	cmd.AddCommand(newTemplateUpgradeCmd())
+	cmd.AddCommand(newTemplateRenameCmd(app))
+	cmd.AddCommand(newTemplateDeleteCmd(app))
+	cmd.AddCommand(newTemplateUpdateCmd(app))
+	cmd.AddCommand(newTemplateUpgradeCmd(app))
 
 	return cmd
 }

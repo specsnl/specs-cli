@@ -8,11 +8,10 @@ import (
 	"github.com/specsnl/specs-cli/pkg/host"
 	"github.com/specsnl/specs-cli/pkg/specs"
 	pkggit "github.com/specsnl/specs-cli/pkg/util/git"
-	"github.com/specsnl/specs-cli/pkg/util/output"
 	"github.com/specsnl/specs-cli/pkg/util/validate"
 )
 
-func newTemplateDownloadCmd() *cobra.Command {
+func newTemplateDownloadCmd(app *App) *cobra.Command {
 	var force bool
 
 	cmd := &cobra.Command{
@@ -45,7 +44,7 @@ func newTemplateDownloadCmd() *cobra.Command {
 				return err
 			}
 
-			output.Info("cloning %s…", src.CloneURL)
+			app.Output.Info("cloning %s…", src.CloneURL)
 			if err := pkggit.Clone(src.CloneURL, dest, pkggit.CloneOptions{Branch: src.Branch}); err != nil {
 				return err
 			}
@@ -54,7 +53,7 @@ func newTemplateDownloadCmd() *cobra.Command {
 				return err
 			}
 
-			output.Info("template %q downloaded", name)
+			app.Output.Info("template %q downloaded", name)
 			return nil
 		},
 	}

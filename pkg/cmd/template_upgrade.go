@@ -7,10 +7,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/specsnl/specs-cli/pkg/specs"
 	pkggit "github.com/specsnl/specs-cli/pkg/util/git"
-	"github.com/specsnl/specs-cli/pkg/util/output"
 )
 
-func newTemplateUpgradeCmd() *cobra.Command {
+func newTemplateUpgradeCmd(app *App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "upgrade [name]",
 		Short: "Upgrade registered templates to the latest version",
@@ -38,9 +37,9 @@ func newTemplateUpgradeCmd() *cobra.Command {
 			}
 
 			for _, name := range names {
-				if err := upgradeTemplate(name); err != nil {
+				if err := upgradeTemplate(app, name); err != nil {
 					if upgradeAll {
-						output.Warn("template %q: %v", name, err)
+						app.Output.Warn("template %q: %v", name, err)
 						continue
 					}
 					return err
@@ -54,7 +53,7 @@ func newTemplateUpgradeCmd() *cobra.Command {
 	return cmd
 }
 
-func upgradeTemplate(name string) error {
+func upgradeTemplate(app *App, name string) error {
 	root := specs.TemplatePath(name)
 	if _, err := os.Stat(root); os.IsNotExist(err) {
 		return fmt.Errorf("template %q is not registered", name)
@@ -64,7 +63,7 @@ func upgradeTemplate(name string) error {
 		return err
 	}
 	if meta == nil || meta.Repository == "" || meta.Branch == "" {
-		output.Info("template %q is a local template — skipping (no remote branch)", name)
+		app.Output.Info("template %q is a local template — skipping (no remote branch)", name)
 		return nil
 	}
 
@@ -75,7 +74,7 @@ func upgradeTemplate(name string) error {
 		return fmt.Errorf("could not check remote: %s", result.ErrorKind)
 	}
 	if result.IsUpToDate && result.LatestVersion == "" {
-		output.Info("template %q is already up-to-date", name)
+		app.Output.Info("template %q is already up-to-date", name)
 		return nil
 	}
 	newBranch := meta.Branch
@@ -89,7 +88,7 @@ func upgradeTemplate(name string) error {
 		return err
 	}
 
-	output.Info("cloning %s@%s…", meta.Repository, targetRef)
+	app.Output.Info("cloning %s@%s…", meta.Repository, targetRef)
 	if err := pkggit.Clone(meta.Repository, root, pkggit.CloneOptions{Branch: targetRef}); err != nil {
 		return err
 	}
@@ -102,6 +101,6 @@ func upgradeTemplate(name string) error {
 	// Remove stale status; it will be regenerated on next template list.
 	_ = os.Remove(root + "/" + specs.StatusFile)
 
-	output.Info("template %q upgraded", name)
+	app.Output.Info("template %q upgraded", name)
 	return nil
 }

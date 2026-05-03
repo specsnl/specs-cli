@@ -10,7 +10,6 @@ import (
 	"github.com/specsnl/specs-cli/pkg/host"
 	pkggit "github.com/specsnl/specs-cli/pkg/util/git"
 	"github.com/specsnl/specs-cli/pkg/util/osutil"
-	"github.com/specsnl/specs-cli/pkg/util/output"
 )
 
 func newUseCmd(app *App) *cobra.Command {
@@ -65,7 +64,7 @@ func runUse(app *App, rawSource, targetDir string, opts executeOpts) error {
 	} else {
 		// go-git requires the destination to not exist; use a subdirectory.
 		cloneDir := filepath.Join(tmp, "repo")
-		output.Info("cloning %s…", src.CloneURL)
+		app.Output.Info("cloning %s…", src.CloneURL)
 		if err := pkggit.Clone(src.CloneURL, cloneDir, pkggit.CloneOptions{Branch: src.Branch}); err != nil {
 			return err
 		}

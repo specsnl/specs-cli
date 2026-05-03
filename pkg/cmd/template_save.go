@@ -8,11 +8,10 @@ import (
 	"github.com/specsnl/specs-cli/pkg/specs"
 	pkggit "github.com/specsnl/specs-cli/pkg/util/git"
 	"github.com/specsnl/specs-cli/pkg/util/osutil"
-	"github.com/specsnl/specs-cli/pkg/util/output"
 	"github.com/specsnl/specs-cli/pkg/util/validate"
 )
 
-func newTemplateSaveCmd() *cobra.Command {
+func newTemplateSaveCmd(app *App) *cobra.Command {
 	var force bool
 
 	cmd := &cobra.Command{
@@ -49,7 +48,7 @@ func newTemplateSaveCmd() *cobra.Command {
 				return err
 			}
 
-			output.Info("template %q saved", name)
+			app.Output.Info("template %q saved", name)
 			return nil
 		},
 	}

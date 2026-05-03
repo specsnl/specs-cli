@@ -2,59 +2,84 @@ package output_test
 
 import (
 	"bytes"
-	"os"
+	"strings"
 	"testing"
 
 	"github.com/specsnl/specs-cli/pkg/util/output"
 )
 
-func TestInfo_NonEmpty(t *testing.T) {
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	output.Info("hello %s", "world")
-
-	w.Close()
-	os.Stdout = old
+func TestHumanWriter_Info_NonEmpty(t *testing.T) {
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
-
+	w := output.NewHumanWriter(&buf, &bytes.Buffer{})
+	w.Info("hello %s", "world")
 	if buf.Len() == 0 {
-		t.Error("Info() produced no output")
+		t.Error("HumanWriter.Info produced no output")
 	}
 }
 
-func TestWarn_NonEmpty(t *testing.T) {
-	old := os.Stderr
-	r, w, _ := os.Pipe()
-	os.Stderr = w
-
-	output.Warn("something wrong")
-
-	w.Close()
-	os.Stderr = old
-	var buf bytes.Buffer
-	buf.ReadFrom(r)
-
-	if buf.Len() == 0 {
-		t.Error("Warn() produced no output")
+func TestHumanWriter_Warn_NonEmpty(t *testing.T) {
+	var errBuf bytes.Buffer
+	w := output.NewHumanWriter(&bytes.Buffer{}, &errBuf)
+	w.Warn("something wrong")
+	if errBuf.Len() == 0 {
+		t.Error("HumanWriter.Warn produced no output")
 	}
 }
 
-func TestError_NonEmpty(t *testing.T) {
-	old := os.Stderr
-	r, w, _ := os.Pipe()
-	os.Stderr = w
+func TestHumanWriter_Error_NonEmpty(t *testing.T) {
+	var errBuf bytes.Buffer
+	w := output.NewHumanWriter(&bytes.Buffer{}, &errBuf)
+	w.Error("fatal error")
+	if errBuf.Len() == 0 {
+		t.Error("HumanWriter.Error produced no output")
+	}
+}
 
-	output.Error("fatal error")
-
-	w.Close()
-	os.Stderr = old
+func TestJSONWriter_Info(t *testing.T) {
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	w := output.NewJSONWriter(&buf, &bytes.Buffer{})
+	w.Info("hello %s", "world")
+	out := buf.String()
+	if !strings.Contains(out, `"level":"info"`) {
+		t.Errorf("JSONWriter.Info missing level field, got: %q", out)
+	}
+	if !strings.Contains(out, `"message":"hello world"`) {
+		t.Errorf("JSONWriter.Info missing message field, got: %q", out)
+	}
+}
 
-	if buf.Len() == 0 {
-		t.Error("Error() produced no output")
+func TestJSONWriter_Warn(t *testing.T) {
+	var errBuf bytes.Buffer
+	w := output.NewJSONWriter(&bytes.Buffer{}, &errBuf)
+	w.Warn("something wrong")
+	out := errBuf.String()
+	if !strings.Contains(out, `"level":"warn"`) {
+		t.Errorf("JSONWriter.Warn missing level field, got: %q", out)
+	}
+}
+
+func TestJSONWriter_Error(t *testing.T) {
+	var errBuf bytes.Buffer
+	w := output.NewJSONWriter(&bytes.Buffer{}, &errBuf)
+	w.Error("fatal error")
+	out := errBuf.String()
+	if !strings.Contains(out, `"level":"error"`) {
+		t.Errorf("JSONWriter.Error missing level field, got: %q", out)
+	}
+}
+
+func TestJSONWriter_Table(t *testing.T) {
+	var buf bytes.Buffer
+	w := output.NewJSONWriter(&buf, &bytes.Buffer{})
+	w.Table(
+		[]string{"Name", "Version"},
+		[][]string{{"my-tpl", "1.0.0"}, {"other", "2.0.0"}},
+	)
+	out := buf.String()
+	if !strings.Contains(out, `"Name":"my-tpl"`) {
+		t.Errorf("JSONWriter.Table missing Name field, got: %q", out)
+	}
+	if !strings.Contains(out, `"Version":"1.0.0"`) {
+		t.Errorf("JSONWriter.Table missing Version field, got: %q", out)
 	}
 }

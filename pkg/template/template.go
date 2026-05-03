@@ -12,7 +12,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/specsnl/specs-cli/pkg/specs"
-	"github.com/specsnl/specs-cli/pkg/util/output"
 )
 
 // Config holds options that control template loading and execution behaviour.
@@ -194,7 +193,7 @@ func (t *Template) renderFile(srcPath, destPath string, ctx map[string]any) erro
 
 	var buf strings.Builder
 	if err := tmpl.Execute(&buf, ctx); err != nil {
-		output.Warn("missing variable in %s: %s", srcPath, err)
+		t.logger.Warn("missing variable in template", "path", srcPath, "error", err)
 		return copyFile(srcPath, destPath)
 	}
 

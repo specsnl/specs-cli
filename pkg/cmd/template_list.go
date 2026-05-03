@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -12,12 +11,9 @@ import (
 	"github.com/specsnl/specs-cli/pkg/specs"
 	pkgtemplate "github.com/specsnl/specs-cli/pkg/template"
 	pkggit "github.com/specsnl/specs-cli/pkg/util/git"
-	"github.com/specsnl/specs-cli/pkg/util/output"
 )
 
-func newTemplateListCmd() *cobra.Command {
-	var dontPrettify bool
-
+func newTemplateListCmd(app *App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
@@ -106,27 +102,19 @@ func newTemplateListCmd() *cobra.Command {
 			}
 
 			if len(rows) == 0 {
-				output.Info("no templates registered — run 'specs template download' or 'specs template save'")
+				app.Output.Info("no templates registered — run 'specs template download' or 'specs template save'")
 				return nil
 			}
 
-			if dontPrettify {
-				for _, row := range rows {
-					fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\t%s\t%s\t%s\n", row[0], row[1], row[2], row[3], row[4])
-				}
-			} else {
-				fmt.Fprintln(cmd.OutOrStdout(), output.RenderTable(headers, rows))
-			}
+			app.Output.Table(headers, rows)
 
 			if networkErrorSeen {
-				output.Warn("could not reach one or more remotes — status may be outdated")
+				app.Output.Warn("could not reach one or more remotes — status may be outdated")
 			}
 
 			return nil
 		},
 	}
-
-	cmd.Flags().BoolVar(&dontPrettify, "dont-prettify", false, "Output tab-separated plain text instead of a styled table")
 
 	return cmd
 }
