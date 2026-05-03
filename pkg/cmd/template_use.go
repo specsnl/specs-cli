@@ -15,7 +15,6 @@ import (
 	"github.com/specsnl/specs-cli/pkg/specs"
 	pkgtemplate "github.com/specsnl/specs-cli/pkg/template"
 	"github.com/specsnl/specs-cli/pkg/util/osutil"
-	"github.com/specsnl/specs-cli/pkg/util/output"
 	"github.com/specsnl/specs-cli/pkg/util/validate"
 	"github.com/specsnl/specs-cli/pkg/util/values"
 )
@@ -112,7 +111,7 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 	}
 
 	if !opts.noHooks && h.HasPreUse() {
-		output.Info("running pre-use hook…")
+		a.Output.Info("running pre-use hook…")
 		if err := h.Run("pre-use", templateRoot, ctx, tmpl.FuncMap()); err != nil {
 			return err
 		}
@@ -138,13 +137,13 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 	}
 
 	if !opts.noHooks && h.HasPostUse() {
-		output.Info("running post-use hook…")
+		a.Output.Info("running post-use hook…")
 		if err := h.Run("post-use", targetDir, ctx, tmpl.FuncMap()); err != nil {
 			return err
 		}
 	}
 
-	output.Info("done — files written to %s", targetDir)
+	a.Output.Info("done — files written to %s", targetDir)
 	return nil
 }
 

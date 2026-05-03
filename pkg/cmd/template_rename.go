@@ -6,16 +6,15 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/specsnl/specs-cli/pkg/specs"
-	"github.com/specsnl/specs-cli/pkg/util/output"
 	"github.com/specsnl/specs-cli/pkg/util/validate"
 )
 
-func newTemplateRenameCmd() *cobra.Command {
+func newTemplateRenameCmd(app *App) *cobra.Command {
 	return &cobra.Command{
 		Use:     "rename <old-name> <new-name>",
 		Aliases: []string{"mv"},
 		Short:   "Rename a registered template",
-		Args:  cobra.ExactArgs(2),
+		Args:    cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			oldName, newName := args[0], args[1]
 
@@ -40,7 +39,7 @@ func newTemplateRenameCmd() *cobra.Command {
 				return err
 			}
 
-			output.Info("template %q renamed to %q", oldName, newName)
+			app.Output.Info("template %q renamed to %q", oldName, newName)
 			return nil
 		},
 	}

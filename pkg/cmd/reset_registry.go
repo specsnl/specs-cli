@@ -5,10 +5,9 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/specsnl/specs-cli/pkg/specs"
-	"github.com/specsnl/specs-cli/pkg/util/output"
 )
 
-func newResetRegistryCmd() *cobra.Command {
+func newResetRegistryCmd(app *App) *cobra.Command {
 	return &cobra.Command{
 		Use:    "reset-registry",
 		Short:  "Wipe and recreate the local template registry",
@@ -22,7 +21,7 @@ func newResetRegistryCmd() *cobra.Command {
 			if err := os.MkdirAll(dir, 0755); err != nil {
 				return err
 			}
-			output.Info("registry reset at %s", dir)
+			app.Output.Info("registry reset at %s", dir)
 			return nil
 		},
 	}

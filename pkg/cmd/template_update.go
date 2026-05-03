@@ -8,10 +8,9 @@ import (
 	"github.com/specsnl/specs-cli/pkg/specs"
 	pkgtemplate "github.com/specsnl/specs-cli/pkg/template"
 	pkggit "github.com/specsnl/specs-cli/pkg/util/git"
-	"github.com/specsnl/specs-cli/pkg/util/output"
 )
 
-func newTemplateUpdateCmd() *cobra.Command {
+func newTemplateUpdateCmd(app *App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update [name]",
 		Short: "Refresh the cached status of registered templates",
@@ -60,11 +59,11 @@ func newTemplateUpdateCmd() *cobra.Command {
 				case pkggit.CheckErrorNetwork:
 					networkErrorSeen = true
 				case pkggit.CheckErrorAuth:
-					output.Warn("template %q: auth error", name)
+					app.Output.Warn("template %q: auth error", name)
 				case pkggit.CheckErrorNotFound:
-					output.Warn("template %q: repository not found", name)
+					app.Output.Warn("template %q: repository not found", name)
 				case pkggit.CheckErrorUnknown:
-					output.Warn("template %q: status check failed", name)
+					app.Output.Warn("template %q: status check failed", name)
 				default:
 					if !result.IsUpToDate {
 						updatesAvailable = append(updatesAvailable, name)
@@ -73,20 +72,20 @@ func newTemplateUpdateCmd() *cobra.Command {
 			}
 
 			if networkErrorSeen {
-				output.Warn("could not reach one or more remotes — status may be outdated")
+				app.Output.Warn("could not reach one or more remotes — status may be outdated")
 			}
 
 			if len(updatesAvailable) > 0 {
 				for _, name := range updatesAvailable {
 					root := specs.TemplatePath(name)
 					if s, _ := pkgtemplate.LoadStatus(root); s != nil && s.LatestVersion != "" {
-						output.Info("template %q has an update available: %s", name, s.LatestVersion)
+						app.Output.Info("template %q has an update available: %s", name, s.LatestVersion)
 					} else {
-						output.Info("template %q has an update available", name)
+						app.Output.Info("template %q has an update available", name)
 					}
 				}
 			} else if !networkErrorSeen {
-				output.Info("all templates are up-to-date")
+				app.Output.Info("all templates are up-to-date")
 			}
 
 			return nil

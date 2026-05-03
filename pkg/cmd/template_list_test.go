@@ -44,18 +44,21 @@ func TestList_ShowsTemplate(t *testing.T) {
 	}
 }
 
-func TestList_DontPrettify(t *testing.T) {
+func TestList_JSONOutput(t *testing.T) {
 	registryDir := withTempRegistry(t)
 	if err := os.MkdirAll(filepath.Join(registryDir, "my-tpl"), 0755); err != nil {
 		t.Fatal(err)
 	}
 
-	out, err := executeCmd("template", "list", "--dont-prettify")
+	out, err := executeCmd("template", "list", "--output=json")
 	if err != nil {
-		t.Fatalf("template list --dont-prettify: %v", err)
+		t.Fatalf("template list --output=json: %v", err)
 	}
-	if !strings.Contains(out, "\t") {
-		t.Errorf("expected tab-separated output, got: %q", out)
+	if !strings.Contains(out, `"Name"`) {
+		t.Errorf("expected JSON with Name key, got: %q", out)
+	}
+	if !strings.Contains(out, "my-tpl") {
+		t.Errorf("expected JSON to contain 'my-tpl', got: %q", out)
 	}
 }
 
@@ -70,11 +73,11 @@ func TestList_StatusColumn_LocalNoStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out, err := executeCmd("template", "list", "--dont-prettify")
+	out, err := executeCmd("template", "list", "--output=json")
 	if err != nil {
 		t.Fatalf("template list: %v", err)
 	}
-	if !strings.Contains(out, "-") {
+	if !strings.Contains(out, `"Status":"-"`) {
 		t.Errorf("expected '-' status for local template, got: %q", out)
 	}
 }
@@ -97,7 +100,7 @@ func TestList_StatusColumn_FreshUpToDate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out, err := executeCmd("template", "list", "--dont-prettify")
+	out, err := executeCmd("template", "list", "--output=json")
 	if err != nil {
 		t.Fatalf("template list: %v", err)
 	}

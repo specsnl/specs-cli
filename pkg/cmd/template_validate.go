@@ -7,7 +7,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/specsnl/specs-cli/pkg/specs"
-	"github.com/specsnl/specs-cli/pkg/util/output"
 )
 
 func newTemplateValidateCmd(app *App) *cobra.Command {
@@ -38,7 +37,7 @@ func newTemplateValidateCmd(app *App) *cobra.Command {
 				return fmt.Errorf("template render error: %w", err)
 			}
 
-			output.Info("template is valid")
+			app.Output.Info("template is valid")
 			return nil
 		},
 	}

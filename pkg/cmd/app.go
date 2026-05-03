@@ -5,6 +5,7 @@ import (
 	"os"
 
 	pkgtemplate "github.com/specsnl/specs-cli/pkg/template"
+	"github.com/specsnl/specs-cli/pkg/util/output"
 )
 
 // HandlerFactory creates a slog.Handler wired to the given LevelVar.
@@ -44,9 +45,10 @@ func WithHandler(factory HandlerFactory) Option {
 
 // App holds application-wide dependencies shared across all commands.
 type App struct {
-	Logger       *slog.Logger
-	level        *slog.LevelVar
-	SafeMode     bool
+	Logger        *slog.Logger
+	Output        output.Writer
+	level         *slog.LevelVar
+	SafeMode      bool
 	HookEnvPrefix string // prefix for context keys injected as env vars into hooks
 }
 
@@ -59,6 +61,7 @@ func NewApp(opts ...Option) *App {
 
 	app := &App{
 		Logger: slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})),
+		Output: output.NewDefaultHumanWriter(),
 		level:  level,
 	}
 

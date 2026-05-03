@@ -6,16 +6,15 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/specsnl/specs-cli/pkg/specs"
-	"github.com/specsnl/specs-cli/pkg/util/output"
 	"github.com/specsnl/specs-cli/pkg/util/validate"
 )
 
-func newTemplateDeleteCmd() *cobra.Command {
+func newTemplateDeleteCmd(app *App) *cobra.Command {
 	return &cobra.Command{
 		Use:     "delete <name> [<name>...]",
 		Aliases: []string{"remove", "rm", "del"},
 		Short:   "Delete one or more registered templates",
-		Args:  cobra.MinimumNArgs(1),
+		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := specs.EnsureRegistry(); err != nil {
 				return err
@@ -32,7 +31,7 @@ func newTemplateDeleteCmd() *cobra.Command {
 				if err := os.RemoveAll(path); err != nil {
 					return err
 				}
-				output.Info("template %q deleted", name)
+				app.Output.Info("template %q deleted", name)
 			}
 			return nil
 		},

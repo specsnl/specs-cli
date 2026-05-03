@@ -15,13 +15,13 @@ func TestVersion_PrintsVersion(t *testing.T) {
 	}
 }
 
-func TestVersion_DontPrettify(t *testing.T) {
-	out, err := executeCmd("version", "--dont-prettify")
+func TestVersion_JSONOutput(t *testing.T) {
+	out, err := executeCmd("version", "--output=json")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if strings.Contains(out, "specs version") {
-		t.Errorf("expected plain output, got: %q", out)
+	if !strings.Contains(out, `"level":"info"`) {
+		t.Errorf("expected JSON level field, got: %q", out)
 	}
 	if !strings.Contains(out, Version) {
 		t.Errorf("expected output to contain version %q, got: %q", Version, out)
