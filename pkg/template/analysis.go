@@ -26,6 +26,7 @@ func AnalyzeConditionals(
 	templateRoot string,
 	userCtx map[string]any,
 	funcMap texttemplate.FuncMap,
+	delims specs.Delimiters,
 ) (Conditionals, map[string]bool, error) {
 	srcRoot := filepath.Join(templateRoot, specs.TemplateDirFile)
 
@@ -42,7 +43,7 @@ func AnalyzeConditionals(
 		}
 
 		// Analyse the filename/path template itself.
-		analyseExpr(rel, nil, funcMap, conds, always)
+		analyseExpr(rel, nil, funcMap, conds, always, delims)
 
 		// For files, analyse the content.
 		if !d.IsDir() {
@@ -50,7 +51,7 @@ func AnalyzeConditionals(
 			if err != nil {
 				return err
 			}
-			analyseExpr(string(data), nil, funcMap, conds, always)
+			analyseExpr(string(data), nil, funcMap, conds, always, delims)
 		}
 		return nil
 	})
@@ -83,11 +84,12 @@ func analyseExpr(
 	funcMap texttemplate.FuncMap,
 	conds Conditionals,
 	always map[string]bool,
+	delims specs.Delimiters,
 ) {
-	if !strings.Contains(src, "[[") {
+	if !strings.Contains(src, delims.Left) {
 		return
 	}
-	tmpl, err := texttemplate.New("").Delims("[[", "]]").Funcs(funcMap).Parse(src)
+	tmpl, err := texttemplate.New("").Delims(delims.Left, delims.Right).Funcs(funcMap).Parse(src)
 	if err != nil || tmpl == nil || tmpl.Tree == nil || tmpl.Tree.Root == nil {
 		return
 	}

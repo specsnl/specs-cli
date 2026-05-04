@@ -58,9 +58,9 @@ func Load(templateRoot string, projectConfig map[string]any, envPrefix string) (
 // Run executes all commands for the given trigger ("pre-use" or "post-use").
 // cwd is the working directory for the subprocess.
 // ctx values are injected as UPPER_SNAKE_CASE env vars.
-// [[ ]] template expressions in each command are rendered against ctx before execution.
+// Template expressions in each command are rendered against ctx using delims before execution.
 // Returns immediately on the first non-zero exit.
-func (h *Hooks) Run(trigger, cwd string, ctx map[string]any, funcMap template.FuncMap) error {
+func (h *Hooks) Run(trigger, cwd string, ctx map[string]any, funcMap template.FuncMap, delims specs.Delimiters) error {
 	var commands []string
 	switch trigger {
 	case "pre-use":
@@ -74,7 +74,7 @@ func (h *Hooks) Run(trigger, cwd string, ctx map[string]any, funcMap template.Fu
 	env := buildEnv(ctx, h.EnvPrefix)
 
 	for _, cmdTpl := range commands {
-		rendered, err := renderCommand(cmdTpl, ctx, funcMap)
+		rendered, err := renderCommand(cmdTpl, ctx, funcMap, delims)
 		if err != nil {
 			return fmt.Errorf("rendering hook command: %w", err)
 		}
@@ -156,12 +156,12 @@ func buildEnv(ctx map[string]any, prefix string) []string {
 	return env
 }
 
-// renderCommand renders [[ ]] template expressions in a hook command string.
-func renderCommand(cmdTpl string, ctx map[string]any, funcMap template.FuncMap) (string, error) {
-	if !strings.Contains(cmdTpl, "[[") {
+// renderCommand renders template expressions in a hook command string.
+func renderCommand(cmdTpl string, ctx map[string]any, funcMap template.FuncMap, delims specs.Delimiters) (string, error) {
+	if !strings.Contains(cmdTpl, delims.Left) {
 		return cmdTpl, nil // fast path: no template expressions
 	}
-	tmpl, err := template.New("").Delims("[[", "]]").Funcs(funcMap).Parse(cmdTpl)
+	tmpl, err := template.New("").Delims(delims.Left, delims.Right).Funcs(funcMap).Parse(cmdTpl)
 	if err != nil {
 		return "", err
 	}

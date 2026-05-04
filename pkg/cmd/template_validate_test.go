@@ -68,7 +68,7 @@ func TestValidate_UnusedVariable(t *testing.T) {
 	withTempRegistry(t)
 	src := makeValidateTemplate(t,
 		"Name: \"\"\nDatabasePort: \"5432\"\n",
-		map[string]string{"main.go": "package [[.Name]]"},
+		map[string]string{"main.go": "package {{.Name}}"},
 	)
 
 	out, err := executeCmd("template", "validate", src)
@@ -87,8 +87,8 @@ func TestValidate_UnusedVariable(t *testing.T) {
 func TestValidate_UnusedComputed(t *testing.T) {
 	withTempRegistry(t)
 	src := makeValidateTemplate(t,
-		"Name: \"\"\ncomputed:\n  Slug: \"[[toKebabCase .Name]]\"\n",
-		map[string]string{"main.go": "package [[.Name]]"},
+		"Name: \"\"\ncomputed:\n  Slug: \"{{toKebabCase .Name}}\"\n",
+		map[string]string{"main.go": "package {{.Name}}"},
 	)
 
 	out, err := executeCmd("template", "validate", src)
@@ -108,7 +108,7 @@ func TestValidate_UnknownVariable(t *testing.T) {
 	withTempRegistry(t)
 	src := makeValidateTemplate(t,
 		"Name: \"\"\n",
-		map[string]string{"main.go": "package [[.Name]]\n// author: [[.AppName]]"},
+		map[string]string{"main.go": "package {{.Name}}\n// author: {{.AppName}}"},
 	)
 
 	out, err := executeCmd("template", "validate", src)
@@ -128,7 +128,7 @@ func TestValidate_StrictUnusedVariable(t *testing.T) {
 	withTempRegistry(t)
 	src := makeValidateTemplate(t,
 		"Name: \"\"\nDatabasePort: \"5432\"\n",
-		map[string]string{"main.go": "package [[.Name]]"},
+		map[string]string{"main.go": "package {{.Name}}"},
 	)
 
 	_, err := executeCmd("template", "validate", "--strict", src)
@@ -142,7 +142,7 @@ func TestValidate_StrictUnusedAndUnknown(t *testing.T) {
 	withTempRegistry(t)
 	src := makeValidateTemplate(t,
 		"Name: \"\"\nDatabasePort: \"5432\"\n",
-		map[string]string{"main.go": "package [[.Name]]\n// [[.AppName]]"},
+		map[string]string{"main.go": "package {{.Name}}\n// {{.AppName}}"},
 	)
 
 	_, err := executeCmd("template", "validate", "--strict", src)
@@ -157,7 +157,7 @@ func TestValidate_NoIssues(t *testing.T) {
 	withTempRegistry(t)
 	src := makeValidateTemplate(t,
 		"Name: \"\"\n",
-		map[string]string{"main.go": "package [[.Name]]"},
+		map[string]string{"main.go": "package {{.Name}}"},
 	)
 
 	out, err := executeCmd("template", "validate", src)

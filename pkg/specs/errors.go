@@ -20,4 +20,8 @@ var (
 	// ErrAmbiguousProjectFile is returned when both project.yaml and project.yml exist in the
 	// template root. Only one is allowed.
 	ErrAmbiguousProjectFile = errors.New("ambiguous project file: both project.yaml and project.yml exist — remove one")
+
+	// ErrInvalidDelimiters is returned when __delimiters in project.yaml is present but
+	// malformed or has empty left/right values.
+	ErrInvalidDelimiters = errors.New(`"__delimiters" must be a mapping with non-empty "left" and "right" string values`)
 )

@@ -55,7 +55,7 @@ func fileExists(t *testing.T, targetDir, relPath string) bool {
 
 func TestExecute_StaticFile(t *testing.T) {
 	root := buildTemplate(t, "Name: World\n", map[string][]byte{
-		"hello.txt": []byte("Hello [[.Name]]"),
+		"hello.txt": []byte("Hello {{.Name}}"),
 	})
 
 	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
@@ -76,7 +76,7 @@ func TestExecute_StaticFile(t *testing.T) {
 
 func TestExecute_ConditionalFilename_True(t *testing.T) {
 	root := buildTemplate(t, "UseX: true\n", map[string][]byte{
-		"[[if .UseX]]feature.txt[[end]]": []byte("enabled"),
+		"{{if .UseX}}feature.txt{{end}}": []byte("enabled"),
 	})
 
 	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
@@ -96,7 +96,7 @@ func TestExecute_ConditionalFilename_True(t *testing.T) {
 
 func TestExecute_ConditionalFilename_False(t *testing.T) {
 	root := buildTemplate(t, "UseX: false\n", map[string][]byte{
-		"[[if .UseX]]feature.txt[[end]]": []byte("enabled"),
+		"{{if .UseX}}feature.txt{{end}}": []byte("enabled"),
 	})
 
 	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
@@ -116,7 +116,7 @@ func TestExecute_ConditionalFilename_False(t *testing.T) {
 
 func TestExecute_ConditionalDir_False(t *testing.T) {
 	root := buildTemplate(t, "UseX: false\n", map[string][]byte{
-		"[[if .UseX]]subdir[[end]]/file.txt": []byte("inside"),
+		"{{if .UseX}}subdir{{end}}/file.txt": []byte("inside"),
 	})
 
 	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
@@ -136,7 +136,7 @@ func TestExecute_ConditionalDir_False(t *testing.T) {
 
 func TestExecute_VerbatimCopy(t *testing.T) {
 	root := buildTemplate(t, "Name: test\n", map[string][]byte{
-		"composer.lock": []byte("[[not a template]]"),
+		"composer.lock": []byte("[[not a template]]"), // [[ is not a delimiter here; file is verbatim
 	})
 
 	// Write .specsverbatim
@@ -155,7 +155,7 @@ func TestExecute_VerbatimCopy(t *testing.T) {
 	}
 
 	got := readFile(t, target, "composer.lock")
-	if got != "[[not a template]]" {
+	if got != "[[not a template]]" { // original content must be preserved verbatim
 		t.Errorf("composer.lock = %q, want verbatim copy", got)
 	}
 }
@@ -188,7 +188,7 @@ func TestExecute_BinaryFile(t *testing.T) {
 
 func TestExecute_WhitespaceOnly(t *testing.T) {
 	root := buildTemplate(t, "Name: test\n", map[string][]byte{
-		"empty.txt": []byte("[[if false]]x[[end]]"),
+		"empty.txt": []byte("{{if false}}x{{end}}"),
 	})
 
 	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
@@ -208,7 +208,7 @@ func TestExecute_WhitespaceOnly(t *testing.T) {
 
 func TestExecute_NestedConditionalDir(t *testing.T) {
 	root := buildTemplate(t, "X: false\n", map[string][]byte{
-		"[[if .X]]subdir[[end]]/nested/file.txt": []byte("deep"),
+		"{{if .X}}subdir{{end}}/nested/file.txt": []byte("deep"),
 	})
 
 	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
@@ -228,9 +228,9 @@ func TestExecute_NestedConditionalDir(t *testing.T) {
 
 func TestExecute_ComputedValueInTemplate(t *testing.T) {
 	root := buildTemplate(t,
-		"Name: acme\ncomputed:\n  DbName: \"[[toSnakeCase .Name]]_production\"\n",
+		"Name: acme\ncomputed:\n  DbName: \"{{toSnakeCase .Name}}_production\"\n",
 		map[string][]byte{
-			"config.txt": []byte("DB=[[.DbName]]"),
+			"config.txt": []byte("DB={{.DbName}}"),
 		},
 	)
 
@@ -251,8 +251,10 @@ func TestExecute_ComputedValueInTemplate(t *testing.T) {
 }
 
 func TestExecute_PassthroughDoubleBrace(t *testing.T) {
-	// ${{ }} GitHub Actions syntax should pass through unchanged.
-	root := buildTemplate(t, "Name: ci\n", map[string][]byte{
+	// When __delimiters switches to [[ ]], the default {{ }} syntax passes through
+	// unchanged — important for files like GitHub Actions YAML that already use {{ }}.
+	yaml := "Name: ci\n__delimiters:\n  left: \"[[\"\n  right: \"]]\"\n"
+	root := buildTemplate(t, yaml, map[string][]byte{
 		"ci.yml": []byte("group: ${{ github.ref }}\nname: [[.Name]]"),
 	})
 
@@ -270,5 +272,60 @@ func TestExecute_PassthroughDoubleBrace(t *testing.T) {
 	want := "group: ${{ github.ref }}\nname: ci"
 	if got != want {
 		t.Errorf("ci.yml = %q, want %q", got, want)
+	}
+}
+
+func TestExecute_CustomDelimiters_NotInContext(t *testing.T) {
+	// __delimiters must not appear as a user-visible template variable.
+	yaml := "Name: test\n__delimiters:\n  left: \"[[\"\n  right: \"]]\"\n"
+	root := buildTemplate(t, yaml, map[string][]byte{
+		"out.txt": []byte("[[.Name]]"),
+	})
+
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if _, ok := tmpl.Context["__delimiters"]; ok {
+		t.Error("__delimiters should not appear in the template context")
+	}
+
+	target := t.TempDir()
+	if err := tmpl.Execute(target); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if got := readFile(t, target, "out.txt"); got != "test" {
+		t.Errorf("out.txt = %q, want %q", got, "test")
+	}
+}
+
+func TestGet_InvalidDelimiters_ReturnsError(t *testing.T) {
+	// __delimiters present but malformed — Get must return an error.
+	yaml := "__delimiters: not-a-mapping\nName: x\n"
+	root := buildTemplate(t, yaml, map[string][]byte{"f.txt": []byte("{{.Name}}")})
+
+	_, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	if err == nil {
+		t.Fatal("expected error for invalid __delimiters, got nil")
+	}
+}
+
+func TestGet_CustomDelimiters_ConditionalFilename(t *testing.T) {
+	// Custom delimiters affect filename templates too.
+	yaml := "UseX: true\n__delimiters:\n  left: \"[[\"\n  right: \"]]\"\n"
+	root := buildTemplate(t, yaml, map[string][]byte{
+		"[[if .UseX]]feature.txt[[end]]": []byte("enabled"),
+	})
+
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	target := t.TempDir()
+	if err := tmpl.Execute(target); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if !fileExists(t, target, "feature.txt") {
+		t.Error("feature.txt should exist when UseX is true and custom delimiters are set")
 	}
 }

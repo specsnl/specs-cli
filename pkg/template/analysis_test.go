@@ -44,7 +44,7 @@ func analyzeTemplate(t *testing.T, root string) *pkgtemplate.Template {
 func TestAnalysis_Unconditional(t *testing.T) {
 	root := buildAnalysisTemplate(t,
 		"Name: \"\"\n",
-		map[string]string{"file.txt": "[[.Name]]"},
+		map[string]string{"file.txt": "{{.Name}}"},
 	)
 	tmpl := analyzeTemplate(t, root)
 	conds := tmpl.Conditionals
@@ -56,7 +56,7 @@ func TestAnalysis_Unconditional(t *testing.T) {
 func TestAnalysis_SimpleGate(t *testing.T) {
 	root := buildAnalysisTemplate(t,
 		"UseDB: false\nDbName: \"\"\n",
-		map[string]string{"file.txt": "[[if .UseDB]]DB=[[.DbName]][[end]]"},
+		map[string]string{"file.txt": "{{if .UseDB}}DB={{.DbName}}{{end}}"},
 	)
 	tmpl := analyzeTemplate(t, root)
 	conds := tmpl.Conditionals
@@ -82,7 +82,7 @@ func TestAnalysis_SimpleGate(t *testing.T) {
 func TestAnalysis_ElseBranch(t *testing.T) {
 	root := buildAnalysisTemplate(t,
 		"UseDB: false\nNoDbMsg: \"\"\n",
-		map[string]string{"file.txt": "[[if .UseDB]]db[[else]][[.NoDbMsg]][[end]]"},
+		map[string]string{"file.txt": "{{if .UseDB}}db{{else}}{{.NoDbMsg}}{{end}}"},
 	)
 	tmpl := analyzeTemplate(t, root)
 	conds := tmpl.Conditionals
@@ -103,7 +103,7 @@ func TestAnalysis_ElseBranch(t *testing.T) {
 func TestAnalysis_Not(t *testing.T) {
 	root := buildAnalysisTemplate(t,
 		"UseDB: false\nFallback: \"\"\n",
-		map[string]string{"file.txt": "[[if not .UseDB]][[.Fallback]][[end]]"},
+		map[string]string{"file.txt": "{{if not .UseDB}}{{.Fallback}}{{end}}"},
 	)
 	tmpl := analyzeTemplate(t, root)
 	conds := tmpl.Conditionals
@@ -123,7 +123,7 @@ func TestAnalysis_Not(t *testing.T) {
 func TestAnalysis_Eq(t *testing.T) {
 	root := buildAnalysisTemplate(t,
 		"DbType: \"\"\nPgPort: \"\"\n",
-		map[string]string{"file.txt": `[[if eq .DbType "pg"]]port=[[.PgPort]][[end]]`},
+		map[string]string{"file.txt": `{{if eq .DbType "pg"}}port={{.PgPort}}{{end}}`},
 	)
 	tmpl := analyzeTemplate(t, root)
 	conds := tmpl.Conditionals
@@ -143,7 +143,7 @@ func TestAnalysis_Eq(t *testing.T) {
 func TestAnalysis_And(t *testing.T) {
 	root := buildAnalysisTemplate(t,
 		"UseDB: false\nUseSSL: false\nCert: \"\"\n",
-		map[string]string{"file.txt": "[[if and .UseDB .UseSSL]]cert=[[.Cert]][[end]]"},
+		map[string]string{"file.txt": "{{if and .UseDB .UseSSL}}cert={{.Cert}}{{end}}"},
 	)
 	tmpl := analyzeTemplate(t, root)
 	conds := tmpl.Conditionals
@@ -166,7 +166,7 @@ func TestAnalysis_And(t *testing.T) {
 func TestAnalysis_Nested(t *testing.T) {
 	root := buildAnalysisTemplate(t,
 		"UseDB: false\nDbType: \"\"\nPgCfg: \"\"\n",
-		map[string]string{"file.txt": `[[if .UseDB]][[if eq .DbType "pg"]]cfg=[[.PgCfg]][[end]][[end]]`},
+		map[string]string{"file.txt": `{{if .UseDB}}{{if eq .DbType "pg"}}cfg={{.PgCfg}}{{end}}{{end}}`},
 	)
 	tmpl := analyzeTemplate(t, root)
 	conds := tmpl.Conditionals
@@ -190,7 +190,7 @@ func TestAnalysis_BothBranches_AlwaysNeeded(t *testing.T) {
 	// Name used both inside and outside the if block — always needed.
 	root := buildAnalysisTemplate(t,
 		"UseDB: false\nName: \"\"\n",
-		map[string]string{"file.txt": "[[.Name]]\n[[if .UseDB]]also: [[.Name]][[end]]"},
+		map[string]string{"file.txt": "{{.Name}}\n{{if .UseDB}}also: {{.Name}}{{end}}"},
 	)
 	tmpl := analyzeTemplate(t, root)
 	conds := tmpl.Conditionals
@@ -203,7 +203,7 @@ func TestAnalysis_UnknownFn_FallsBackToAlways(t *testing.T) {
 	// myFunc is not recognised by the analyser — Y falls back to always-needed.
 	root := buildAnalysisTemplate(t,
 		"X: false\nY: \"\"\n",
-		map[string]string{"file.txt": "[[if myFunc .X]][[.Y]][[end]]"},
+		map[string]string{"file.txt": "{{if myFunc .X}}{{.Y}}{{end}}"},
 	)
 	// Build with a FuncMap that includes myFunc so the template parses.
 	// Since Get uses the real FuncMap from FuncMap(), myFunc is not in it,
@@ -221,8 +221,8 @@ func TestAnalysis_MultiFile_ConflictBecomesAlways(t *testing.T) {
 	root := buildAnalysisTemplate(t,
 		"UseDB: false\nDbName: \"\"\n",
 		map[string]string{
-			"file1.txt": "name=[[.DbName]]",
-			"file2.txt": "[[if .UseDB]][[.DbName]][[end]]",
+			"file1.txt": "name={{.DbName}}",
+			"file2.txt": "{{if .UseDB}}{{.DbName}}{{end}}",
 		},
 	)
 	tmpl := analyzeTemplate(t, root)
@@ -236,7 +236,7 @@ func TestAnalysis_Filename_GateVarAlwaysNeeded(t *testing.T) {
 	// UseDB appears as the gate in a filename — it must be always prompted.
 	root := buildAnalysisTemplate(t,
 		"UseDB: false\n",
-		map[string]string{"[[if .UseDB]]db.env[[end]]": "content"},
+		map[string]string{"{{if .UseDB}}db.env{{end}}": "content"},
 	)
 	tmpl := analyzeTemplate(t, root)
 	conds := tmpl.Conditionals
@@ -248,7 +248,7 @@ func TestAnalysis_Filename_GateVarAlwaysNeeded(t *testing.T) {
 func TestAnalysis_Or(t *testing.T) {
 	root := buildAnalysisTemplate(t,
 		"UseA: false\nUseB: false\nSecret: \"\"\n",
-		map[string]string{"file.txt": "[[if or .UseA .UseB]]s=[[.Secret]][[end]]"},
+		map[string]string{"file.txt": "{{if or .UseA .UseB}}s={{.Secret}}{{end}}"},
 	)
 	tmpl := analyzeTemplate(t, root)
 	conds := tmpl.Conditionals
@@ -274,7 +274,7 @@ func TestReferenced_UnusedVarAbsent(t *testing.T) {
 	// Unused is in project.yaml but never referenced in any template file.
 	root := buildAnalysisTemplate(t,
 		"Name: \"\"\nUnused: \"\"\n",
-		map[string]string{"file.txt": "[[.Name]]"},
+		map[string]string{"file.txt": "{{.Name}}"},
 	)
 	tmpl := analyzeTemplate(t, root)
 	if tmpl.Referenced["Unused"] {
@@ -289,7 +289,7 @@ func TestReferenced_ConditionalVarPresent(t *testing.T) {
 	// DbName is only inside [[if .UseDB]] — still referenced.
 	root := buildAnalysisTemplate(t,
 		"UseDB: false\nDbName: \"\"\n",
-		map[string]string{"file.txt": "[[if .UseDB]]DB=[[.DbName]][[end]]"},
+		map[string]string{"file.txt": "{{if .UseDB}}DB={{.DbName}}{{end}}"},
 	)
 	tmpl := analyzeTemplate(t, root)
 	if !tmpl.Referenced["DbName"] {
@@ -300,8 +300,8 @@ func TestReferenced_ConditionalVarPresent(t *testing.T) {
 func TestReferenced_ComputedOnlyVar(t *testing.T) {
 	// Name is only referenced inside a computed expression, not in any template file.
 	root := buildAnalysisTemplate(t,
-		"Name: \"\"\ncomputed:\n  Upper: \"[[ toUpper .Name ]]\"\n",
-		map[string]string{"file.txt": "[[.Upper]]"},
+		"Name: \"\"\ncomputed:\n  Upper: \"{{ toUpper .Name }}\"\n",
+		map[string]string{"file.txt": "{{.Upper}}"},
 	)
 	tmpl := analyzeTemplate(t, root)
 	if !tmpl.Referenced["Name"] {

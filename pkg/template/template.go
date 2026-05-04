@@ -1,12 +1,13 @@
 package template
 
 import (
-	"slices"
+	"fmt"
 	"io"
 	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	texttemplate "text/template"
 	"unicode/utf8"
@@ -20,6 +21,20 @@ type Config struct {
 	// combined with skipping hooks at the command layer. Use this when executing
 	// templates from untrusted sources.
 	SafeMode bool
+
+	// Delims overrides the default [[ ]] template delimiters. The zero value
+	// resolves to specs.DefaultDelimiters. Set this field to support per-project
+	// custom delimiters read from project.yaml.
+	Delims specs.Delimiters
+}
+
+// delims returns the configured delimiters, falling back to specs.DefaultDelimiters
+// when the zero value was left unset.
+func (c Config) delims() specs.Delimiters {
+	if c.Delims.Left == "" {
+		return specs.DefaultDelimiters
+	}
+	return c.Delims
 }
 
 // ignoredFiles are always skipped — they are OS/editor metadata, not template content.
@@ -48,24 +63,39 @@ func (t *Template) FuncMap() texttemplate.FuncMap {
 	return t.funcMap
 }
 
+// Delims returns the delimiter pair in use for this template. Callers such as
+// hooks.Run need this to render [[ ]]-style expressions with the same delimiters.
+func (t *Template) Delims() specs.Delimiters {
+	return t.cfg.delims()
+}
+
 // Get loads a template from templateRoot. The root must contain either project.yaml or
 // project.json, and a template/ subdirectory.
 func Get(templateRoot string, cfg Config, logger *slog.Logger) (*Template, error) {
 	funcMap := FuncMap(cfg, logger)
 
-	userCtx, computedDefs, err := LoadUserContext(templateRoot, funcMap)
+	// Resolve delimiters: __delimiters in project.yaml > cfg.Delims > DefaultDelimiters.
+	// Write the resolved value back into cfg so methods on the returned Template
+	// (renderName, renderFile, Delims, …) all see the same delimiters.
+	delims, err := ExtractProjectDelimiters(templateRoot, cfg.delims())
+	if err != nil {
+		return nil, fmt.Errorf("reading delimiters from project file: %w", err)
+	}
+	cfg.Delims = delims
+
+	userCtx, computedDefs, err := LoadUserContext(templateRoot, funcMap, delims)
 	if err != nil {
 		return nil, err
 	}
 
-	conds, referenced, err := AnalyzeConditionals(templateRoot, userCtx, funcMap)
+	conds, referenced, err := AnalyzeConditionals(templateRoot, userCtx, funcMap, delims)
 	if err != nil {
 		return nil, err
 	}
 
 	// Also count variables that only appear in computed expressions as referenced.
 	for _, expr := range computedDefs {
-		for _, key := range extractRefs(expr, funcMap) {
+		for _, key := range extractRefs(expr, funcMap, delims) {
 			if _, inSchema := userCtx[key]; inSchema {
 				referenced[key] = true
 			}
@@ -100,7 +130,7 @@ func (t *Template) Execute(targetDir string) error {
 	ctx := t.Context
 	if len(t.ComputedDefs) > 0 {
 		var err error
-		ctx, err = ApplyComputed(t.Context, t.ComputedDefs, t.funcMap)
+		ctx, err = ApplyComputed(t.Context, t.ComputedDefs, t.funcMap, t.cfg.delims())
 		if err != nil {
 			return err
 		}
@@ -160,9 +190,10 @@ func (t *Template) Execute(targetDir string) error {
 	})
 }
 
-// renderName renders a file/directory path template using [[ ]] delimiters.
+// renderName renders a file/directory path template using the configured delimiters.
 func (t *Template) renderName(name string, ctx map[string]any) (string, error) {
-	tmpl, err := texttemplate.New("").Delims("[[", "]]").Funcs(t.funcMap).Parse(name)
+	d := t.cfg.delims()
+	tmpl, err := texttemplate.New("").Delims(d.Left, d.Right).Funcs(t.funcMap).Parse(name)
 	if err != nil {
 		return "", err
 	}
@@ -181,8 +212,9 @@ func (t *Template) renderFile(srcPath, destPath string, ctx map[string]any) erro
 		return err
 	}
 
+	d := t.cfg.delims()
 	tmpl, err := texttemplate.New("").
-		Delims("[[", "]]").
+		Delims(d.Left, d.Right).
 		Funcs(t.funcMap).
 		Option("missingkey=error").
 		Parse(string(data))

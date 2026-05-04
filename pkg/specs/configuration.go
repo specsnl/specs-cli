@@ -22,6 +22,15 @@ const (
 	StatusFile      = "__status.json"
 	VerbatimFile    = ".specsverbatim"
 	TemplateDirFile = "template" // the subdirectory that gets rendered
+
+	// ProjectDelimitersKey is the reserved project.yaml key that overrides the default
+	// template delimiters. Its value must be a mapping with non-empty "left" and "right"
+	// string fields. Example:
+	//
+	//	__delimiters:
+	//	  left: "[["
+	//	  right: "]]"
+	ProjectDelimitersKey = "__delimiters"
 )
 
 // ConfigDir returns the specs configuration directory.
