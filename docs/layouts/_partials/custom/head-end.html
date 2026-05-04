@@ -1,0 +1,59 @@
+<style>
+  /* Reserve scrollbar space so the layout width stays consistent when
+     navigating between short pages (no scrollbar) and long pages (scrollbar). */
+  html { scrollbar-gutter: stable; }
+
+  /* Brand primary color — specs.nl blue (HSL 213°, 42%, 50%).
+     Hextra derives its full primary-100…900 scale from these three variables. */
+  :root {
+    --primary-hue: 213deg;
+    --primary-saturation: 42%;
+    --primary-lightness: 50%;
+  }
+  /* Slightly lighter in dark mode so links and interactive elements stay legible. */
+  .dark {
+    --primary-hue: 213deg;
+    --primary-saturation: 42%;
+    --primary-lightness: 60%;
+  }
+
+  /* Prevent the article's built-in min-height: calc(100vh - navbar-height)
+     from overflowing the flex container and pushing the footer off-screen. */
+  .hx\:min-h-\[calc\(100vh-var\(--navbar-height\)\)\] { min-height: unset; }
+
+  /* Sticky footer: make the body a flex column spanning the full viewport so
+     the footer always sits at the bottom on short pages. */
+  body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+  }
+  /* Stretch the main content wrapper to fill the space between navbar and
+     footer, preventing an empty gap on pages with little content.
+     width: 100% is required because mx-auto on a flex item in a flex column
+     causes shrink-to-fit, making the wrapper narrower than the viewport and
+     giving each page a different width based on its content. */
+  body > div.hextra-max-page-width {
+    flex: 1;
+    width: 100%;
+  }
+  /* Push the footer to the bottom of the flex column on short pages. */
+  .hextra-footer {
+    margin-top: auto;
+  }
+
+  /* Force the article to fill all remaining width in the page wrapper after
+     the sidebar and TOC have taken their fixed 16rem each, so the content
+     area is always the same width regardless of page content. */
+  .hextra-max-page-width > article {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Ensure the content column fills the article and never collapses
+     below 600px (falls back to 100% on narrow viewports). */
+  main#content {
+    flex: 1;
+    min-width: min(600px, 100%);
+  }
+</style>

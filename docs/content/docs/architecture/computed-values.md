@@ -1,4 +1,7 @@
-# Computed Values
+---
+title: Computed Values
+weight: 3
+---
 
 ## Problem
 
@@ -15,7 +18,7 @@ are purely derived.
 
 ## Decision
 
-Add a top-level `computed:` section to `project.yaml`. Keys in `computed:` are:
+Add a top-level `computed:` section to `project.yml`. Keys in `computed:` are:
 - Evaluated **after** all user inputs are finalised (post-prompt)
 - **Never** shown as prompts
 - **Not** overridable via `--values` or `--arg`
@@ -70,8 +73,8 @@ Rules:
 
 ```mermaid
 flowchart TD
-    A[load project.yaml] --> B["strip computed: and hooks: sections from user input map"]
-    B --> C["resolve referenced defaults\n(topological sort on {{ }} in string default values)"]
+    A[load project.yml] --> B["strip computed: and hooks: sections from user input map"]
+    B --> C["resolve referenced defaults\n(topological sort on template expressions in string defaults)"]
     C --> D[merge --values file overrides]
     D --> E[merge --arg flag overrides]
     E --> F["iterative prompting via huh\n(unreferenced variables skipped entirely)"]

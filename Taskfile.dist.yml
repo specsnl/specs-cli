@@ -76,6 +76,37 @@ tasks:
         vars:
           SUB_CMD: release --snapshot --clean
 
+  docs:build:
+    desc: Build the static documentation site into docs/public/
+    cmds:
+      - task: dc:run:hugo
+        vars:
+          SUB_CMD: --minify
+
+  docs:serve:
+    desc: Start Hugo development server with live reload (http://localhost:1313)
+    cmds:
+      - task: dc
+        vars:
+          SUB_CMD: "run --rm --service-ports hugo server --bind 0.0.0.0"
+
+  docs:preview:
+    desc: Build and serve the static docs site locally (http://localhost:8080)
+    cmds:
+      - task: dc:run:hugo
+        vars:
+          SUB_CMD: --minify --baseURL http://localhost:8080
+      - task: dc
+        vars:
+          SUB_CMD: "run --rm --service-ports docs-preview"
+
+  docs:mod:tidy:
+    desc: Tidy Hugo module dependencies and regenerate go.sum
+    cmds:
+      - task: dc:run:hugo
+        vars:
+          SUB_CMD: mod tidy
+
   cleanup:
     desc: Cleanup workspace
     summary: |

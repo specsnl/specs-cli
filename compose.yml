@@ -1,6 +1,7 @@
 volumes:
   go-mod:
   go-build-cache:
+  hugo-mod:
 
 services:
   go-builder:
@@ -30,3 +31,23 @@ services:
       - .:/src
       - go-mod:/go/pkg/mod
       - go-build-cache:/root/.cache/go-build
+
+  hugo:
+    profiles: ["docs"]
+    # Latest version: https://hub.docker.com/r/hugomods/hugo/tags
+    image: hugomods/hugo:debian-go-git-non-root-0.161.1
+    working_dir: /src/docs
+    volumes:
+      - .:/src
+      - hugo-mod:/root/go/pkg/mod
+    ports:
+      - "1313:1313"
+
+  docs-preview:
+    profiles: ["docs"]
+    image: nginx:alpine
+    volumes:
+      - ./docs/public:/usr/share/nginx/html:ro
+      - ./docs/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "8080:80"

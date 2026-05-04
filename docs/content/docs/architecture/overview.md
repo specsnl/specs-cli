@@ -1,4 +1,7 @@
-# Specs CLI — Architecture
+---
+title: Overview
+weight: 1
+---
 
 ## Goals
 
@@ -6,7 +9,7 @@
 - Replace the prompt layer with huh (Charm)
 - Replace output styling with lipgloss
 - Use configurable template delimiters (default `{{ }}`)
-- Replace `project.json` with `project.yaml`
+- Replace `project.json` with `project.yml`
 - Add hooks, `--values`/`--arg`, XDG config, `.specsverbatim`, conditional files
 - Add computed values (post-prompt derived context keys)
 - Add `specs use` one-step command
@@ -42,7 +45,7 @@ specs-cli/
     │   └── version.go
     ├── template/                 # template loading & execution engine
     │   ├── template.go           # Get(), Execute(), configurable delimiters
-    │   ├── context.go            # project.yaml parsing, referenced defaults, computed values
+    │   ├── context.go            # project.yml parsing, referenced defaults, computed values
     │   ├── verbatim.go           # .specsverbatim loading & matching
     │   ├── functions.go          # FuncMap (custom + Sprout)
     │   ├── specsregistry.go      # custom Sprout registry (hostname, password, etc.)
@@ -123,11 +126,11 @@ SSH clones are authenticated automatically via SSH agent or standard key files
 
 ```
 <template-root>/
-├── project.yaml              # variable schema, defaults, optional inline hooks
+├── project.yml              # variable schema, defaults, optional inline hooks
 ├── .specsverbatim            # verbatim-copy glob patterns (opt-out from rendering)
 ├── __metadata.json           # written by specs on download/save
 ├── __status.json             # remote status cache (written by specs template list)
-├── hooks/                    # script-based hooks (mutually exclusive with hooks: in project.yaml)
+├── hooks/                    # script-based hooks (mutually exclusive with hooks: in project.yml)
 │   ├── pre-use.sh
 │   └── post-use.sh
 └── template/
@@ -147,7 +150,7 @@ SSH clones are authenticated automatically via SSH agent or standard key files
 $XDG_CONFIG_HOME/specs/          (default: ~/.config/specs/)
 └── templates/
     └── <name>/
-        ├── project.yaml
+        ├── project.yml
         ├── .specsverbatim
         ├── __metadata.json
         ├── __status.json
@@ -162,7 +165,7 @@ $XDG_CONFIG_HOME/specs/          (default: ~/.config/specs/)
 ```mermaid
 flowchart TD
     A[validate args & flags] --> B[check registry initialised + name exists]
-    B --> C["template.Get(registry/name)\nparses project.yaml, resolves referenced defaults,\nloads .specsverbatim, analyses AST for conditionals"]
+    B --> C["template.Get(registry/name)\nparses project.yml, resolves referenced defaults,\nloads .specsverbatim, analyses AST for conditionals"]
     C --> D["hooks.Load(templateRoot, rawConfig)"]
     D --> E[merge --values + --arg overrides into context]
     E --> F["huh form: iterative prompting\n(unconditional vars first, then conditional by dependency layer)"]
@@ -196,7 +199,7 @@ flowchart TD
 flowchart TD
     A["filepath.WalkDir(template/)"] --> B{ignoredFile?}
     B -->|yes| Skip1[skip]
-    B -->|no| C[render path as template with \{\{ \}\} engine]
+    B -->|no| C[render path as template]
     C --> D{render error or result empty?}
     D -->|yes| Skip2[skip]
     D -->|no| E{any path segment empty?}
@@ -207,7 +210,7 @@ flowchart TD
     G -->|yes| Copy1[copy verbatim]
     G -->|no| H{isBinary?}
     H -->|yes| Copy2[copy verbatim]
-    H -->|no| I[render content with \{\{ \}\} engine]
+    H -->|no| I[render content as template]
     I --> J{whitespace-only result?}
     J -->|yes| Skip4[skip — do not create file]
     J -->|no| Write[write to dest]
@@ -219,8 +222,8 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[load project.yaml] --> B["strip computed: and hooks: sections from user input map"]
-    B --> C["resolve referenced defaults\n(topological sort on {{ }} in string default values)"]
+    A[load project.yml] --> B["strip computed: and hooks: sections from user input map"]
+    B --> C["resolve referenced defaults\n(topological sort on template expressions in string defaults)"]
     C --> D[merge --values file overrides]
     D --> E[merge --arg flag overrides]
     E --> F["iterative prompting via huh\n(unreferenced variables skipped entirely)"]
@@ -269,7 +272,7 @@ type Hooks struct {
 
 // Load reads hook definitions from templateRoot.
 // Sources (mutually exclusive — error if both are present):
-//   - Inline: the "hooks" key in projectConfig (parsed from project.yaml)
+//   - Inline: the "hooks" key in projectConfig (parsed from project.yml)
 //   - Directory: hooks/pre-use.sh and hooks/post-use.sh under templateRoot
 func Load(templateRoot string, projectConfig map[string]any, envPrefix string) (*Hooks, error)
 
