@@ -23,7 +23,7 @@ func makeTemplateWithVar(t *testing.T, varName, defaultVal string) string {
 	if err := os.WriteFile(filepath.Join(dir, specs.ProjectYAMLFile), []byte(project), 0644); err != nil {
 		t.Fatal(err)
 	}
-	content := "hello [[." + varName + "]]"
+	content := "hello {{." + varName + "}}"
 	if err := os.WriteFile(filepath.Join(tmplDir, "out.txt"), []byte(content), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -171,7 +171,7 @@ func TestTemplateUse_ConditionalSkipped(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, specs.ProjectYAMLFile), []byte(project), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(tmplDir, "out.txt"), []byte("[[if .UseDB]]DB=[[.DbName]][[end]]"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(tmplDir, "out.txt"), []byte("{{if .UseDB}}DB={{.DbName}}{{end}}"), 0644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -201,7 +201,7 @@ func TestTemplateUse_ConditionalIncluded(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, specs.ProjectYAMLFile), []byte(project), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(tmplDir, "out.txt"), []byte("[[if .UseDB]]DB=[[.DbName]][[end]]"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(tmplDir, "out.txt"), []byte("{{if .UseDB}}DB={{.DbName}}{{end}}"), 0644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -231,7 +231,7 @@ func TestTemplateUse_ConditionalArgOverride(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, specs.ProjectYAMLFile), []byte(project), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(tmplDir, "out.txt"), []byte("[[if .UseDB]]DB=[[.DbName]][[end]]"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(tmplDir, "out.txt"), []byte("{{if .UseDB}}DB={{.DbName}}{{end}}"), 0644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -250,7 +250,7 @@ func TestTemplateUse_ConditionalArgOverride(t *testing.T) {
 
 // makeConditionalTemplate builds a template with a boolean gate and a nested eq gate.
 // Schema: UseDB bool, DbType string (default "pg"), PgPort string, MyPort string.
-// Template: [[if .UseDB]][[if eq .DbType "pg"]]pg=[[.PgPort]][[else]]my=[[.MyPort]][[end]][[end]]
+// Template: {{if .UseDB}}{{if eq .DbType "pg"}}pg={{.PgPort}}{{else}}my={{.MyPort}}{{end}}{{end}}
 func makeConditionalTemplate(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -262,7 +262,7 @@ func makeConditionalTemplate(t *testing.T) string {
 	if err := os.WriteFile(filepath.Join(dir, specs.ProjectYAMLFile), []byte(project), 0644); err != nil {
 		t.Fatal(err)
 	}
-	content := `[[if .UseDB]][[if eq .DbType "pg"]]pg=[[.PgPort]][[else]]my=[[.MyPort]][[end]][[end]]`
+	content := `{{if .UseDB}}{{if eq .DbType "pg"}}pg={{.PgPort}}{{else}}my={{.MyPort}}{{end}}{{end}}`
 	if err := os.WriteFile(filepath.Join(tmplDir, "out.txt"), []byte(content), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -325,7 +325,7 @@ func TestTemplateUse_UnreferencedVarNotRequired(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, specs.ProjectYAMLFile), []byte(project), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(tmplDir, "out.txt"), []byte("hello [[.Name]]"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(tmplDir, "out.txt"), []byte("hello {{.Name}}"), 0644); err != nil {
 		t.Fatal(err)
 	}
 	target := t.TempDir()
@@ -351,11 +351,11 @@ func TestTemplateUse_ComputedOnlyVar_IsUsed(t *testing.T) {
 	if err := os.MkdirAll(tmplDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	project := "Name: acme\ncomputed:\n  DbName: \"[[.Name]]_db\"\n"
+	project := "Name: acme\ncomputed:\n  DbName: \"{{.Name}}_db\"\n"
 	if err := os.WriteFile(filepath.Join(dir, specs.ProjectYAMLFile), []byte(project), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(tmplDir, "out.txt"), []byte("db=[[.DbName]]"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(tmplDir, "out.txt"), []byte("db={{.DbName}}"), 0644); err != nil {
 		t.Fatal(err)
 	}
 	target := t.TempDir()
@@ -385,7 +385,7 @@ func makeTemplateWithSelectVar(t *testing.T, varName string, options []string) s
 	if err := os.WriteFile(filepath.Join(dir, specs.ProjectYAMLFile), []byte(project), 0644); err != nil {
 		t.Fatal(err)
 	}
-	content := "selected [[." + varName + "]]"
+	content := "selected {{." + varName + "}}"
 	if err := os.WriteFile(filepath.Join(tmplDir, "out.txt"), []byte(content), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -432,11 +432,11 @@ func TestTemplateUse_ComputedAvailable(t *testing.T) {
 	if err := os.MkdirAll(tmplDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	project := "Name: hello\ncomputed:\n  Upper: \"[[ toUpper .Name ]]\"\n"
+	project := "Name: hello\ncomputed:\n  Upper: \"{{ toUpper .Name }}\"\n"
 	if err := os.WriteFile(filepath.Join(dir, specs.ProjectYAMLFile), []byte(project), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(tmplDir, "out.txt"), []byte("[[.Upper]]"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(tmplDir, "out.txt"), []byte("{{.Upper}}"), 0644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -463,7 +463,7 @@ func TestTemplateUse_ProjectYMLFile(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, specs.ProjectYMLFile), []byte("Name: from-yml\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(tmplDir, "out.txt"), []byte("[[.Name]]"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(tmplDir, "out.txt"), []byte("{{.Name}}"), 0644); err != nil {
 		t.Fatal(err)
 	}
 

@@ -18,9 +18,9 @@ import (
 
 // LoadUserContext loads project.yaml (or project.json as fallback) from templateRoot.
 // It strips the reserved "computed" and "hooks" top-level keys, then resolves any
-// referenced defaults (string values containing "[[") in topological order.
+// referenced defaults (string values containing the left delimiter) in topological order.
 // Returns the user input map and the raw computed definitions separately.
-func LoadUserContext(templateRoot string, funcMap texttemplate.FuncMap) (userCtx map[string]any, computedDefs map[string]string, err error) {
+func LoadUserContext(templateRoot string, funcMap texttemplate.FuncMap, delims specs.Delimiters) (userCtx map[string]any, computedDefs map[string]string, err error) {
 	raw, err := loadContextFile(templateRoot)
 	if err != nil {
 		return nil, nil, err
@@ -31,16 +31,41 @@ func LoadUserContext(templateRoot string, funcMap texttemplate.FuncMap) (userCtx
 		return nil, nil, err
 	}
 
-	delete(raw, "hooks") // consumed by the hook runner, not a template variable
+	delete(raw, "hooks")                      // consumed by the hook runner, not a template variable
+	delete(raw, specs.ProjectDelimitersKey)   // consumed by Get(); must not appear as a user variable
 
-	userCtx, err = resolveReferencedDefaults(raw, funcMap)
+	userCtx, err = resolveReferencedDefaults(raw, funcMap, delims)
 	return userCtx, computedDefs, err
+}
+
+// ExtractProjectDelimiters reads project.yaml and returns the delimiters configured
+// under the __delimiters key, falling back to fallback when the key is absent.
+// Returns an error if __delimiters is present but malformed.
+func ExtractProjectDelimiters(templateRoot string, fallback specs.Delimiters) (specs.Delimiters, error) {
+	raw, err := loadContextFile(templateRoot)
+	if err != nil {
+		return fallback, err
+	}
+	v, ok := raw[specs.ProjectDelimitersKey]
+	if !ok {
+		return fallback, nil
+	}
+	m, ok := v.(map[string]any)
+	if !ok {
+		return fallback, specs.ErrInvalidDelimiters
+	}
+	left, leftOK := m["left"].(string)
+	right, rightOK := m["right"].(string)
+	if !leftOK || !rightOK || left == "" || right == "" {
+		return fallback, specs.ErrInvalidDelimiters
+	}
+	return specs.Delimiters{Left: left, Right: right}, nil
 }
 
 // ApplyComputed resolves computed definitions against the finalised context (post-prompt)
 // and returns a new map containing both user inputs and computed values.
 // Called after prompting and --values/--arg overrides are complete.
-func ApplyComputed(ctx map[string]any, defs map[string]string, funcMap texttemplate.FuncMap) (map[string]any, error) {
+func ApplyComputed(ctx map[string]any, defs map[string]string, funcMap texttemplate.FuncMap, delims specs.Delimiters) (map[string]any, error) {
 	if len(defs) == 0 {
 		return ctx, nil
 	}
@@ -53,7 +78,7 @@ func ApplyComputed(ctx map[string]any, defs map[string]string, funcMap texttempl
 
 	deps := make(map[string][]string, len(keys))
 	for k, expr := range defs {
-		deps[k] = extractRefs(expr, funcMap)
+		deps[k] = extractRefs(expr, funcMap, delims)
 	}
 
 	sorted, err := topoSort(keys, deps)
@@ -67,7 +92,7 @@ func ApplyComputed(ctx map[string]any, defs map[string]string, funcMap texttempl
 
 	for _, k := range sorted {
 		expr := defs[k]
-		val, err := renderExpr(expr, result, funcMap)
+		val, err := renderExpr(expr, result, funcMap, delims)
 		if err != nil {
 			return nil, fmt.Errorf("computed %q: %w", k, err)
 		}
@@ -149,13 +174,13 @@ func extractComputed(raw map[string]any) (map[string]string, error) {
 	return defs, nil
 }
 
-// resolveReferencedDefaults renders string values containing "[[" in topological order
-// so that each key's pre-fill value is correct before the user is prompted.
-func resolveReferencedDefaults(ctx map[string]any, funcMap texttemplate.FuncMap) (map[string]any, error) {
+// resolveReferencedDefaults renders string values containing the left delimiter in
+// topological order so that each key's pre-fill value is correct before the user is prompted.
+func resolveReferencedDefaults(ctx map[string]any, funcMap texttemplate.FuncMap, delims specs.Delimiters) (map[string]any, error) {
 	// Find keys whose string value is a template expression.
 	var refKeys []string
 	for k, v := range ctx {
-		if s, ok := v.(string); ok && strings.Contains(s, "[[") {
+		if s, ok := v.(string); ok && strings.Contains(s, delims.Left) {
 			refKeys = append(refKeys, k)
 		}
 	}
@@ -165,7 +190,7 @@ func resolveReferencedDefaults(ctx map[string]any, funcMap texttemplate.FuncMap)
 
 	deps := make(map[string][]string, len(refKeys))
 	for _, k := range refKeys {
-		deps[k] = extractRefs(ctx[k].(string), funcMap)
+		deps[k] = extractRefs(ctx[k].(string), funcMap, delims)
 	}
 
 	sorted, err := topoSort(refKeys, deps)
@@ -174,7 +199,7 @@ func resolveReferencedDefaults(ctx map[string]any, funcMap texttemplate.FuncMap)
 	}
 
 	for _, k := range sorted {
-		val, err := renderExpr(ctx[k].(string), ctx, funcMap)
+		val, err := renderExpr(ctx[k].(string), ctx, funcMap, delims)
 		if err != nil {
 			return nil, fmt.Errorf("referenced default %q: %w", k, err)
 		}
@@ -241,14 +266,14 @@ func topoSort(keys []string, deps map[string][]string) ([]string, error) {
 	return sorted, nil
 }
 
-// extractRefs parses a "[[ ]]"-delimited template expression and returns all
+// extractRefs parses a delimited template expression and returns all
 // top-level .Key references found in it.
-func extractRefs(expr string, funcMap texttemplate.FuncMap) []string {
-	if !strings.Contains(expr, "[[") {
+func extractRefs(expr string, funcMap texttemplate.FuncMap, delims specs.Delimiters) []string {
+	if !strings.Contains(expr, delims.Left) {
 		return nil
 	}
 	funcs := map[string]any(funcMap)
-	tree, err := parse.New("t").Parse(expr, "[[", "]]", map[string]*parse.Tree{}, funcs)
+	tree, err := parse.New("t").Parse(expr, delims.Left, delims.Right, map[string]*parse.Tree{}, funcs)
 	if err != nil || tree == nil || tree.Root == nil {
 		return nil // parse errors surface during actual rendering
 	}
@@ -307,10 +332,10 @@ func walkForRefs(node parse.Node, seen map[string]bool, refs *[]string) {
 	}
 }
 
-// renderExpr renders a single "[[ ]]"-delimited template expression against ctx.
-func renderExpr(expr string, ctx map[string]any, funcMap texttemplate.FuncMap) (string, error) {
+// renderExpr renders a single delimited template expression against ctx.
+func renderExpr(expr string, ctx map[string]any, funcMap texttemplate.FuncMap, delims specs.Delimiters) (string, error) {
 	tmpl, err := texttemplate.New("").
-		Delims("[[", "]]").
+		Delims(delims.Left, delims.Right).
 		Funcs(funcMap).
 		Option("missingkey=error").
 		Parse(expr)

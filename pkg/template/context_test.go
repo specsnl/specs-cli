@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/specsnl/specs-cli/pkg/specs"
 	pkgtemplate "github.com/specsnl/specs-cli/pkg/template"
 )
 
@@ -33,7 +34,7 @@ func TestLoadUserContext_String(t *testing.T) {
 	dir := t.TempDir()
 	writeProjectYAML(t, dir, "Name: my-project\n")
 
-	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()))
+	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -46,7 +47,7 @@ func TestLoadUserContext_Bool(t *testing.T) {
 	dir := t.TempDir()
 	writeProjectYAML(t, dir, "UseSonar: false\n")
 
-	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()))
+	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -63,7 +64,7 @@ License:
   - GPL
 `)
 
-	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()))
+	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -80,7 +81,7 @@ func TestLoadUserContext_JSONFallback(t *testing.T) {
 	dir := t.TempDir()
 	writeProjectJSON(t, dir, `{"Name": "from-json"}`)
 
-	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()))
+	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -93,10 +94,10 @@ func TestLoadUserContext_ReferencedDefault(t *testing.T) {
 	dir := t.TempDir()
 	writeProjectYAML(t, dir, `
 Name: My App
-Slug: "[[toKebabCase .Name]]"
+Slug: "{{toKebabCase .Name}}"
 `)
 
-	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()))
+	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -108,11 +109,11 @@ Slug: "[[toKebabCase .Name]]"
 func TestLoadUserContext_CyclicReference(t *testing.T) {
 	dir := t.TempDir()
 	writeProjectYAML(t, dir, `
-A: "[[.B]]"
-B: "[[.A]]"
+A: "{{.B}}"
+B: "{{.A}}"
 `)
 
-	_, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()))
+	_, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
 	if err == nil {
 		t.Fatal("expected error for cyclic reference, got nil")
 	}
@@ -127,7 +128,7 @@ hooks:
     - echo hi
 `)
 
-	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()))
+	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -144,7 +145,7 @@ computed:
   Env: prod
 `)
 
-	ctx, computedDefs, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()))
+	ctx, computedDefs, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -168,7 +169,7 @@ computed:
   Name: bar
 `)
 
-	_, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()))
+	_, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
 	if err == nil {
 		t.Fatal("expected error for computed key conflict, got nil")
 	}
@@ -178,15 +179,15 @@ func TestApplyComputed_Simple(t *testing.T) {
 	dir := t.TempDir()
 	writeProjectYAML(t, dir, `Name: acme
 computed:
-  Env: "[[toUpper .Name]]"
+  Env: "{{toUpper .Name}}"
 `)
 
-	ctx, defs, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()))
+	ctx, defs, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("LoadUserContext: %v", err)
 	}
 
-	result, err := pkgtemplate.ApplyComputed(ctx, defs, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()))
+	result, err := pkgtemplate.ApplyComputed(ctx, defs, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("ApplyComputed: %v", err)
 	}
@@ -203,16 +204,16 @@ func TestApplyComputed_Chain(t *testing.T) {
 	dir := t.TempDir()
 	writeProjectYAML(t, dir, `Name: acme
 computed:
-  Slug: "[[toKebabCase .Name]]"
-  DbName: "[[.Slug]]_production"
+  Slug: "{{toKebabCase .Name}}"
+  DbName: "{{.Slug}}_production"
 `)
 
-	ctx, defs, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()))
+	ctx, defs, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("LoadUserContext: %v", err)
 	}
 
-	result, err := pkgtemplate.ApplyComputed(ctx, defs, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()))
+	result, err := pkgtemplate.ApplyComputed(ctx, defs, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("ApplyComputed: %v", err)
 	}
@@ -229,16 +230,16 @@ func TestApplyComputed_Cycle(t *testing.T) {
 	writeProjectYAML(t, dir, `
 Name: x
 computed:
-  A: "[[.B]]"
-  B: "[[.A]]"
+  A: "{{.B}}"
+  B: "{{.A}}"
 `)
 
-	ctx, defs, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()))
+	ctx, defs, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("LoadUserContext: %v", err)
 	}
 
-	_, err = pkgtemplate.ApplyComputed(ctx, defs, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()))
+	_, err = pkgtemplate.ApplyComputed(ctx, defs, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
 	if err == nil {
 		t.Fatal("expected error for computed cycle, got nil")
 	}
@@ -246,7 +247,7 @@ computed:
 
 func TestApplyComputed_NoDefs(t *testing.T) {
 	ctx := map[string]any{"Name": "test"}
-	result, err := pkgtemplate.ApplyComputed(ctx, nil, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()))
+	result, err := pkgtemplate.ApplyComputed(ctx, nil, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -259,7 +260,7 @@ func TestLoadUserContext_YMLExtension(t *testing.T) {
 	dir := t.TempDir()
 	writeProjectYML(t, dir, "Name: from-yml\n")
 
-	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()))
+	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -268,12 +269,28 @@ func TestLoadUserContext_YMLExtension(t *testing.T) {
 	}
 }
 
+func TestLoadUserContext_DelimitersKeyStripped(t *testing.T) {
+	dir := t.TempDir()
+	writeProjectYAML(t, dir, "Name: test\n__delimiters:\n  left: \"[[\"\n  right: \"]]\"\n")
+
+	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, ok := ctx["__delimiters"]; ok {
+		t.Error("__delimiters should be stripped from user context")
+	}
+	if ctx["Name"] != "test" {
+		t.Errorf("ctx[Name] = %q, want %q", ctx["Name"], "test")
+	}
+}
+
 func TestLoadUserContext_AmbiguousProjectFile(t *testing.T) {
 	dir := t.TempDir()
 	writeProjectYAML(t, dir, "Name: from-yaml\n")
 	writeProjectYML(t, dir, "Name: from-yml\n")
 
-	_, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()))
+	_, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
 	if err == nil {
 		t.Fatal("expected error for ambiguous project file, got nil")
 	}

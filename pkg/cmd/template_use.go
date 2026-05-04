@@ -105,14 +105,14 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 		resolveSelectDefaults(ctx)
 	}
 
-	ctx, err = pkgtemplate.ApplyComputed(ctx, tmpl.ComputedDefs, tmpl.FuncMap())
+	ctx, err = pkgtemplate.ApplyComputed(ctx, tmpl.ComputedDefs, tmpl.FuncMap(), tmpl.Delims())
 	if err != nil {
 		return err
 	}
 
 	if !opts.noHooks && h.HasPreUse() {
 		a.Output.Info("running pre-use hook…")
-		if err := h.Run("pre-use", templateRoot, ctx, tmpl.FuncMap()); err != nil {
+		if err := h.Run("pre-use", templateRoot, ctx, tmpl.FuncMap(), tmpl.Delims()); err != nil {
 			return err
 		}
 	}
@@ -138,7 +138,7 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 
 	if !opts.noHooks && h.HasPostUse() {
 		a.Output.Info("running post-use hook…")
-		if err := h.Run("post-use", targetDir, ctx, tmpl.FuncMap()); err != nil {
+		if err := h.Run("post-use", targetDir, ctx, tmpl.FuncMap(), tmpl.Delims()); err != nil {
 			return err
 		}
 	}

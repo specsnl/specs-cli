@@ -99,7 +99,7 @@ func (t *Template) Validate() ([]ValidationIssue, error) {
 		reportPath := filepath.ToSlash(relFromRoot)
 
 		// Check the entry's name as a path template expression.
-		for _, k := range extractRefs(d.Name(), t.funcMap) {
+		for _, k := range extractRefs(d.Name(), t.funcMap, t.cfg.delims()) {
 			if !allDefined[k] {
 				addIssue(ErrUnknownVariable, k, reportPath)
 			}
@@ -114,7 +114,7 @@ func (t *Template) Validate() ([]ValidationIssue, error) {
 		if readErr != nil {
 			return readErr
 		}
-		for _, k := range extractRefs(string(data), t.funcMap) {
+		for _, k := range extractRefs(string(data), t.funcMap, t.cfg.delims()) {
 			if !allDefined[k] {
 				addIssue(ErrUnknownVariable, k, reportPath)
 			}

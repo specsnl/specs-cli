@@ -27,7 +27,7 @@ func buildMinimalTemplate(t *testing.T, dir, yamlContent, filename, fileContent 
 
 func TestUse_LocalPath(t *testing.T) {
 	srcDir := t.TempDir()
-	buildMinimalTemplate(t, srcDir, "Name: world\n", "hello.txt", "Hello [[.Name]]")
+	buildMinimalTemplate(t, srcDir, "Name: world\n", "hello.txt", "Hello {{.Name}}")
 	targetDir := t.TempDir()
 
 	_, err := executeCmd("use", "--use-defaults", "file:"+srcDir, targetDir)
@@ -46,7 +46,7 @@ func TestUse_LocalPath(t *testing.T) {
 
 func TestUse_RelativePath(t *testing.T) {
 	srcDir := t.TempDir()
-	buildMinimalTemplate(t, srcDir, "Name: relative\n", "out.txt", "[[.Name]]")
+	buildMinimalTemplate(t, srcDir, "Name: relative\n", "out.txt", "{{.Name}}")
 	targetDir := t.TempDir()
 
 	_, err := executeCmd("use", "--use-defaults", srcDir, targetDir)
@@ -65,7 +65,7 @@ func TestUse_RelativePath(t *testing.T) {
 
 func TestUse_UseDefaults(t *testing.T) {
 	srcDir := t.TempDir()
-	buildMinimalTemplate(t, srcDir, "Name: default-val\n", "out.txt", "[[.Name]]")
+	buildMinimalTemplate(t, srcDir, "Name: default-val\n", "out.txt", "{{.Name}}")
 	targetDir := t.TempDir()
 
 	_, err := executeCmd("use", "--use-defaults", "file:"+srcDir, targetDir)
@@ -84,7 +84,7 @@ func TestUse_UseDefaults(t *testing.T) {
 
 func TestUse_ArgOverride(t *testing.T) {
 	srcDir := t.TempDir()
-	buildMinimalTemplate(t, srcDir, "Name: original\n", "out.txt", "[[.Name]]")
+	buildMinimalTemplate(t, srcDir, "Name: original\n", "out.txt", "{{.Name}}")
 	targetDir := t.TempDir()
 
 	_, err := executeCmd("use", "--use-defaults", "--arg", "Name=test", "file:"+srcDir, targetDir)
@@ -103,7 +103,7 @@ func TestUse_ArgOverride(t *testing.T) {
 
 func TestUse_ValuesFile(t *testing.T) {
 	srcDir := t.TempDir()
-	buildMinimalTemplate(t, srcDir, "Name: original\n", "out.txt", "[[.Name]]")
+	buildMinimalTemplate(t, srcDir, "Name: original\n", "out.txt", "{{.Name}}")
 
 	vf := filepath.Join(t.TempDir(), "vals.json")
 	data, _ := json.Marshal(map[string]string{"Name": "from-file"})
@@ -135,7 +135,7 @@ func TestUse_InvalidSource(t *testing.T) {
 
 func TestUse_TempDirCleanedUp(t *testing.T) {
 	srcDir := t.TempDir()
-	buildMinimalTemplate(t, srcDir, "Name: x\n", "out.txt", "[[.Name]]")
+	buildMinimalTemplate(t, srcDir, "Name: x\n", "out.txt", "{{.Name}}")
 	targetDir := t.TempDir()
 
 	// Capture temp dir count before.
@@ -174,7 +174,7 @@ func TestUse_NoRegistryEntry(t *testing.T) {
 	withTempRegistry(t)
 
 	srcDir := t.TempDir()
-	buildMinimalTemplate(t, srcDir, "Name: world\n", "hello.txt", "Hello [[.Name]]")
+	buildMinimalTemplate(t, srcDir, "Name: world\n", "hello.txt", "Hello {{.Name}}")
 	targetDir := t.TempDir()
 
 	_, err := executeCmd("use", "--use-defaults", "file:"+srcDir, targetDir)
@@ -198,7 +198,7 @@ func TestUse_ProjectYMLFile(t *testing.T) {
 	if err := os.MkdirAll(tplDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(tplDir, "out.txt"), []byte("[[.Name]]"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(tplDir, "out.txt"), []byte("{{.Name}}"), 0644); err != nil {
 		t.Fatal(err)
 	}
 	targetDir := t.TempDir()
