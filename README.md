@@ -99,7 +99,7 @@ Manage a local registry of named templates. Unlike `specs use`, downloaded templ
 
 `template download` and `template save` accept `-f` / `--force` to overwrite an existing template with the same name.
 
-`template list` accepts `--dont-prettify` to output tab-separated plain text instead of a styled table.
+For machine-readable `list` output, use the global `--output json` flag (see [Global flags](#global-flags)).
 
 ### Global flags
 
@@ -108,6 +108,7 @@ Manage a local registry of named templates. Unlike `specs use`, downloaded templ
 | `--debug` | Enable debug-level logging |
 | `--safe-mode` | Disable env/filesystem functions and skip hooks |
 | `--no-env-prefix` | Remove the `SPECS_` prefix from hook environment variables |
+| `--output` / `-o` | Output format: `pretty` (default, styled) or `json` (NDJSON, for scripting) |
 
 ---
 
@@ -119,7 +120,7 @@ A template is a directory with this layout:
 my-template/
 ├── project.yaml        # Variable schema, defaults, and hooks
 └── template/           # Files and directories to render
-    ├── [[ projectName ]]/
+    ├── [[ .projectName ]]/
     │   └── main.go
     └── README.md
 ```
@@ -246,9 +247,14 @@ The `<source>` argument in `specs use` and `specs template download` accepts:
 | GitHub shorthand | `github:user/repo` |
 | GitHub + branch | `github:user/repo:main` |
 | HTTPS URL | `https://github.com/user/repo` |
-| SSH | `git@github.com:user/repo` |
+| SSH (SCP-style) | `git@github.com:user/repo` |
+| SSH URL | `ssh://git@github.com/user/repo` |
 | Local path | `./path/to/template` |
 | Local (explicit) | `file:./path/to/template` |
+
+Local paths are only accepted by `specs use`. For registering a local directory as a named template, use `specs template save` instead.
+
+SSH clones authenticate automatically via SSH agent (if `SSH_AUTH_SOCK` is set) or standard key files (`~/.ssh/id_ed25519`, `id_rsa`, `id_ecdsa`). Host key verification uses `~/.ssh/known_hosts`.
 
 ---
 
@@ -280,8 +286,8 @@ Sprout organizes its functions into registries. All of the following are availab
 
 | Category | Example functions |
 |----------|-------------------|
-| **Strings** | `upper`, `lower`, `camelcase`, `snakecase`, `trim`, `replace`, `contains`, `repeat` |
-| **Encoding** | `b64enc`, `b64dec`, `toJson`, `fromJson`, `toYaml`, `fromYaml` |
+| **Strings** | `toUpper`, `toLower`, `toPascalCase`, `toSnakeCase`, `toKebabCase`, `trim`, `replace`, `contains`, `repeat` |
+| **Encoding** | `base64Encode`, `base64Decode`, `toJson`, `fromJson`, `toYaml`, `fromYaml` |
 | **Regex** | `regexMatch`, `regexFind`, `regexReplaceAll` |
 | **Collections** | `list`, `dict`, `append`, `prepend`, `uniq`, `keys`, `values`, `merge` |
 | **Date & time** | `now`, `date`, `dateModify`, `dateAgo`, `duration` |
@@ -295,7 +301,9 @@ Sprout organizes its functions into registries. All of the following are availab
 | **Environment** | `env`, `expandenv` *(disabled in `--safe-mode`)* |
 | **Filesystem** | `osBase`, `osDir`, `osExt` *(disabled in `--safe-mode`)* |
 
-Full documentation for Sprout functions is available at [docs.gomsprout.dev](https://docs.gosprout.dev).
+> **Note:** Sprout uses Go-convention camelCase names. If you're migrating from sprig, see the [rename table](docs/architecture/library-decisions.md#template-functions-sprout) in the architecture docs.
+>
+> Full function reference: [docs.gosprout.dev](https://docs.gosprout.dev).
 
 ---
 
