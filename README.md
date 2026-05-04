@@ -99,7 +99,7 @@ Manage a local registry of named templates. Unlike `specs use`, downloaded templ
 
 `template download` and `template save` accept `-f` / `--force` to overwrite an existing template with the same name.
 
-`template list` accepts `--dont-prettify` to output tab-separated plain text instead of a styled table.
+For machine-readable `list` output, use the global `--output json` flag (see [Global flags](#global-flags)).
 
 ### Global flags
 
@@ -108,6 +108,7 @@ Manage a local registry of named templates. Unlike `specs use`, downloaded templ
 | `--debug` | Enable debug-level logging |
 | `--safe-mode` | Disable env/filesystem functions and skip hooks |
 | `--no-env-prefix` | Remove the `SPECS_` prefix from hook environment variables |
+| `--output` / `-o` | Output format: `pretty` (default, styled) or `json` (NDJSON, for scripting) |
 
 ---
 
@@ -119,7 +120,7 @@ A template is a directory with this layout:
 my-template/
 ├── project.yaml        # Variable schema, defaults, and hooks
 └── template/           # Files and directories to render
-    ├── [[ projectName ]]/
+    ├── {{ .projectName }}/
     │   └── main.go
     └── README.md
 ```
@@ -128,21 +129,31 @@ Both `project.yaml` (or `project.json`) and a `template/` directory are required
 
 ### Template delimiters
 
-Templates use `[[ ]]` instead of `{{ }}` to avoid conflicts with many common file formats:
+Templates use `{{ }}` by default — standard Go `text/template` syntax:
 
 ```
-Hello, [[ .projectName ]]!
+Hello, {{ .projectName }}!
 ```
 
-All standard Go template syntax works inside `[[ ]]`, including `if`, `range`, `with`, and pipes.
+All standard Go template syntax works inside `{{ }}`, including `if`, `range`, `with`, and pipes.
 
 Directory and file names are also templated:
 
 ```
-[[ .projectName ]]/
-  [[ if .useDocker ]]Dockerfile[[ end ]]
+{{ .projectName }}/
+  {{ if .useDocker }}Dockerfile{{ end }}
   main.go
 ```
+
+To avoid conflicts with tools that also use `{{ }}` (e.g. GitHub Actions, Helm), add `__delimiters` to `project.yaml` to use a custom pair:
+
+```yaml
+__delimiters:
+  left: "[["
+  right: "]]"
+```
+
+With `[[ ]]` configured, `{{ }}` in your template files passes through unchanged.
 
 ---
 
@@ -169,18 +180,18 @@ license:
   - Apache-2.0
   - GPL-2.0
 
-# A string default can reference other variables using [[ ]] expressions
-dockerImage: "[[ hostname ]].azurecr.io/[[ .projectName ]]"
+# A string default can reference other variables using {{ }} expressions
+dockerImage: "{{ hostname }}.azurecr.io/{{ .projectName }}"
 
 # Computed values — derived after prompting, not shown to the user
 computed:
-  packagePath: "github.com/[[ username ]]/[[ .projectName ]]"
-  year: "[[ now | date \"2006\" ]]"
+  packagePath: "github.com/{{ username }}/{{ .projectName }}"
+  year: "{{ now | date \"2006\" }}"
 
 # Hooks — run before and after rendering
 hooks:
   pre-use:
-    - echo "Creating [[ .projectName ]]..."
+    - echo "Creating {{ .projectName }}..."
   post-use:
     - git init
     - go mod tidy
@@ -192,7 +203,7 @@ Entries under `computed:` are evaluated after all prompting is complete. They ad
 
 ### Conditional prompting
 
-`specs` analyzes your template files at runtime. Variables that only appear inside conditional blocks (`[[ if .someFlag ]]`) are only prompted when their condition is actually satisfied — keeping the interactive flow focused and minimal.
+`specs` analyzes your template files at runtime. Variables that only appear inside conditional blocks (`{{ if .someFlag }}`) are only prompted when their condition is actually satisfied — keeping the interactive flow focused and minimal.
 
 ### Hooks
 
@@ -206,7 +217,7 @@ echo "Initializing $SPECS_PROJECTNAME"
 git init
 ```
 
-Hook commands may use `[[ ]]` template expressions, which are rendered before execution. To skip hooks for a single run, pass `--no-hooks`.
+Hook commands may use `{{ }}` template expressions, which are rendered before execution. To skip hooks for a single run, pass `--no-hooks`.
 
 Alternatively, hooks can be defined as scripts in a `hooks/` directory at the template root (next to `project.yaml`):
 
@@ -246,9 +257,14 @@ The `<source>` argument in `specs use` and `specs template download` accepts:
 | GitHub shorthand | `github:user/repo` |
 | GitHub + branch | `github:user/repo:main` |
 | HTTPS URL | `https://github.com/user/repo` |
-| SSH | `git@github.com:user/repo` |
+| SSH (SCP-style) | `git@github.com:user/repo` |
+| SSH URL | `ssh://git@github.com/user/repo` |
 | Local path | `./path/to/template` |
 | Local (explicit) | `file:./path/to/template` |
+
+Local paths are only accepted by `specs use`. For registering a local directory as a named template, use `specs template save` instead.
+
+SSH clones authenticate automatically via SSH agent (if `SSH_AUTH_SOCK` is set) or standard key files (`~/.ssh/id_ed25519`, `id_rsa`, `id_ecdsa`). Host key verification uses `~/.ssh/known_hosts`.
 
 ---
 
@@ -269,9 +285,9 @@ Templates have access to 200+ functions provided by [Sprout](https://github.com/
 **Examples:**
 
 ```
-Default registry: [[ hostname ]].azurecr.io
-Author: [[ username ]]
-Secret key: [[ password 32 4 4 false false ]]
+Default registry: {{ hostname }}.azurecr.io
+Author: {{ username }}
+Secret key: {{ password 32 4 4 false false }}
 ```
 
 ### Sprout function categories
@@ -280,8 +296,8 @@ Sprout organizes its functions into registries. All of the following are availab
 
 | Category | Example functions |
 |----------|-------------------|
-| **Strings** | `upper`, `lower`, `camelcase`, `snakecase`, `trim`, `replace`, `contains`, `repeat` |
-| **Encoding** | `b64enc`, `b64dec`, `toJson`, `fromJson`, `toYaml`, `fromYaml` |
+| **Strings** | `toUpper`, `toLower`, `toPascalCase`, `toSnakeCase`, `toKebabCase`, `trim`, `replace`, `contains`, `repeat` |
+| **Encoding** | `base64Encode`, `base64Decode`, `toJson`, `fromJson`, `toYaml`, `fromYaml` |
 | **Regex** | `regexMatch`, `regexFind`, `regexReplaceAll` |
 | **Collections** | `list`, `dict`, `append`, `prepend`, `uniq`, `keys`, `values`, `merge` |
 | **Date & time** | `now`, `date`, `dateModify`, `dateAgo`, `duration` |
@@ -295,7 +311,9 @@ Sprout organizes its functions into registries. All of the following are availab
 | **Environment** | `env`, `expandenv` *(disabled in `--safe-mode`)* |
 | **Filesystem** | `osBase`, `osDir`, `osExt` *(disabled in `--safe-mode`)* |
 
-Full documentation for Sprout functions is available at [docs.gomsprout.dev](https://docs.gosprout.dev).
+> **Note:** Sprout uses Go-convention camelCase names. If you're migrating from sprig, see the [rename table](docs/architecture/library-decisions.md#template-functions-sprout) in the architecture docs.
+>
+> Full function reference: [docs.gosprout.dev](https://docs.gosprout.dev).
 
 ---
 
