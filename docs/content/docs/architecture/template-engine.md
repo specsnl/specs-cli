@@ -1,4 +1,7 @@
-# Specs CLI — Template Engine
+---
+title: Template Engine
+weight: 2
+---
 
 ## Template Directory Convention
 
@@ -6,7 +9,7 @@ Every specs template is a directory with this structure:
 
 ```
 <template-root>/
-├── project.yaml          # variable schema with defaults
+├── project.yml          # variable schema with defaults
 ├── .specsverbatim        # verbatim-copy glob patterns (opt-out from rendering)
 ├── __metadata.json       # written by specs (name, repo, created)
 └── template/             # the files that get rendered
@@ -21,7 +24,7 @@ Only the `template/` subdirectory is ever rendered and written to the target.
 
 ---
 
-## `project.yaml` — Context Schema
+## `project.yml` — Context Schema
 
 Defines the variables that specs collects from the user (or uses as defaults).
 
@@ -59,7 +62,7 @@ computed:
 
 ## Configurable Delimiters
 
-Specs uses `{{ }}` by default — standard Go `text/template` syntax. To avoid conflicts with tools that also use `{{ }}` (e.g. GitHub Actions, Helm), you can override the delimiters per template using the reserved `__delimiters` key in `project.yaml`:
+Specs uses `{{ }}` by default — standard Go `text/template` syntax. To avoid conflicts with tools that also use `{{ }}` (e.g. GitHub Actions, Helm), you can override the delimiters per template using the reserved `__delimiters` key in `project.yml`:
 
 ```yaml
 __delimiters:
@@ -116,7 +119,7 @@ template/
 | `UseSonarQube` | Rendered path | Result |
 |---|---|---|
 | `true` | `sonar-project.properties` | created |
-| `false` | `` (empty) | skipped |
+| `false` | *(empty)* | skipped |
 | `false` (badge.png) | `/badge.png` | skipped — empty segment |
 
 ---
@@ -127,23 +130,23 @@ template/
 flowchart TD
     A["Execute(targetDir)"] --> B["ApplyComputed if ComputedDefs non-empty\n(computed values resolved before walk)"]
     B --> C["filepath.WalkDir(template/)"]
-    D --> E{ignoredFile?}
-    E -->|yes| Skip1[skip]
-    E -->|no| F[render path as template with \{\{ \}\} engine]
-    F --> G{render error or result empty?}
-    G -->|yes| Skip2[skip]
-    G -->|no| H{any path segment empty?}
-    H -->|yes| Skip3[skip dir tree]
-    H -->|no| I{is directory?}
-    I -->|yes| Mkdir[os.MkdirAll]
-    I -->|no| J{matches .specsverbatim?}
-    J -->|yes| Copy1[copy verbatim]
-    J -->|no| K{isBinary?}
-    K -->|yes| Copy2[copy verbatim]
-    K -->|no| L[render content with \{\{ \}\} engine]
-    L --> M{whitespace-only result?}
-    M -->|yes| Skip4[skip — do not create file]
-    M -->|no| Write[write to dest]
+    C --> D{ignoredFile?}
+    D -->|yes| Skip1[skip]
+    D -->|no| E[render path as template]
+    E --> F{render error or result empty?}
+    F -->|yes| Skip2[skip]
+    F -->|no| G{any path segment empty?}
+    G -->|yes| Skip3[skip dir tree]
+    G -->|no| H{is directory?}
+    H -->|yes| Mkdir[os.MkdirAll]
+    H -->|no| I{matches .specsverbatim?}
+    I -->|yes| Copy1[copy verbatim]
+    I -->|no| J{isBinary?}
+    J -->|yes| Copy2[copy verbatim]
+    J -->|no| K[render content as template]
+    K --> L{whitespace-only result?}
+    L -->|yes| Skip4[skip — do not create file]
+    L -->|no| Write[write to dest]
 ```
 
 ### Binary Detection
@@ -212,7 +215,7 @@ are guarded behind conditions (see `pkg/template/analysis.go`). Prompting is ite
    This repeats until no more conditional variables can be resolved.
 
 Variables that appear nowhere in the template files or computed expressions are skipped
-entirely — they are never prompted regardless of their presence in `project.yaml`.
+entirely — they are never prompted regardless of their presence in `project.yml`.
 
 The condition types recognised by the AST analyser are:
 
@@ -241,7 +244,7 @@ Hooks run shell commands before and after `specs template use`. Two trigger poin
 
 Two mutually exclusive definition forms:
 
-**Form A — inline in `project.yaml`:**
+**Form A — inline in `project.yml`:**
 ```yaml
 hooks:
   pre-use:
@@ -258,7 +261,7 @@ hooks:
 **Form B — script files:**
 ```
 template-root/
-├── project.yaml
+├── project.yml
 ├── hooks/
 │   ├── pre-use.sh
 │   └── post-use.sh
@@ -295,7 +298,7 @@ display format for the `list` command.
 
 | Issue kind | Meaning |
 |---|---|
-| `unknown_variable` | A name used in a template file or path is **not defined** in `project.yaml` (neither variable nor computed). Reports the file path where the reference was found. |
+| `unknown_variable` | A name used in a template file or path is **not defined** in `project.yml` (neither variable nor computed). Reports the file path where the reference was found. |
 | `unused_variable` | A variable **defined** in the user input section is never referenced in any template file, path expression, or computed expression. |
 | `unused_computed` | A computed value **defined** under `computed:` is never referenced anywhere. |
 

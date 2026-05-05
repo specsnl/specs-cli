@@ -1,4 +1,7 @@
-# Specs CLI — Library Decisions
+---
+title: Library Decisions
+weight: 4
+---
 
 ## CLI Framework: Cobra (retained)
 
@@ -93,7 +96,7 @@ Backwards compatibility layer is **not** used.
 
 ## Config / Context Parsing: go-yaml
 
-**Decision:** `gopkg.in/yaml.v3` — replaces `encoding/json` for reading `project.yaml`.
+**Decision:** `gopkg.in/yaml.v3` — replaces `encoding/json` for reading `project.yml`.
 
 **Rationale:**
 - YAML supports comments, making template config files self-documenting.
@@ -105,7 +108,7 @@ Backwards compatibility layer is **not** used.
 `"8.4"` not `8.4` (YAML would parse the latter as `float64`).
 
 **Backward compatibility:** `project.json` is still supported as a fallback.
-`project.yaml` and `project.yml` are mutually exclusive — having both is an error.
+`project.yml` and `project.yaml` are mutually exclusive — having both is an error.
 
 ---
 
@@ -150,7 +153,7 @@ configDir := filepath.Join(xdg.ConfigHome, "specs")
 | `github.com/spf13/cobra` | CLI command tree |
 | `charm.land/huh/v2` | Interactive forms & prompts |
 | `charm.land/lipgloss/v2` | Output styling (logger + table renderer) |
-| `gopkg.in/yaml.v3` | `project.yaml` parsing and `--values` YAML files |
+| `gopkg.in/yaml.v3` | `project.yml` parsing and `--values` YAML files |
 | `github.com/go-sprout/sprout` | Extended template functions |
 | `github.com/go-git/go-git/v5` | Git clone for template download/upgrade |
 | `github.com/adrg/xdg` | Config/data directory resolution |
