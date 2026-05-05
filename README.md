@@ -2,6 +2,8 @@
 
 A general-purpose developer CLI for scaffolding projects from templates. Define variables, write template files, run hooks — `specs` handles the rest.
 
+**Documentation:** [cli.specs.dev](https://cli.specs.dev)
+
 - [Installation](#installation)
 - [Quick start](#quick-start)
 - [Commands](#commands)
