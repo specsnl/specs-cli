@@ -216,6 +216,11 @@ func (t *Template) renderName(name string, ctx map[string]any) (string, error) {
 // If the rendered content is whitespace-only, the destination file is not created.
 // Parse or execution errors are recorded as RenderWarnings and the file is copied verbatim.
 func (t *Template) renderFile(srcPath, destPath, rel string, ctx map[string]any) error {
+	info, err := os.Stat(srcPath)
+	if err != nil {
+		return err
+	}
+
 	data, err := os.ReadFile(srcPath)
 	if err != nil {
 		return err
@@ -243,7 +248,7 @@ func (t *Template) renderFile(srcPath, destPath, rel string, ctx map[string]any)
 		return nil // whitespace-only: skip
 	}
 
-	return writeFile(destPath, []byte(result))
+	return writeFile(destPath, []byte(result), info.Mode())
 }
 
 // isBinary returns true if the file contains a null byte or invalid UTF-8.
@@ -279,23 +284,32 @@ func copyFile(src, dst string) error {
 	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
 		return err
 	}
+	info, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
 	in, err := os.Open(src)
 	if err != nil {
 		return err
 	}
 	defer in.Close()
-	out, err := os.Create(dst)
+	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, info.Mode())
 	if err != nil {
 		return err
 	}
 	defer out.Close()
-	_, err = io.Copy(out, in)
-	return err
+	if _, err = io.Copy(out, in); err != nil {
+		return err
+	}
+	return os.Chmod(dst, info.Mode())
 }
 
-func writeFile(path string, data []byte) error {
+func writeFile(path string, data []byte, mode fs.FileMode) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, 0644)
+	if err := os.WriteFile(path, data, mode); err != nil {
+		return err
+	}
+	return os.Chmod(path, mode)
 }

@@ -56,6 +56,31 @@ func TestCopyDir_PreservesContent(t *testing.T) {
 	}
 }
 
+func TestCopyDir_PreservesPermissions(t *testing.T) {
+	src := t.TempDir()
+	dst := t.TempDir()
+
+	path := filepath.Join(src, "script.sh")
+	if err := os.WriteFile(path, []byte("#!/bin/sh\n"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := osutil.CopyDir(src, dst); err != nil {
+		t.Fatalf("CopyDir: %v", err)
+	}
+
+	info, err := os.Stat(filepath.Join(dst, "script.sh"))
+	if err != nil {
+		t.Fatalf("stat: %v", err)
+	}
+	if got := info.Mode().Perm(); got != 0755 {
+		t.Errorf("permissions = %04o, want 0755", got)
+	}
+}
+
 func TestCopyDir_OverwritesExisting(t *testing.T) {
 	src := t.TempDir()
 	dst := t.TempDir()

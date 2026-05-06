@@ -164,6 +164,21 @@ If any `RenderWarning` entries are present after `Execute` returns:
 A file is treated as binary if the first 512 bytes contain a null byte or are not valid UTF-8.
 Binary files are copied byte-for-byte; no template rendering is attempted.
 
+### File Permissions
+
+Source file permission bits (mode) are always preserved in the destination, regardless of
+the copy strategy:
+
+- **Binary / verbatim copy** (`copyFile`): the source `os.Stat` mode is applied to the
+  destination via `os.OpenFile(..., info.Mode())` followed by `os.Chmod`.
+- **Rendered text** (`writeFile`): `renderFile` stats the source before rendering and
+  passes `info.Mode()` to `writeFile`, which applies it with `os.WriteFile` + `os.Chmod`.
+
+The same preservation applies when a template is saved to the local registry
+(`specs template save` / `specs use <local-path>`): `osutil.CopyDir` uses the same
+`os.Stat` + `os.Chmod` pattern, so a script that is `chmod +x` in the source stays
+executable in the registry and in every scaffolded output.
+
 ---
 
 ## Template Functions
