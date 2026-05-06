@@ -129,6 +129,13 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 		return err
 	}
 
+	if len(tmpl.Warnings) > 0 {
+		for _, w := range tmpl.Warnings {
+			a.Output.Warn("%s was copied verbatim due to a render error: %v", w.Path, w.Err)
+		}
+		a.Output.Warn("run 'specs template validate %s' to see all issues", filepath.Base(templateRoot))
+	}
+
 	if err := os.MkdirAll(targetDir, 0755); err != nil {
 		return err
 	}

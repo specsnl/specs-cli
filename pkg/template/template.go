@@ -43,6 +43,13 @@ var ignoredFiles = map[string]bool{
 	"Thumbs.db": true,
 }
 
+// RenderWarning records a non-fatal issue encountered while rendering a template file.
+// The file is still written to the destination as a verbatim copy.
+type RenderWarning struct {
+	Path string // template-relative path of the affected file
+	Err  error
+}
+
 // Template holds everything needed to execute a boilr template.
 type Template struct {
 	Root         string                 // path to the template root (contains project.yaml + template/)
@@ -51,6 +58,7 @@ type Template struct {
 	Conditionals Conditionals           // varName → Cond; absent means always prompt
 	Referenced   map[string]bool        // schema variables referenced in template files or computed expressions
 	Metadata     *Metadata              // nil if __metadata.json is absent
+	Warnings     []RenderWarning        // non-fatal render issues collected during Execute
 	cfg          Config
 	logger       *slog.Logger
 	funcMap      texttemplate.FuncMap
@@ -186,7 +194,7 @@ func (t *Template) Execute(targetDir string) error {
 		if t.verbatim.Matches(relForward) || isBinary(srcPath) {
 			return copyFile(srcPath, destPath)
 		}
-		return t.renderFile(srcPath, destPath, ctx)
+		return t.renderFile(srcPath, destPath, relForward, ctx)
 	})
 }
 
@@ -204,9 +212,10 @@ func (t *Template) renderName(name string, ctx map[string]any) (string, error) {
 	return buf.String(), nil
 }
 
-// renderFile renders a text file's content using [[ ]]  delimiters.
+// renderFile renders a text file's content using the configured delimiters.
 // If the rendered content is whitespace-only, the destination file is not created.
-func (t *Template) renderFile(srcPath, destPath string, ctx map[string]any) error {
+// Parse or execution errors are recorded as RenderWarnings and the file is copied verbatim.
+func (t *Template) renderFile(srcPath, destPath, rel string, ctx map[string]any) error {
 	data, err := os.ReadFile(srcPath)
 	if err != nil {
 		return err
@@ -219,13 +228,13 @@ func (t *Template) renderFile(srcPath, destPath string, ctx map[string]any) erro
 		Option("missingkey=error").
 		Parse(string(data))
 	if err != nil {
-		t.logger.Debug("template parse error, copying verbatim", "path", srcPath, "error", err)
+		t.Warnings = append(t.Warnings, RenderWarning{Path: rel, Err: err})
 		return copyFile(srcPath, destPath)
 	}
 
 	var buf strings.Builder
 	if err := tmpl.Execute(&buf, ctx); err != nil {
-		t.logger.Warn("missing variable in template", "path", srcPath, "error", err)
+		t.Warnings = append(t.Warnings, RenderWarning{Path: rel, Err: err})
 		return copyFile(srcPath, destPath)
 	}
 

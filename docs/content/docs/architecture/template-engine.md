@@ -144,10 +144,20 @@ flowchart TD
     I -->|no| J{isBinary?}
     J -->|yes| Copy2[copy verbatim]
     J -->|no| K[render content as template]
-    K --> L{whitespace-only result?}
+    K --> KE{parse or execution error?}
+    KE -->|yes| Warn["append RenderWarning, copy verbatim"]
+    KE -->|no| L{whitespace-only result?}
     L -->|yes| Skip4[skip — do not create file]
     L -->|no| Write[write to dest]
 ```
+
+If any `RenderWarning` entries are present after `Execute` returns:
+
+- **`template use`** reports each affected file via `Output.Warn` and suggests running
+  `specs template validate <name>` to diagnose the root cause.
+- **`template validate`** reports each affected file, includes them in the exit code
+  (`ValidateRender = 4`), and always runs at debug log level so no diagnostic output
+  is suppressed.
 
 ### Binary Detection
 
@@ -294,18 +304,28 @@ display format for the `list` command.
 
 ## Validation (`specs template validate`)
 
-`Template.Validate()` inspects the template for two categories of issues:
+`specs template validate` always runs at debug log level so no diagnostic output is suppressed.
+It calls `Execute` on a temporary directory first to catch render errors, then calls
+`Template.Validate()` for static analysis.
 
-| Issue kind | Meaning |
-|---|---|
-| `unknown_variable` | A name used in a template file or path is **not defined** in `project.yml` (neither variable nor computed). Reports the file path where the reference was found. |
-| `unused_variable` | A variable **defined** in the user input section is never referenced in any template file, path expression, or computed expression. |
-| `unused_computed` | A computed value **defined** under `computed:` is never referenced anywhere. |
+Three categories of issues are reported:
 
-`unknown_variable` issues are errors — the template will fail to render.
-`unused_*` issues are warnings — they indicate dead schema entries.
+| Issue kind | Source | Meaning |
+|---|---|---|
+| `render_error` | `Execute()` | A file could not be rendered (parse or execution error) and was copied verbatim. |
+| `unknown_variable` | `Validate()` | A name used in a template file or path is **not defined** in `project.yaml`. |
+| `unused_variable` | `Validate()` | A variable **defined** in the user input section is never referenced anywhere. |
+| `unused_computed` | `Validate()` | A computed value **defined** under `computed:` is never referenced anywhere. |
 
-`specs template validate` exits non-zero if any `unknown_variable` issues are found.
+Exit codes are a bitmask — multiple conditions combine additively:
+
+| Bit | Constant | Value | Condition |
+|-----|----------|-------|-----------|
+| 2 | `ValidateRender` | 4 | Any `render_error` — file copied verbatim due to parse or execution error |
+| 1 | `ValidateUnknown` | 2 | Any `unknown_variable` |
+| 0 | `ValidateUnused` | 1 | Any `unused_*` (only with `--strict`) |
+
+`specs template validate` exits 0 only when there are no render errors and no unknown variables.
 
 ---
 

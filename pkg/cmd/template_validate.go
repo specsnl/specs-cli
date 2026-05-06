@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -20,6 +21,8 @@ func newTemplateValidateCmd(app *App) *cobra.Command {
 		Short: "Validate a template directory",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			app.level.Set(slog.LevelDebug)
+
 			templateRoot := args[0]
 
 			templateDir := filepath.Join(templateRoot, specs.TemplateDirFile)
@@ -46,6 +49,10 @@ func newTemplateValidateCmd(app *App) *cobra.Command {
 				return fmt.Errorf("template render error: %w", err)
 			}
 
+			for _, w := range tmpl.Warnings {
+				app.Output.Warn("render error in %s: %v", w.Path, w.Err)
+			}
+
 			issues, err := tmpl.Validate()
 			if err != nil {
 				return fmt.Errorf("validation error: %w", err)
@@ -63,6 +70,9 @@ func newTemplateValidateCmd(app *App) *cobra.Command {
 			}
 
 			code := 0
+			if len(tmpl.Warnings) > 0 {
+				code |= exit.ValidateRender
+			}
 			if pkgtemplate.HasUnknown(issues) {
 				code |= exit.ValidateUnknown
 			}
@@ -73,9 +83,7 @@ func newTemplateValidateCmd(app *App) *cobra.Command {
 				return &exit.ExitError{Code: code}
 			}
 
-			if len(issues) == 0 {
-				app.Output.Info("template is valid")
-			}
+			app.Output.Info("template is valid")
 			return nil
 		},
 	}
