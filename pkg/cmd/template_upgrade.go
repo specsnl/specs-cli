@@ -94,7 +94,7 @@ func upgradeTemplate(app *App, name string) error {
 	}
 
 	desc, _ := pkggit.Describe(root)
-	if err := writeMetadata(root, name, meta.Repository, newBranch, desc.Commit, desc.Version); err != nil {
+	if err := writeMetadata(root, name, meta.Repository, newBranch, desc.Commit, desc.Version, meta.Created.Time); err != nil {
 		return err
 	}
 

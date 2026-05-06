@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/specsnl/specs-cli/pkg/host"
@@ -49,7 +50,7 @@ func newTemplateDownloadCmd(app *App) *cobra.Command {
 				return err
 			}
 			desc, _ := pkggit.Describe(dest)
-			if err := writeMetadata(dest, name, src.CloneURL, src.Branch, desc.Commit, desc.Version); err != nil {
+			if err := writeMetadata(dest, name, src.CloneURL, src.Branch, desc.Commit, desc.Version, time.Now().UTC()); err != nil {
 				return err
 			}
 
