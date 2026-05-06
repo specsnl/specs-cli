@@ -342,6 +342,77 @@ func TestExecute_ParseError_CopiesVerbatimAndWarns(t *testing.T) {
 	}
 }
 
+func TestExecute_PreservesPermissions_TextFile(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "project.yaml"), []byte("Name: test\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	templateDir := filepath.Join(root, "template")
+	if err := os.MkdirAll(templateDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	scriptPath := filepath.Join(templateDir, "run.sh")
+	if err := os.WriteFile(scriptPath, []byte("#!/bin/sh\necho {{.Name}}\n"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(scriptPath, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	target := t.TempDir()
+	if err := tmpl.Execute(target); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	info, err := os.Stat(filepath.Join(target, "run.sh"))
+	if err != nil {
+		t.Fatalf("stat: %v", err)
+	}
+	if got := info.Mode().Perm(); got != 0755 {
+		t.Errorf("run.sh permissions = %04o, want 0755", got)
+	}
+}
+
+func TestExecute_PreservesPermissions_BinaryFile(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "project.yaml"), []byte("Name: test\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	templateDir := filepath.Join(root, "template")
+	if err := os.MkdirAll(templateDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	binPath := filepath.Join(templateDir, "tool")
+	// null byte makes it detected as binary
+	if err := os.WriteFile(binPath, []byte{0x7f, 0x45, 0x4c, 0x46, 0x00}, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(binPath, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	target := t.TempDir()
+	if err := tmpl.Execute(target); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	info, err := os.Stat(filepath.Join(target, "tool"))
+	if err != nil {
+		t.Fatalf("stat: %v", err)
+	}
+	if got := info.Mode().Perm(); got != 0755 {
+		t.Errorf("tool permissions = %04o, want 0755", got)
+	}
+}
+
 func TestGet_CustomDelimiters_ConditionalFilename(t *testing.T) {
 	// Custom delimiters affect filename templates too.
 	yaml := "UseX: true\n__delimiters:\n  left: \"[[\"\n  right: \"]]\"\n"
