@@ -32,6 +32,10 @@ func newTemplateValidateCmd(app *App) *cobra.Command {
 				return fmt.Errorf("invalid template: %w", err)
 			}
 
+			// Select fields are []any until the user picks one at prompt time.
+			// Use the first option so the template engine can compare them as strings.
+			resolveSelectDefaults(tmpl.Context)
+
 			tmp, err := os.MkdirTemp("", "specs-validate-*")
 			if err != nil {
 				return err

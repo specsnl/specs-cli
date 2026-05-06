@@ -152,6 +152,23 @@ func TestValidate_StrictUnusedAndUnknown(t *testing.T) {
 	}
 }
 
+// TestValidate_SelectVariable: select ([]any) field used with eq → no render error.
+func TestValidate_SelectVariable(t *testing.T) {
+	withTempRegistry(t)
+	src := makeValidateTemplate(t,
+		"PhpVersion:\n  - \"8.4\"\n  - \"8.3\"\n",
+		map[string]string{"Dockerfile": "{{ if eq .PhpVersion \"8.4\" }}FROM php:8.4{{ else }}FROM php:8.3{{ end }}"},
+	)
+
+	out, err := executeCmd("template", "validate", src)
+	if err != nil {
+		t.Fatalf("expected exit 0, got error: %v", err)
+	}
+	if !strings.Contains(out, "template is valid") {
+		t.Errorf("expected 'template is valid', got: %q", out)
+	}
+}
+
 // TestValidate_NoIssues: clean template → "template is valid", exit 0.
 func TestValidate_NoIssues(t *testing.T) {
 	withTempRegistry(t)
