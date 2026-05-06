@@ -310,6 +310,38 @@ func TestGet_InvalidDelimiters_ReturnsError(t *testing.T) {
 	}
 }
 
+func TestExecute_ParseError_CopiesVerbatimAndWarns(t *testing.T) {
+	// A template file that calls an undefined function triggers a parse error.
+	// Execute must succeed (verbatim copy), and the warning must be recorded on tmpl.Warnings.
+	yaml := "Name: test\n__delimiters:\n  left: \"[[\"\n  right: \"]]\"\n"
+	original := []byte("[[ .Name | undefinedFunc ]]")
+	root := buildTemplate(t, yaml, map[string][]byte{
+		"compose.yml": original,
+	})
+
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+
+	target := t.TempDir()
+	if err := tmpl.Execute(target); err != nil {
+		t.Fatalf("Execute: unexpected error: %v", err)
+	}
+
+	if len(tmpl.Warnings) == 0 {
+		t.Fatal("expected at least one RenderWarning, got none")
+	}
+	if tmpl.Warnings[0].Path != "compose.yml" {
+		t.Errorf("warning path = %q, want %q", tmpl.Warnings[0].Path, "compose.yml")
+	}
+
+	got := readFile(t, target, "compose.yml")
+	if got != string(original) {
+		t.Errorf("compose.yml = %q, want verbatim copy %q", got, string(original))
+	}
+}
+
 func TestGet_CustomDelimiters_ConditionalFilename(t *testing.T) {
 	// Custom delimiters affect filename templates too.
 	yaml := "UseX: true\n__delimiters:\n  left: \"[[\"\n  right: \"]]\"\n"

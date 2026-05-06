@@ -103,7 +103,8 @@ func TestValidate_UnusedComputed(t *testing.T) {
 	}
 }
 
-// TestValidate_UnknownVariable: warning printed, exit 2.
+// TestValidate_UnknownVariable: warning printed, exit ValidateRender|ValidateUnknown.
+// An unknown variable causes both a render execution error (missingkey=error) and a static analysis hit.
 func TestValidate_UnknownVariable(t *testing.T) {
 	withTempRegistry(t)
 	src := makeValidateTemplate(t,
@@ -112,8 +113,9 @@ func TestValidate_UnknownVariable(t *testing.T) {
 	)
 
 	out, err := executeCmd("template", "validate", src)
-	if code := validateExitCode(err); code != exit.ValidateUnknown {
-		t.Errorf("expected exit %d, got %d (err=%v)", exit.ValidateUnknown, code, err)
+	const wantCode = exit.ValidateRender | exit.ValidateUnknown
+	if code := validateExitCode(err); code != wantCode {
+		t.Errorf("expected exit %d, got %d (err=%v)", wantCode, code, err)
 	}
 	if !strings.Contains(out, "AppName") {
 		t.Errorf("expected warning about AppName, got: %q", out)
@@ -137,7 +139,7 @@ func TestValidate_StrictUnusedVariable(t *testing.T) {
 	}
 }
 
-// TestValidate_StrictUnusedAndUnknown: --strict with both → exit 3 (bitmask 1|2).
+// TestValidate_StrictUnusedAndUnknown: --strict with both → exit ValidateRender|ValidateUnknown|ValidateUnused.
 func TestValidate_StrictUnusedAndUnknown(t *testing.T) {
 	withTempRegistry(t)
 	src := makeValidateTemplate(t,
@@ -146,7 +148,7 @@ func TestValidate_StrictUnusedAndUnknown(t *testing.T) {
 	)
 
 	_, err := executeCmd("template", "validate", "--strict", src)
-	const wantCode = exit.ValidateUnused | exit.ValidateUnknown // 3
+	const wantCode = exit.ValidateRender | exit.ValidateUnused | exit.ValidateUnknown
 	if code := validateExitCode(err); code != wantCode {
 		t.Errorf("expected exit %d, got %d (err=%v)", wantCode, code, err)
 	}
