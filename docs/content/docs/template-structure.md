@@ -45,6 +45,12 @@ __delimiters:
 
 With `[[ ]]` configured, `{{ }}` in your template files passes through unchanged.
 
+## File permissions
+
+File permission bits are always preserved from template source to output. A script
+marked executable (`chmod +x`) in the template directory — or in the local registry —
+will remain executable in every scaffolded project.
+
 ## Skipping binary files
 
 Create a `.specsverbatim` file in the template root to list glob patterns for files that should be copied as-is without template rendering:
