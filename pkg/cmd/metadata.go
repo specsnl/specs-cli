@@ -10,13 +10,15 @@ import (
 	pkgtemplate "github.com/specsnl/specs-cli/pkg/template"
 )
 
-// writeMetadata writes __metadata.json into templateRoot.
-func writeMetadata(templateRoot, name, repository, branch, commit, version string) error {
+// writeMetadata writes __metadata.json into templateRoot. The created
+// timestamp is supplied by the caller so that upgrades can preserve the
+// original install time instead of overwriting it.
+func writeMetadata(templateRoot, name, repository, branch, commit, version string, created time.Time) error {
 	m := pkgtemplate.Metadata{
 		Name:       name,
 		Repository: repository,
 		Branch:     branch,
-		Created:    pkgtemplate.JSONTime{Time: time.Now().UTC()},
+		Created:    pkgtemplate.JSONTime{Time: created},
 		Commit:     commit,
 		Version:    version,
 	}
