@@ -145,16 +145,25 @@ flowchart TD
     J -->|yes| Copy2[copy verbatim]
     J -->|no| K[render content as template]
     K --> KE{parse or execution error?}
-    KE -->|yes| Warn["append RenderWarning, copy verbatim"]
+    KE -->|"yes — fail-fast (default)"| Abort["return error, no file written"]
+    KE -->|"yes — --continue-on-error"| Warn["append RenderWarning\n(path + first 80 chars preview)\ncopy verbatim"]
     KE -->|no| L{whitespace-only result?}
     L -->|yes| Skip4[skip — do not create file]
     L -->|no| Write[write to dest]
 ```
 
-If any `RenderWarning` entries are present after `Execute` returns:
+### Render error modes
 
-- **`template use`** reports each affected file via `Output.Warn` and suggests running
-  `specs template validate <name>` to diagnose the root cause.
+| Mode | Behaviour | How to enable |
+|------|-----------|---------------|
+| **Fail-fast** (default) | Parse or execution errors abort `Execute` immediately; no destination file is written for the affected path. The tmp dir is cleaned up by the deferred `os.RemoveAll` in `template use`. | Default — no flag needed |
+| **Continue-on-error** | Parse or execution errors are recorded as `RenderWarning` entries and the file is copied verbatim. Restores the pre-v0.x behaviour. Use only when `.specsverbatim` is not an option. | `--continue-on-error` flag |
+
+If any `RenderWarning` entries are present after `Execute` returns (only possible with `--continue-on-error`):
+
+- **`template use`** reports each affected file via `Output.Warn`, including the destination
+  path and the first 80 characters of the unrendered source so the user can grep for
+  straggling `{{ }}` literals. It also suggests running `specs template validate <name>`.
 - **`template validate`** reports each affected file, includes them in the exit code
   (`ValidateRender = 4`), and always runs at debug log level so no diagnostic output
   is suppressed.
