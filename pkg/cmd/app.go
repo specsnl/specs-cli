@@ -1,10 +1,13 @@
 package cmd
 
 import (
+	"context"
 	"log/slog"
 	"os"
+	"time"
 
 	pkgtemplate "github.com/specsnl/specs-cli/pkg/template"
+	pkggit "github.com/specsnl/specs-cli/pkg/util/git"
 	"github.com/specsnl/specs-cli/pkg/util/output"
 )
 
@@ -50,6 +53,14 @@ type App struct {
 	level         *slog.LevelVar
 	SafeMode      bool
 	HookEnvPrefix string // prefix for context keys injected as env vars into hooks
+
+	// checkRemoteFn is the function used by template list to query remote status.
+	// Defaults to pkggit.CheckRemoteContext; tests may substitute a fake.
+	checkRemoteFn func(ctx context.Context, dir, url, branch string) (pkggit.RemoteCheckResult, error)
+	// checkTimeout is the per-remote timeout for each individual status check (default 10s).
+	checkTimeout time.Duration
+	// refreshTimeout is the maximum wall-clock time for the entire refresh phase (default 30s).
+	refreshTimeout time.Duration
 }
 
 // NewApp creates an App. The default logger writes text to stderr at info level.
@@ -60,9 +71,12 @@ func NewApp(opts ...Option) *App {
 	level.Set(slog.LevelInfo)
 
 	app := &App{
-		Logger: slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})),
-		Output: output.NewDefaultHumanWriter(),
-		level:  level,
+		Logger:         slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})),
+		Output:         output.NewDefaultHumanWriter(),
+		level:          level,
+		checkRemoteFn:  pkggit.CheckRemoteContext,
+		checkTimeout:   10 * time.Second,
+		refreshTimeout: 30 * time.Second,
 	}
 
 	for _, opt := range opts {

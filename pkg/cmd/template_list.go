@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"os"
 	"sync"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/specsnl/specs-cli/pkg/specs"
 	pkgtemplate "github.com/specsnl/specs-cli/pkg/template"
 	pkggit "github.com/specsnl/specs-cli/pkg/util/git"
+	"golang.org/x/sync/errgroup"
 )
 
 func newTemplateListCmd(app *App) *cobra.Command {
@@ -48,10 +50,17 @@ func newTemplateListCmd(app *App) *cobra.Command {
 				tmplEntries = append(tmplEntries, templateEntry{name: name, meta: meta, status: status})
 			}
 
-			// Refresh stale statuses in parallel.
+			// Refresh stale statuses in parallel, capped at 8 concurrent checks.
+			// A top-level timeout guards the whole phase; each check also has its own timeout.
+			const maxConcurrency = 8
 			var mu sync.Mutex
-			var wg sync.WaitGroup
 			networkErrorSeen := false
+
+			refreshCtx, cancelRefresh := context.WithTimeout(cmd.Context(), app.refreshTimeout)
+			defer cancelRefresh()
+
+			eg, egCtx := errgroup.WithContext(refreshCtx)
+			eg.SetLimit(maxConcurrency)
 
 			for i, entry := range tmplEntries {
 				if entry.meta == nil || entry.meta.Repository == "" || entry.meta.Branch == "" {
@@ -60,11 +69,12 @@ func newTemplateListCmd(app *App) *cobra.Command {
 				if entry.status != nil && !entry.status.IsStale() {
 					continue
 				}
-				wg.Add(1)
-				go func(i int, name, repo, branch string) {
-					defer wg.Done()
+				i, name, repo, branch := i, entry.name, entry.meta.Repository, entry.meta.Branch
+				eg.Go(func() error {
+					checkCtx, cancelCheck := context.WithTimeout(egCtx, app.checkTimeout)
+					defer cancelCheck()
 					root := specs.TemplatePath(name)
-					result, _ := pkggit.CheckRemote(root, repo, branch)
+					result, _ := app.checkRemoteFn(checkCtx, root, repo, branch)
 					newStatus := &pkgtemplate.TemplateStatus{
 						CheckedAt:     pkgtemplate.JSONTime{Time: time.Now().UTC()},
 						IsUpToDate:    result.IsUpToDate,
@@ -78,9 +88,10 @@ func newTemplateListCmd(app *App) *cobra.Command {
 						networkErrorSeen = true
 					}
 					mu.Unlock()
-				}(i, entry.name, entry.meta.Repository, entry.meta.Branch)
+					return nil
+				})
 			}
-			wg.Wait()
+			_ = eg.Wait()
 
 			headers := []string{"Name", "Repository", "Version", "Status", "Created"}
 			var rows [][]string

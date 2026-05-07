@@ -303,6 +303,6 @@ func (h *Hooks) Run(trigger, cwd string, ctx map[string]any, funcMap template.Fu
 | `pkg/util/tabular` | **removed** | replaced by `pkg/util/output` |
 | `pkg/util/exec` | **removed** | no longer needed (hooks use `os/exec` directly) |
 | `pkg/util/exit` | unchanged | |
-| `pkg/util/git` | updated | SSH auth, `CheckRemote()`, `Describe()` for status tracking |
+| `pkg/util/git` | updated | SSH auth, `CheckRemoteContext()` (context-aware), `Describe()` for status tracking |
 | `pkg/util/osutil` | updated | `CopyDir()` recursive copy |
 | `pkg/util/validate` | updated | `Name()` validator (alphanumeric + hyphens + underscores) |
