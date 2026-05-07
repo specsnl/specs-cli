@@ -40,7 +40,7 @@ func newTemplateUpdateCmd(app *App) *cobra.Command {
 
 			for _, name := range names {
 				root := specs.TemplatePath(name)
-				meta, _ := loadMetadataForListing(root)
+				meta, _ := pkgtemplate.LoadMetadata(root)
 				if meta == nil || meta.Repository == "" || meta.Branch == "" {
 					continue
 				}

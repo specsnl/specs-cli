@@ -3,6 +3,8 @@ package cmd
 import (
 	"testing"
 	"time"
+
+	pkgtemplate "github.com/specsnl/specs-cli/pkg/template"
 )
 
 func TestWriteMetadata_PreservesSuppliedCreated(t *testing.T) {
@@ -11,16 +13,16 @@ func TestWriteMetadata_PreservesSuppliedCreated(t *testing.T) {
 	// RFC1123Z has second-level precision, so truncate before round-tripping.
 	want := time.Now().Add(-30 * 24 * time.Hour).UTC().Truncate(time.Second)
 
-	if err := writeMetadata(dir, "tpl", "https://example.com/repo", "main", "abc123", "v1.0.0", want); err != nil {
-		t.Fatalf("writeMetadata: %v", err)
+	if err := pkgtemplate.SaveMetadata(dir, "tpl", "https://example.com/repo", "main", "abc123", "v1.0.0", want); err != nil {
+		t.Fatalf("SaveMetadata: %v", err)
 	}
 
-	got, err := loadMetadataForListing(dir)
+	got, err := pkgtemplate.LoadMetadata(dir)
 	if err != nil {
-		t.Fatalf("loadMetadataForListing: %v", err)
+		t.Fatalf("LoadMetadata: %v", err)
 	}
 	if got == nil {
-		t.Fatal("loadMetadataForListing returned nil metadata")
+		t.Fatal("LoadMetadata returned nil metadata")
 	}
 	if !got.Created.Time.Equal(want) {
 		t.Errorf("Created = %s, want %s", got.Created.Time, want)
@@ -28,37 +30,37 @@ func TestWriteMetadata_PreservesSuppliedCreated(t *testing.T) {
 }
 
 // Verifies the upgrade-flow contract: passing meta.Created.Time back into
-// writeMetadata leaves the timestamp unchanged after a round-trip.
+// SaveMetadata leaves the timestamp unchanged after a round-trip.
 func TestWriteMetadata_UpgradeRoundTripPreservesCreated(t *testing.T) {
 	dir := t.TempDir()
 
 	original := time.Now().Add(-90 * 24 * time.Hour).UTC().Truncate(time.Second)
 
 	// Initial install.
-	if err := writeMetadata(dir, "tpl", "https://example.com/repo", "main", "old-sha", "v1.0.0", original); err != nil {
-		t.Fatalf("writeMetadata (install): %v", err)
+	if err := pkgtemplate.SaveMetadata(dir, "tpl", "https://example.com/repo", "main", "old-sha", "v1.0.0", original); err != nil {
+		t.Fatalf("SaveMetadata (install): %v", err)
 	}
 
-	meta, err := loadMetadataForListing(dir)
+	meta, err := pkgtemplate.LoadMetadata(dir)
 	if err != nil {
-		t.Fatalf("loadMetadataForListing: %v", err)
+		t.Fatalf("LoadMetadata: %v", err)
 	}
 	if meta == nil {
-		t.Fatal("loadMetadataForListing returned nil metadata")
+		t.Fatal("LoadMetadata returned nil metadata")
 	}
 
 	// Simulate an upgrade: re-write metadata with new commit/version but the
-	// original Created threaded through, the same way template_upgrade.go does.
-	if err := writeMetadata(dir, "tpl", "https://example.com/repo", "main", "new-sha", "v1.1.0", meta.Created.Time); err != nil {
-		t.Fatalf("writeMetadata (upgrade): %v", err)
+	// original Created threaded through, the same way registry.Upgrade does.
+	if err := pkgtemplate.SaveMetadata(dir, "tpl", "https://example.com/repo", "main", "new-sha", "v1.1.0", meta.Created.Time); err != nil {
+		t.Fatalf("SaveMetadata (upgrade): %v", err)
 	}
 
-	upgraded, err := loadMetadataForListing(dir)
+	upgraded, err := pkgtemplate.LoadMetadata(dir)
 	if err != nil {
-		t.Fatalf("loadMetadataForListing after upgrade: %v", err)
+		t.Fatalf("LoadMetadata after upgrade: %v", err)
 	}
 	if upgraded == nil {
-		t.Fatal("loadMetadataForListing returned nil metadata after upgrade")
+		t.Fatal("LoadMetadata returned nil metadata after upgrade")
 	}
 	if !upgraded.Created.Time.Equal(original) {
 		t.Errorf("Created after upgrade = %s, want %s", upgraded.Created.Time, original)
@@ -70,4 +72,3 @@ func TestWriteMetadata_UpgradeRoundTripPreservesCreated(t *testing.T) {
 		t.Errorf("Version after upgrade = %q, want %q", upgraded.Version, "v1.1.0")
 	}
 }
-

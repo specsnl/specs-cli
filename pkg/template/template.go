@@ -124,7 +124,7 @@ func Get(templateRoot string, cfg Config, logger *slog.Logger) (*Template, error
 		return nil, err
 	}
 
-	meta, _ := loadMetadata(templateRoot) // missing metadata is not an error
+	meta, _ := LoadMetadata(templateRoot) // missing/malformed metadata is not an error
 
 	return &Template{
 		Root:         templateRoot,

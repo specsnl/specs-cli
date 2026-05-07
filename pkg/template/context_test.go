@@ -295,3 +295,55 @@ func TestLoadUserContext_AmbiguousProjectFile(t *testing.T) {
 		t.Fatal("expected error for ambiguous project file, got nil")
 	}
 }
+
+// --- LoadProjectFile ---
+
+func TestLoadProjectFile_ReturnsRawMap(t *testing.T) {
+	dir := t.TempDir()
+	writeProjectYAML(t, dir, "Name: raw\nhooks:\n  post-use:\n    - echo hi\n")
+
+	raw, err := pkgtemplate.LoadProjectFile(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if raw["Name"] != "raw" {
+		t.Errorf("raw[Name] = %v, want %q", raw["Name"], "raw")
+	}
+	// hooks must NOT be stripped — this is the key difference from LoadUserContext
+	if _, ok := raw["hooks"]; !ok {
+		t.Error("expected hooks key to be present in raw map")
+	}
+}
+
+func TestLoadProjectFile_JSONFallback(t *testing.T) {
+	dir := t.TempDir()
+	writeProjectJSON(t, dir, `{"Name": "json-raw", "hooks": {}}`)
+
+	raw, err := pkgtemplate.LoadProjectFile(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if raw["Name"] != "json-raw" {
+		t.Errorf("raw[Name] = %v, want %q", raw["Name"], "json-raw")
+	}
+}
+
+func TestLoadProjectFile_AmbiguousFile(t *testing.T) {
+	dir := t.TempDir()
+	writeProjectYAML(t, dir, "Name: a\n")
+	writeProjectYML(t, dir, "Name: b\n")
+
+	_, err := pkgtemplate.LoadProjectFile(dir)
+	if err == nil {
+		t.Fatal("expected error for ambiguous project files, got nil")
+	}
+}
+
+func TestLoadProjectFile_MissingFile(t *testing.T) {
+	dir := t.TempDir()
+
+	_, err := pkgtemplate.LoadProjectFile(dir)
+	if err == nil {
+		t.Fatal("expected error when no project file exists, got nil")
+	}
+}

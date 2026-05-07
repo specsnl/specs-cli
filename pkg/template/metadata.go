@@ -57,20 +57,35 @@ func (t JSONTime) String() string {
 	}
 }
 
-// loadMetadata reads __metadata.json from templateRoot.
-// Missing metadata is not an error — returns nil, nil.
-func loadMetadata(templateRoot string) (*Metadata, error) {
+// LoadMetadata reads __metadata.json from templateRoot.
+// Missing or malformed metadata is not an error — returns nil, nil.
+func LoadMetadata(templateRoot string) (*Metadata, error) {
 	path := filepath.Join(templateRoot, specs.MetadataFile)
 	data, err := os.ReadFile(path)
-	if os.IsNotExist(err) {
-		return nil, nil
-	}
 	if err != nil {
-		return nil, err
+		return nil, nil //nolint:nilerr // missing or unreadable metadata is not an error
 	}
 	var m Metadata
 	if err := json.Unmarshal(data, &m); err != nil {
-		return nil, err
+		return nil, nil //nolint:nilerr // malformed metadata is silently ignored
 	}
 	return &m, nil
+}
+
+// SaveMetadata writes __metadata.json into templateRoot. The created timestamp is
+// supplied by the caller so that upgrades can preserve the original install time.
+func SaveMetadata(templateRoot, name, repository, branch, commit, version string, created time.Time) error {
+	m := Metadata{
+		Name:       name,
+		Repository: repository,
+		Branch:     branch,
+		Created:    JSONTime{Time: created},
+		Commit:     commit,
+		Version:    version,
+	}
+	data, err := json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(templateRoot, specs.MetadataFile), data, 0644)
 }

@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	pkgtemplate "github.com/specsnl/specs-cli/pkg/template"
 )
 
 func TestUpdate_NoArgs_EmptyRegistry(t *testing.T) {
@@ -24,7 +26,7 @@ func TestUpdate_NamedLocalTemplate_Skipped(t *testing.T) {
 	if err := os.MkdirAll(tmplDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := writeMetadata(tmplDir, "local-tpl", "/some/local/path", "", "", "", time.Now().UTC()); err != nil {
+	if err := pkgtemplate.SaveMetadata(tmplDir, "local-tpl", "/some/local/path", "", "", "", time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
 

@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/specsnl/specs-cli/pkg/host"
 	"github.com/specsnl/specs-cli/pkg/specs"
+	pkgtemplate "github.com/specsnl/specs-cli/pkg/template"
 	pkggit "github.com/specsnl/specs-cli/pkg/util/git"
 	"github.com/specsnl/specs-cli/pkg/util/validate"
 )
@@ -50,7 +51,7 @@ func newTemplateDownloadCmd(app *App) *cobra.Command {
 				return err
 			}
 			desc, _ := pkggit.Describe(dest)
-			if err := writeMetadata(dest, name, src.CloneURL, src.Branch, desc.Commit, desc.Version, time.Now().UTC()); err != nil {
+			if err := pkgtemplate.SaveMetadata(dest, name, src.CloneURL, src.Branch, desc.Commit, desc.Version, time.Now().UTC()); err != nil {
 				return err
 			}
 
