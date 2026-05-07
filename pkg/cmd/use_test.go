@@ -250,6 +250,31 @@ func TestUse_YesFlag_IsValidFlag(t *testing.T) {
 	}
 }
 
+func TestUse_ContinueOnError_CopiesVerbatim(t *testing.T) {
+	srcDir := t.TempDir()
+	buildMinimalTemplate(t, srcDir, "Name: world\n", "bad.txt", "{{ invalid")
+	targetDir := t.TempDir()
+
+	_, err := executeCmd("use", "--use-defaults", "--continue-on-error", "file:"+srcDir, targetDir)
+	if err != nil {
+		t.Fatalf("use --continue-on-error: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(targetDir, "bad.txt")); err != nil {
+		t.Error("expected file to be copied verbatim with --continue-on-error, but it was not written")
+	}
+}
+
+func TestUse_FailFast_ParseError(t *testing.T) {
+	srcDir := t.TempDir()
+	buildMinimalTemplate(t, srcDir, "Name: world\n", "bad.txt", "{{ invalid")
+	targetDir := t.TempDir()
+
+	_, err := executeCmd("use", "--use-defaults", "file:"+srcDir, targetDir)
+	if err == nil {
+		t.Fatal("expected error on parse failure in fail-fast mode, got nil")
+	}
+}
+
 func TestUse_AmbiguousProjectFiles(t *testing.T) {
 	srcDir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(srcDir, specs.ProjectYAMLFile), []byte("Name: yaml\n"), 0644); err != nil {

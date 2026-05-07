@@ -39,6 +39,7 @@ Source formats:
 	cmd.Flags().BoolVar(&opts.noHooks, "no-hooks", false, "Skip pre/post-use hooks")
 	cmd.Flags().BoolVar(&opts.allowHooks, "allow-hooks", false, "Allow hooks even when --safe-mode is set")
 	cmd.Flags().BoolVar(&opts.yes, "yes", false, "Skip interactive confirmation for remote hook execution")
+	cmd.Flags().BoolVar(&opts.continueOnError, "continue-on-error", false, "Warn and copy files verbatim on render errors instead of aborting")
 
 	return cmd
 }
