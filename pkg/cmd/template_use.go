@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"charm.land/huh/v2"
 	"github.com/spf13/cobra"
@@ -25,6 +26,9 @@ type executeOpts struct {
 	useDefaults     bool
 	noHooks         bool
 	continueOnError bool
+	allowHooks      bool // override safe-mode hook suppression
+	yes             bool // skip interactive confirmation for remote hook execution
+	remote          bool // set programmatically when source is a remote repository
 }
 
 func newTemplateUseCmd(app *App) *cobra.Command {
@@ -55,6 +59,8 @@ func newTemplateUseCmd(app *App) *cobra.Command {
 	cmd.Flags().BoolVar(&opts.useDefaults, "use-defaults", false, "Skip prompts; use schema defaults")
 	cmd.Flags().BoolVar(&opts.noHooks, "no-hooks", false, "Skip pre/post-use hooks")
 	cmd.Flags().BoolVar(&opts.continueOnError, "continue-on-error", false, "Warn and copy files verbatim on render errors instead of aborting")
+	cmd.Flags().BoolVar(&opts.allowHooks, "allow-hooks", false, "Allow hooks even when --safe-mode is set")
+	cmd.Flags().BoolVar(&opts.yes, "yes", false, "Skip interactive confirmation for remote hook execution")
 
 	return cmd
 }
@@ -114,7 +120,15 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 		return err
 	}
 
-	if !opts.noHooks && h.HasPreUse() {
+	skipHooks := (a.SafeMode && !opts.allowHooks) || opts.noHooks
+
+	if !skipHooks && opts.remote && (h.HasPreUse() || h.HasPostUse()) {
+		if err := a.confirmRemoteHooks(h, ctx, tmpl, opts.yes); err != nil {
+			return err
+		}
+	}
+
+	if !skipHooks && h.HasPreUse() {
 		a.Output.Info("running pre-use hook…")
 		if err := h.Run("pre-use", templateRoot, ctx, tmpl.FuncMap(), tmpl.Delims()); err != nil {
 			return err
@@ -150,7 +164,7 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 		return err
 	}
 
-	if !opts.noHooks && h.HasPostUse() {
+	if !skipHooks && h.HasPostUse() {
 		a.Output.Info("running post-use hook…")
 		if err := h.Run("post-use", targetDir, ctx, tmpl.FuncMap(), tmpl.Delims()); err != nil {
 			return err
@@ -158,6 +172,37 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 	}
 
 	a.Output.Info("done — files written to %s", targetDir)
+	return nil
+}
+
+// confirmRemoteHooks displays the rendered hook commands from a remote template and
+// asks for interactive confirmation. When autoYes is true the prompt is skipped.
+func (a *App) confirmRemoteHooks(h *hooks.Hooks, ctx map[string]any, tmpl *pkgtemplate.Template, autoYes bool) error {
+	a.Output.Warn("remote template defines hooks — review before executing:")
+
+	for _, trigger := range []string{"pre-use", "post-use"} {
+		rendered, err := h.Rendered(trigger, ctx, tmpl.FuncMap(), tmpl.Delims())
+		if err != nil {
+			return fmt.Errorf("rendering %s hooks for preview: %w", trigger, err)
+		}
+		for _, cmd := range rendered {
+			a.Output.Warn("  %s: %s", trigger, strings.TrimSpace(cmd))
+		}
+	}
+
+	if autoYes {
+		return nil
+	}
+
+	var proceed bool
+	if err := huh.NewForm(huh.NewGroup(
+		huh.NewConfirm().Title("Allow hook execution?").Value(&proceed),
+	)).Run(); err != nil {
+		return fmt.Errorf("hook confirmation: %w", err)
+	}
+	if !proceed {
+		return fmt.Errorf("hook execution not confirmed; pass --yes to allow or --no-hooks to skip hooks")
+	}
 	return nil
 }
 

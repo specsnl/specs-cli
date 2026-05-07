@@ -306,6 +306,25 @@ Context values are injected as `SPECS_`-prefixed uppercase env vars:
 `ProjectName` → `SPECS_PROJECTNAME`.
 The prefix can be disabled with the root `--no-env-prefix` flag.
 
+### Trust model
+
+Hooks run arbitrary shell commands on the host. Before running any template with hooks:
+
+| Scenario | Behaviour |
+|---|---|
+| `--safe-mode` (no `--allow-hooks`) | Hooks are **skipped entirely** — no bash invocation |
+| `--safe-mode --allow-hooks` | Function-level restrictions apply; hooks **run** (remote confirmation still required) |
+| `specs use <remote>` with hooks | Rendered hook commands are **printed** and **interactive confirmation** is required |
+| `specs use <remote> --yes` | Confirmation prompt is skipped; hooks run (CI use) |
+| `specs use <remote> --no-hooks` | Hooks are **skipped** |
+| Local template or registry template | No confirmation prompt; hooks run as normal |
+
+**`--safe-mode` implies `--no-hooks`** in the command layer. Pass `--allow-hooks` alongside `--safe-mode` to disable only the env/filesystem template functions while still allowing hooks to execute.
+
+When running a remote template interactively (`specs use github:user/repo ./out`), specs prints all pre-use and post-use hook commands (rendered against the resolved context) and asks for confirmation before executing any of them. Passing `--yes` suppresses this prompt for scripted or CI use.
+
+If `bash` is not on `PATH`, hook execution returns an actionable error identifying the missing shell rather than a confusing process-not-found failure.
+
 ---
 
 ## Metadata (`template.Metadata`)

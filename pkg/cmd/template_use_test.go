@@ -480,6 +480,100 @@ func TestTemplateUse_ProjectYMLFile(t *testing.T) {
 	}
 }
 
+func TestTemplateUse_SafeMode_SkipsHooks(t *testing.T) {
+	withTempRegistry(t)
+
+	dir := t.TempDir()
+	tmplDir := filepath.Join(dir, specs.TemplateDirFile)
+	if err := os.MkdirAll(tmplDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	sentinel := filepath.Join(t.TempDir(), "hook-ran")
+	project := "Name: x\nhooks:\n  post-use:\n    - touch " + sentinel + "\n"
+	if err := os.WriteFile(filepath.Join(dir, specs.ProjectYAMLFile), []byte(project), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmplDir, "f.txt"), []byte("x"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := executeCmd("template", "save", dir, "tpl"); err != nil {
+		t.Fatalf("template save: %v", err)
+	}
+	if _, err := executeCmd("--safe-mode", "template", "use", "--use-defaults", "tpl", t.TempDir()); err != nil {
+		t.Fatalf("template use --safe-mode: %v", err)
+	}
+	if _, err := os.Stat(sentinel); err == nil {
+		t.Error("post-use hook ran despite --safe-mode")
+	}
+}
+
+// TestExecuteTemplate_RemoteHooks_RunsWithYes verifies that when remote=true and yes=true,
+// hooks execute without an interactive prompt.
+func TestExecuteTemplate_RemoteHooks_RunsWithYes(t *testing.T) {
+	dir := t.TempDir()
+	sentinel := filepath.Join(t.TempDir(), "hook-ran")
+	project := "Name: x\nhooks:\n  post-use:\n    - touch " + sentinel + "\n"
+	buildMinimalTemplate(t, dir, project, "f.txt", "x")
+
+	app := NewApp()
+	target := t.TempDir()
+	err := app.executeTemplate(dir, target, executeOpts{
+		useDefaults: true,
+		remote:      true,
+		yes:         true,
+	})
+	if err != nil {
+		t.Fatalf("executeTemplate: %v", err)
+	}
+	if _, err := os.Stat(sentinel); err != nil {
+		t.Error("post-use hook did not run with remote=true, yes=true")
+	}
+}
+
+// TestExecuteTemplate_RemoteHooks_SafeMode verifies that safe-mode skips hooks
+// even for remote sources (no confirmation needed).
+func TestExecuteTemplate_RemoteHooks_SafeMode(t *testing.T) {
+	dir := t.TempDir()
+	sentinel := filepath.Join(t.TempDir(), "hook-ran")
+	project := "Name: x\nhooks:\n  post-use:\n    - touch " + sentinel + "\n"
+	buildMinimalTemplate(t, dir, project, "f.txt", "x")
+
+	app := NewApp()
+	app.SafeMode = true
+	err := app.executeTemplate(dir, t.TempDir(), executeOpts{
+		useDefaults: true,
+		remote:      true,
+	})
+	if err != nil {
+		t.Fatalf("executeTemplate: %v", err)
+	}
+	if _, err := os.Stat(sentinel); err == nil {
+		t.Error("hook ran despite safe-mode on remote source")
+	}
+}
+
+// TestExecuteTemplate_SafeMode_AllowHooks verifies that --allow-hooks overrides safe-mode.
+func TestExecuteTemplate_SafeMode_AllowHooks(t *testing.T) {
+	dir := t.TempDir()
+	sentinel := filepath.Join(t.TempDir(), "hook-ran")
+	project := "Name: x\nhooks:\n  post-use:\n    - touch " + sentinel + "\n"
+	buildMinimalTemplate(t, dir, project, "f.txt", "x")
+
+	app := NewApp()
+	app.SafeMode = true
+	err := app.executeTemplate(dir, t.TempDir(), executeOpts{
+		useDefaults: true,
+		allowHooks:  true,
+	})
+	if err != nil {
+		t.Fatalf("executeTemplate: %v", err)
+	}
+	if _, err := os.Stat(sentinel); err != nil {
+		t.Error("hook did not run despite --allow-hooks overriding --safe-mode")
+	}
+}
+
 func TestTemplateUse_AmbiguousProjectFiles(t *testing.T) {
 	withTempRegistry(t)
 	dir := t.TempDir()

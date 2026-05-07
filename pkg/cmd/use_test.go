@@ -216,6 +216,40 @@ func TestUse_ProjectYMLFile(t *testing.T) {
 	}
 }
 
+func TestUse_SafeMode_SkipsHooks(t *testing.T) {
+	srcDir := t.TempDir()
+	sentinel := filepath.Join(t.TempDir(), "hook-ran")
+	yaml := "Name: x\nhooks:\n  post-use:\n    - touch " + sentinel + "\n"
+	buildMinimalTemplate(t, srcDir, yaml, "f.txt", "x")
+	targetDir := t.TempDir()
+
+	_, err := executeCmd("--safe-mode", "use", "--use-defaults", "file:"+srcDir, targetDir)
+	if err != nil {
+		t.Fatalf("use --safe-mode: %v", err)
+	}
+	if _, err := os.Stat(sentinel); err == nil {
+		t.Error("hook ran despite --safe-mode")
+	}
+}
+
+func TestUse_YesFlag_IsValidFlag(t *testing.T) {
+	srcDir := t.TempDir()
+	buildMinimalTemplate(t, srcDir, "Name: world\n", "out.txt", "{{.Name}}")
+	targetDir := t.TempDir()
+
+	_, err := executeCmd("use", "--use-defaults", "--yes", "file:"+srcDir, targetDir)
+	if err != nil {
+		t.Fatalf("use --yes: %v", err)
+	}
+	got, err := os.ReadFile(filepath.Join(targetDir, "out.txt"))
+	if err != nil {
+		t.Fatalf("output file missing: %v", err)
+	}
+	if string(got) != "world" {
+		t.Errorf("got %q, want %q", string(got), "world")
+	}
+}
+
 func TestUse_AmbiguousProjectFiles(t *testing.T) {
 	srcDir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(srcDir, specs.ProjectYAMLFile), []byte("Name: yaml\n"), 0644); err != nil {
