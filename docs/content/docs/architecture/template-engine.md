@@ -381,7 +381,10 @@ Exit codes are a bitmask — multiple conditions combine additively:
 ## Template Status Tracking
 
 `__status.json` caches the result of a remote HEAD check per template. The `list` command
-refreshes stale entries (older than 24 hours) concurrently using `sync.WaitGroup`.
+refreshes stale entries (older than 24 hours) concurrently, bounded to at most 8 parallel
+checks via `errgroup.SetLimit(8)`. Each individual check has a 10-second per-remote timeout;
+the entire refresh phase has a 30-second top-level timeout. Both timeouts use `context.Context`
+propagated from the command, so Ctrl-C cancels in-flight checks immediately.
 The `update` command forces an immediate refresh for one or all templates.
 
 ```go

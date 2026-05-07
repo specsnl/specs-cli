@@ -1,6 +1,7 @@
 package git
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -253,12 +254,13 @@ type RemoteCheckResult struct {
 	ErrorKind     CheckErrorKind
 }
 
-// CheckRemote queries the remote to determine whether the local repo at dir is
-// up-to-date for the given branch/tag ref. It uses Remote.List() and never
-// modifies the local repository. SSH auth is resolved automatically.
+// CheckRemoteContext queries the remote to determine whether the local repo at
+// dir is up-to-date for the given branch/tag ref. It uses Remote.ListContext()
+// and never modifies the local repository. SSH auth is resolved automatically.
+// ctx is forwarded to the underlying network call; cancel it to abort early.
 //
 // On failure, ErrorKind is set in the result and error is nil.
-func CheckRemote(dir, url, branch string) (RemoteCheckResult, error) {
+func CheckRemoteContext(ctx context.Context, dir, url, branch string) (RemoteCheckResult, error) {
 	repo, err := gogit.PlainOpen(dir)
 	if err != nil {
 		return RemoteCheckResult{ErrorKind: CheckErrorUnknown}, nil
@@ -278,8 +280,11 @@ func CheckRemote(dir, url, branch string) (RemoteCheckResult, error) {
 		listOpts.Auth = auth
 	}
 
-	refs, err := remote.List(listOpts)
+	refs, err := remote.ListContext(ctx, listOpts)
 	if err != nil {
+		if ctx.Err() != nil {
+			return RemoteCheckResult{ErrorKind: CheckErrorNetwork}, nil
+		}
 		return RemoteCheckResult{ErrorKind: classifyRemoteError(err)}, nil
 	}
 
@@ -289,6 +294,11 @@ func CheckRemote(dir, url, branch string) (RemoteCheckResult, error) {
 	}
 
 	return resolveStatus(refs, head.Hash(), branch), nil
+}
+
+// CheckRemote is a context-free convenience wrapper around CheckRemoteContext.
+func CheckRemote(dir, url, branch string) (RemoteCheckResult, error) {
+	return CheckRemoteContext(context.Background(), dir, url, branch)
 }
 
 // classifyRemoteError maps a remote.List error to a CheckErrorKind.

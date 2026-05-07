@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"log/slog"
 
 	"github.com/spf13/cobra"
@@ -9,9 +10,15 @@ import (
 	"github.com/specsnl/specs-cli/pkg/util/output"
 )
 
-// Execute creates the root command and runs it.
+// Execute creates the root command and runs it with a background context.
 func Execute(app *App) error {
-	return newRootCmd(app).Execute()
+	return ExecuteContext(context.Background(), app)
+}
+
+// ExecuteContext creates the root command and runs it with the given context.
+// The context is propagated to command handlers via cmd.Context().
+func ExecuteContext(ctx context.Context, app *App) error {
+	return newRootCmd(app).ExecuteContext(ctx)
 }
 
 func newRootCmd(app *App) *cobra.Command {
