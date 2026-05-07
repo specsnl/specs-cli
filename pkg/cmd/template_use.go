@@ -20,10 +20,11 @@ import (
 )
 
 type executeOpts struct {
-	valuesFile  string
-	argPairs    []string
-	useDefaults bool
-	noHooks     bool
+	valuesFile      string
+	argPairs        []string
+	useDefaults     bool
+	noHooks         bool
+	continueOnError bool
 }
 
 func newTemplateUseCmd(app *App) *cobra.Command {
@@ -53,6 +54,7 @@ func newTemplateUseCmd(app *App) *cobra.Command {
 	cmd.Flags().StringArrayVar(&opts.argPairs, "arg", nil, "Key=Value pair (repeatable)")
 	cmd.Flags().BoolVar(&opts.useDefaults, "use-defaults", false, "Skip prompts; use schema defaults")
 	cmd.Flags().BoolVar(&opts.noHooks, "no-hooks", false, "Skip pre/post-use hooks")
+	cmd.Flags().BoolVar(&opts.continueOnError, "continue-on-error", false, "Warn and copy files verbatim on render errors instead of aborting")
 
 	return cmd
 }
@@ -60,7 +62,9 @@ func newTemplateUseCmd(app *App) *cobra.Command {
 // executeTemplate is the shared execution logic reused by specs template use (Phase 7)
 // and specs use (Phase 8).
 func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) error {
-	tmpl, err := a.templateGet(templateRoot)
+	cfg := a.templateConfig()
+	cfg.ContinueOnRenderError = opts.continueOnError
+	tmpl, err := pkgtemplate.Get(templateRoot, cfg, a.Logger)
 	if err != nil {
 		return err
 	}
@@ -131,7 +135,10 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 
 	if len(tmpl.Warnings) > 0 {
 		for _, w := range tmpl.Warnings {
-			a.Output.Warn("%s was copied verbatim due to a render error: %v", w.Path, w.Err)
+			a.Output.Warn("%s: copied verbatim due to render error: %v", w.Path, w.Err)
+			if w.Preview != "" {
+				a.Output.Warn("  %s: first 80 chars: %s", filepath.Join(targetDir, w.Path), w.Preview)
+			}
 		}
 		a.Output.Warn("run 'specs template validate %s' to see all issues", filepath.Base(templateRoot))
 	}

@@ -310,16 +310,15 @@ func TestGet_InvalidDelimiters_ReturnsError(t *testing.T) {
 	}
 }
 
-func TestExecute_ParseError_CopiesVerbatimAndWarns(t *testing.T) {
-	// A template file that calls an undefined function triggers a parse error.
-	// Execute must succeed (verbatim copy), and the warning must be recorded on tmpl.Warnings.
+func TestExecute_ParseError_ContinueOnError(t *testing.T) {
+	// With ContinueOnRenderError=true a parse error records a warning and copies verbatim.
 	yaml := "Name: test\n__delimiters:\n  left: \"[[\"\n  right: \"]]\"\n"
 	original := []byte("[[ .Name | undefinedFunc ]]")
 	root := buildTemplate(t, yaml, map[string][]byte{
 		"compose.yml": original,
 	})
 
-	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{ContinueOnRenderError: true}, discardLogger())
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -332,13 +331,99 @@ func TestExecute_ParseError_CopiesVerbatimAndWarns(t *testing.T) {
 	if len(tmpl.Warnings) == 0 {
 		t.Fatal("expected at least one RenderWarning, got none")
 	}
-	if tmpl.Warnings[0].Path != "compose.yml" {
-		t.Errorf("warning path = %q, want %q", tmpl.Warnings[0].Path, "compose.yml")
+	w := tmpl.Warnings[0]
+	if w.Path != "compose.yml" {
+		t.Errorf("warning path = %q, want %q", w.Path, "compose.yml")
+	}
+	if w.Preview == "" {
+		t.Error("expected Preview to be set on RenderWarning")
 	}
 
 	got := readFile(t, target, "compose.yml")
 	if got != string(original) {
 		t.Errorf("compose.yml = %q, want verbatim copy %q", got, string(original))
+	}
+}
+
+func TestExecute_ParseError_FailFast(t *testing.T) {
+	// Default (fail-fast): a parse error aborts Execute with a non-nil error.
+	// No destination file must be written.
+	yaml := "Name: test\n__delimiters:\n  left: \"[[\"\n  right: \"]]\"\n"
+	root := buildTemplate(t, yaml, map[string][]byte{
+		"compose.yml": []byte("[[ .Name | undefinedFunc ]]"),
+	})
+
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+
+	target := t.TempDir()
+	if err := tmpl.Execute(target); err == nil {
+		t.Fatal("Execute: expected error for parse failure in fail-fast mode, got nil")
+	}
+
+	if fileExists(t, target, "compose.yml") {
+		t.Error("compose.yml must not be written when Execute aborts due to a parse error")
+	}
+	if len(tmpl.Warnings) != 0 {
+		t.Errorf("expected no Warnings in fail-fast mode, got %d", len(tmpl.Warnings))
+	}
+}
+
+func TestExecute_ExecuteError_FailFast(t *testing.T) {
+	// Default (fail-fast): referencing a missing context key aborts Execute.
+	// missingkey=error is set, so .MissingKey causes an execution error.
+	root := buildTemplate(t, "Name: test\n", map[string][]byte{
+		"out.txt": []byte("{{ .MissingKey }}"),
+	})
+
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+
+	target := t.TempDir()
+	if err := tmpl.Execute(target); err == nil {
+		t.Fatal("Execute: expected error for missing key in fail-fast mode, got nil")
+	}
+
+	if fileExists(t, target, "out.txt") {
+		t.Error("out.txt must not be written when Execute aborts due to an execution error")
+	}
+}
+
+func TestExecute_ExecuteError_ContinueOnError(t *testing.T) {
+	// With ContinueOnRenderError=true an execution error records a warning and copies verbatim.
+	original := []byte("{{ .MissingKey }}")
+	root := buildTemplate(t, "Name: test\n", map[string][]byte{
+		"out.txt": original,
+	})
+
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{ContinueOnRenderError: true}, discardLogger())
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+
+	target := t.TempDir()
+	if err := tmpl.Execute(target); err != nil {
+		t.Fatalf("Execute: unexpected error: %v", err)
+	}
+
+	if len(tmpl.Warnings) == 0 {
+		t.Fatal("expected at least one RenderWarning, got none")
+	}
+	w := tmpl.Warnings[0]
+	if w.Path != "out.txt" {
+		t.Errorf("warning path = %q, want %q", w.Path, "out.txt")
+	}
+	if w.Preview == "" {
+		t.Error("expected Preview to be set on RenderWarning")
+	}
+
+	got := readFile(t, target, "out.txt")
+	if got != string(original) {
+		t.Errorf("out.txt = %q, want verbatim copy %q", got, string(original))
 	}
 }
 

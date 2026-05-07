@@ -26,6 +26,13 @@ type Config struct {
 	// resolves to specs.DefaultDelimiters. Set this field to support per-project
 	// custom delimiters read from project.yaml.
 	Delims specs.Delimiters
+
+	// ContinueOnRenderError switches from the default fail-fast behaviour to the
+	// legacy warn-and-copy mode: parse or execution errors are recorded as
+	// RenderWarnings and the file is copied verbatim instead of aborting Execute.
+	// Enable this via --continue-on-error when the template has intentionally
+	// unrenderable files that cannot use .specsverbatim.
+	ContinueOnRenderError bool
 }
 
 // delims returns the configured delimiters, falling back to specs.DefaultDelimiters
@@ -45,9 +52,11 @@ var ignoredFiles = map[string]bool{
 
 // RenderWarning records a non-fatal issue encountered while rendering a template file.
 // The file is still written to the destination as a verbatim copy.
+// Only produced when Config.ContinueOnRenderError is true.
 type RenderWarning struct {
-	Path string // template-relative path of the affected file
-	Err  error
+	Path    string // template-relative path of the affected file
+	Err     error
+	Preview string // first ~80 bytes of the unrendered source content; helps grep for stragglers
 }
 
 // Template holds everything needed to execute a boilr template.
@@ -214,7 +223,9 @@ func (t *Template) renderName(name string, ctx map[string]any) (string, error) {
 
 // renderFile renders a text file's content using the configured delimiters.
 // If the rendered content is whitespace-only, the destination file is not created.
-// Parse or execution errors are recorded as RenderWarnings and the file is copied verbatim.
+// By default a parse or execution error aborts Execute with a wrapped error.
+// When Config.ContinueOnRenderError is true the error is recorded as a RenderWarning
+// and the file is copied verbatim instead.
 func (t *Template) renderFile(srcPath, destPath, rel string, ctx map[string]any) error {
 	info, err := os.Stat(srcPath)
 	if err != nil {
@@ -233,14 +244,20 @@ func (t *Template) renderFile(srcPath, destPath, rel string, ctx map[string]any)
 		Option("missingkey=error").
 		Parse(string(data))
 	if err != nil {
-		t.Warnings = append(t.Warnings, RenderWarning{Path: rel, Err: err})
-		return copyFile(srcPath, destPath)
+		if t.cfg.ContinueOnRenderError {
+			t.Warnings = append(t.Warnings, RenderWarning{Path: rel, Err: err, Preview: contentPreview(data)})
+			return copyFile(srcPath, destPath)
+		}
+		return fmt.Errorf("parsing template %s: %w", rel, err)
 	}
 
 	var buf strings.Builder
 	if err := tmpl.Execute(&buf, ctx); err != nil {
-		t.Warnings = append(t.Warnings, RenderWarning{Path: rel, Err: err})
-		return copyFile(srcPath, destPath)
+		if t.cfg.ContinueOnRenderError {
+			t.Warnings = append(t.Warnings, RenderWarning{Path: rel, Err: err, Preview: contentPreview(data)})
+			return copyFile(srcPath, destPath)
+		}
+		return fmt.Errorf("rendering template %s: %w", rel, err)
 	}
 
 	result := buf.String()
@@ -249,6 +266,16 @@ func (t *Template) renderFile(srcPath, destPath, rel string, ctx map[string]any)
 	}
 
 	return writeFile(destPath, []byte(result), info.Mode())
+}
+
+// contentPreview returns the first ~80 characters of data for display in warnings.
+func contentPreview(data []byte) string {
+	const max = 80
+	s := string(data)
+	if len(s) > max {
+		return s[:max]
+	}
+	return s
 }
 
 // isBinary returns true if the file contains a null byte or invalid UTF-8.
