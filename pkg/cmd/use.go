@@ -37,6 +37,8 @@ Source formats:
 	cmd.Flags().StringArrayVar(&opts.argPairs, "arg", nil, "Key=Value pair (repeatable)")
 	cmd.Flags().BoolVar(&opts.useDefaults, "use-defaults", false, "Skip prompts; use schema defaults")
 	cmd.Flags().BoolVar(&opts.noHooks, "no-hooks", false, "Skip pre/post-use hooks")
+	cmd.Flags().BoolVar(&opts.allowHooks, "allow-hooks", false, "Allow hooks even when --safe-mode is set")
+	cmd.Flags().BoolVar(&opts.yes, "yes", false, "Skip interactive confirmation for remote hook execution")
 
 	return cmd
 }
@@ -69,6 +71,7 @@ func runUse(app *App, rawSource, targetDir string, opts executeOpts) error {
 			return err
 		}
 		templateRoot = cloneDir
+		opts.remote = true
 	}
 
 	return app.executeTemplate(templateRoot, targetDir, opts)

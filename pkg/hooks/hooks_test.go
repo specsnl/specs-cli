@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"text/template"
 
@@ -223,5 +224,49 @@ func TestRun_EmptyHooks(t *testing.T) {
 	h := &Hooks{}
 	if err := h.Run("post-use", t.TempDir(), map[string]any{}, emptyFuncMap, specs.DefaultDelimiters); err != nil {
 		t.Errorf("unexpected error on empty hooks: %v", err)
+	}
+}
+
+func TestRun_MissingBash_ReturnsError(t *testing.T) {
+	h := &Hooks{PostUse: []string{"echo ok"}}
+	t.Setenv("PATH", "")
+	err := h.Run("post-use", t.TempDir(), map[string]any{}, emptyFuncMap, specs.DefaultDelimiters)
+	if err == nil {
+		t.Fatal("expected error when bash is absent from PATH")
+	}
+	if !strings.Contains(err.Error(), "bash") {
+		t.Errorf("error should mention bash, got: %v", err)
+	}
+}
+
+// --- Rendered ---
+
+func TestRendered_PreUse(t *testing.T) {
+	h := &Hooks{PreUse: []string{`echo {{ .Name }}`}}
+	ctx := map[string]any{"Name": "world"}
+	got, err := h.Rendered("pre-use", ctx, emptyFuncMap, specs.DefaultDelimiters)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0] != "echo world" {
+		t.Errorf("Rendered = %v, want [echo world]", got)
+	}
+}
+
+func TestRendered_PostUse(t *testing.T) {
+	h := &Hooks{PostUse: []string{"npm install", "git init"}}
+	got, err := h.Rendered("post-use", map[string]any{}, emptyFuncMap, specs.DefaultDelimiters)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0] != "npm install" || got[1] != "git init" {
+		t.Errorf("Rendered = %v", got)
+	}
+}
+
+func TestRendered_UnknownTrigger(t *testing.T) {
+	h := &Hooks{}
+	if _, err := h.Rendered("invalid", map[string]any{}, emptyFuncMap, specs.DefaultDelimiters); err == nil {
+		t.Error("expected error for unknown trigger")
 	}
 }

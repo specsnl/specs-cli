@@ -71,6 +71,14 @@ func (h *Hooks) Run(trigger, cwd string, ctx map[string]any, funcMap template.Fu
 		return fmt.Errorf("unknown hook trigger: %q", trigger)
 	}
 
+	if len(commands) == 0 {
+		return nil
+	}
+
+	if _, err := exec.LookPath("bash"); err != nil {
+		return fmt.Errorf("bash not found on PATH: install bash or pass --no-hooks to skip hook execution")
+	}
+
 	env := buildEnv(ctx, h.EnvPrefix)
 
 	for _, cmdTpl := range commands {
@@ -92,6 +100,29 @@ func (h *Hooks) Run(trigger, cwd string, ctx map[string]any, funcMap template.Fu
 		}
 	}
 	return nil
+}
+
+// Rendered returns all commands for the given trigger rendered against ctx.
+// It is used to preview hook contents before asking for user confirmation.
+func (h *Hooks) Rendered(trigger string, ctx map[string]any, funcMap template.FuncMap, delims specs.Delimiters) ([]string, error) {
+	var cmds []string
+	switch trigger {
+	case "pre-use":
+		cmds = h.PreUse
+	case "post-use":
+		cmds = h.PostUse
+	default:
+		return nil, fmt.Errorf("unknown hook trigger: %q", trigger)
+	}
+	result := make([]string, len(cmds))
+	for i, cmd := range cmds {
+		rendered, err := renderCommand(cmd, ctx, funcMap, delims)
+		if err != nil {
+			return nil, err
+		}
+		result[i] = rendered
+	}
+	return result, nil
 }
 
 // HasPreUse reports whether any pre-use hooks are defined.
