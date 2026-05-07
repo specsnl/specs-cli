@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	pkgtemplate "github.com/specsnl/specs-cli/pkg/template"
 )
 
 func TestUpgrade_LocalSkipped(t *testing.T) {
@@ -15,7 +17,7 @@ func TestUpgrade_LocalSkipped(t *testing.T) {
 	if err := os.MkdirAll(tmplDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := writeMetadata(tmplDir, "local-tpl", "/some/local/path", "", "", "", time.Now().UTC()); err != nil {
+	if err := pkgtemplate.SaveMetadata(tmplDir, "local-tpl", "/some/local/path", "", "", "", time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
 

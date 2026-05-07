@@ -41,17 +41,18 @@ specs-cli/
     │   ├── template_delete.go
     │   ├── template_update.go
     │   ├── template_upgrade.go
-    │   ├── metadata.go           # writeMetadata() helper
     │   └── version.go
+    ├── registry/                 # on-disk template store operations
+    │   └── registry.go           # Entry, UpgradeResult, Load(), Upgrade()
     ├── template/                 # template loading & execution engine
     │   ├── template.go           # Get(), Execute(), configurable delimiters
-    │   ├── context.go            # project.yml parsing, referenced defaults, computed values
+    │   ├── context.go            # project.yml parsing, LoadProjectFile(), referenced defaults, computed values
     │   ├── verbatim.go           # .specsverbatim loading & matching
     │   ├── functions.go          # FuncMap (custom + Sprout)
     │   ├── specsregistry.go      # custom Sprout registry (hostname, password, etc.)
     │   ├── analysis.go           # AST-based conditional variable analysis
     │   ├── cond.go               # Cond interface and implementations
-    │   ├── metadata.go           # Metadata struct, JSONTime
+    │   ├── metadata.go           # Metadata struct, JSONTime, LoadMetadata(), SaveMetadata()
     │   ├── status.go             # TemplateStatus — remote stale-check caching
     │   └── validate.go           # template validation helpers
     ├── hooks/                    # hook execution
@@ -290,8 +291,9 @@ func (h *Hooks) Run(trigger, cwd string, ctx map[string]any, funcMap template.Fu
 | Package | Status | Change |
 |---------|--------|--------|
 | `pkg/specs` | **new** | XDG paths, file name constants (replaces `pkg/boilr`) |
-| `pkg/cmd` | updated | new `use.go`, `template_update.go`, `template_upgrade.go`, iterative conditional prompting |
-| `pkg/template` | updated | configurable delimiters (default `{{ }}`), `context.go`, `verbatim.go`, conditional skip, AST analysis, status |
+| `pkg/registry` | **new** | on-disk template store: `Entry`, `Load()`, `Upgrade()` |
+| `pkg/cmd` | updated | new `use.go`, `template_update.go`, `template_upgrade.go`, iterative conditional prompting; no longer reads project files or `__metadata.json` directly |
+| `pkg/template` | updated | configurable delimiters (default `{{ }}`), `context.go`, `verbatim.go`, conditional skip, AST analysis, status; exports `LoadProjectFile()`, `LoadMetadata()`, `SaveMetadata()` |
 | `pkg/hooks` | **new** | hook loading and execution |
 | `pkg/util/output` | **new** | lipgloss-based logger + table renderer (replaces tlog + tabular) |
 | `pkg/util/values` | **new** | `--values` file (JSON/YAML) and `--arg` flag parsing |

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,7 +9,6 @@ import (
 
 	"charm.land/huh/v2"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 
 	"github.com/specsnl/specs-cli/pkg/hooks"
 	"github.com/specsnl/specs-cli/pkg/specs"
@@ -75,7 +73,7 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 		return err
 	}
 
-	rawConfig, err := loadRawConfig(templateRoot)
+	rawConfig, err := pkgtemplate.LoadProjectFile(templateRoot)
 	if err != nil {
 		return err
 	}
@@ -415,47 +413,3 @@ func toStringOptions(v []any) []string {
 	return opts
 }
 
-// loadRawConfig reads project.yaml or project.yml (falls back to project.json) without stripping
-// any keys. Used to pass the raw "hooks" value to hooks.Load.
-// Returns ErrAmbiguousProjectFile if both YAML variants are present.
-func loadRawConfig(templateRoot string) (map[string]any, error) {
-	yamlPath := filepath.Join(templateRoot, specs.ProjectYAMLFile)
-	ymlPath := filepath.Join(templateRoot, specs.ProjectYMLFile)
-	_, yamlErr := os.Stat(yamlPath)
-	_, ymlErr := os.Stat(ymlPath)
-	hasYAML := yamlErr == nil
-	hasYML := ymlErr == nil
-
-	if hasYAML && hasYML {
-		return nil, specs.ErrAmbiguousProjectFile
-	}
-
-	if hasYAML || hasYML {
-		chosen := yamlPath
-		chosenName := specs.ProjectYAMLFile
-		if hasYML {
-			chosen = ymlPath
-			chosenName = specs.ProjectYMLFile
-		}
-		data, err := os.ReadFile(chosen)
-		if err != nil {
-			return nil, fmt.Errorf("reading %s: %w", chosenName, err)
-		}
-		var m map[string]any
-		if err := yaml.Unmarshal(data, &m); err != nil {
-			return nil, fmt.Errorf("parsing %s: %w", chosenName, err)
-		}
-		return m, nil
-	}
-
-	jsonPath := filepath.Join(templateRoot, specs.ProjectJSONFile)
-	data, err := os.ReadFile(jsonPath)
-	if err != nil {
-		return nil, fmt.Errorf("no %s, %s, or %s found in %s", specs.ProjectYAMLFile, specs.ProjectYMLFile, specs.ProjectJSONFile, templateRoot)
-	}
-	var m map[string]any
-	if err := json.Unmarshal(data, &m); err != nil {
-		return nil, fmt.Errorf("parsing %s: %w", specs.ProjectJSONFile, err)
-	}
-	return m, nil
-}

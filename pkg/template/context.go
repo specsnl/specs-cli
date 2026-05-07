@@ -21,7 +21,7 @@ import (
 // referenced defaults (string values containing the left delimiter) in topological order.
 // Returns the user input map and the raw computed definitions separately.
 func LoadUserContext(templateRoot string, funcMap texttemplate.FuncMap, delims specs.Delimiters) (userCtx map[string]any, computedDefs map[string]string, err error) {
-	raw, err := loadContextFile(templateRoot)
+	raw, err := LoadProjectFile(templateRoot)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -42,7 +42,7 @@ func LoadUserContext(templateRoot string, funcMap texttemplate.FuncMap, delims s
 // under the __delimiters key, falling back to fallback when the key is absent.
 // Returns an error if __delimiters is present but malformed.
 func ExtractProjectDelimiters(templateRoot string, fallback specs.Delimiters) (specs.Delimiters, error) {
-	raw, err := loadContextFile(templateRoot)
+	raw, err := LoadProjectFile(templateRoot)
 	if err != nil {
 		return fallback, err
 	}
@@ -102,9 +102,11 @@ func ApplyComputed(ctx map[string]any, defs map[string]string, funcMap texttempl
 	return result, nil
 }
 
-// loadContextFile reads project.yaml or project.yml (falls back to project.json).
+// LoadProjectFile reads project.yaml or project.yml (falls back to project.json) and
+// returns the raw, unmodified map. Reserved keys (hooks, computed, __delimiters) are
+// preserved so that callers such as hooks.Load can access them directly.
 // Returns ErrAmbiguousProjectFile if both YAML variants are present.
-func loadContextFile(templateRoot string) (map[string]any, error) {
+func LoadProjectFile(templateRoot string) (map[string]any, error) {
 	yamlPath := filepath.Join(templateRoot, specs.ProjectYAMLFile)
 	ymlPath := filepath.Join(templateRoot, specs.ProjectYMLFile)
 	_, yamlErr := os.Stat(yamlPath)

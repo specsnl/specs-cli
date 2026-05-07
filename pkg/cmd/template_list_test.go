@@ -69,7 +69,7 @@ func TestList_StatusColumn_LocalNoStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Local template: repository set but no branch.
-	if err := writeMetadata(tmplDir, "local-tpl", "/local/path", "", "", "", time.Now().UTC()); err != nil {
+	if err := pkgtemplate.SaveMetadata(tmplDir, "local-tpl", "/local/path", "", "", "", time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -88,7 +88,7 @@ func TestList_StatusColumn_FreshUpToDate(t *testing.T) {
 	if err := os.MkdirAll(tmplDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := writeMetadata(tmplDir, "remote-tpl", "https://example.com/repo", "main", "", "", time.Now().UTC()); err != nil {
+	if err := pkgtemplate.SaveMetadata(tmplDir, "remote-tpl", "https://example.com/repo", "main", "", "", time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
 	// Write a fresh status so no network call is made.
@@ -142,7 +142,7 @@ func TestList_StatusColumn_NetworkWarn(t *testing.T) {
 	if err := os.MkdirAll(tmplDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := writeMetadata(tmplDir, "remote-tpl", "https://example.com/repo", "main", "", "", time.Now().UTC()); err != nil {
+	if err := pkgtemplate.SaveMetadata(tmplDir, "remote-tpl", "https://example.com/repo", "main", "", "", time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
 	// Write a stale status with network error.

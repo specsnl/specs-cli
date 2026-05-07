@@ -1,9 +1,7 @@
 package cmd
 
 import (
-	"encoding/json"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -42,7 +40,7 @@ func newTemplateListCmd(app *App) *cobra.Command {
 				}
 				name := e.Name()
 				root := specs.TemplatePath(name)
-				meta, _ := loadMetadataForListing(root)
+				meta, _ := pkgtemplate.LoadMetadata(root)
 				var status *pkgtemplate.TemplateStatus
 				if meta != nil && meta.Repository != "" && meta.Branch != "" {
 					status, _ = pkgtemplate.LoadStatus(root)
@@ -146,15 +144,3 @@ func statusLabel(status *pkgtemplate.TemplateStatus, hasRemote bool) string {
 	return "update available"
 }
 
-func loadMetadataForListing(templateRoot string) (*pkgtemplate.Metadata, error) {
-	path := filepath.Join(templateRoot, specs.MetadataFile)
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, nil //nolint:nilerr // missing metadata is not an error
-	}
-	var m pkgtemplate.Metadata
-	if err := json.Unmarshal(data, &m); err != nil {
-		return nil, nil //nolint:nilerr // malformed metadata is silently ignored when listing
-	}
-	return &m, nil
-}
