@@ -3,6 +3,7 @@ package values
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -43,11 +44,7 @@ func ParseArg(arg string) (key, value string, err error) {
 // Merge applies overrides on top of base, returning a new map.
 func Merge(base, overrides map[string]any) map[string]any {
 	result := make(map[string]any, len(base))
-	for k, v := range base {
-		result[k] = v
-	}
-	for k, v := range overrides {
-		result[k] = v
-	}
+	maps.Copy(result, base)
+	maps.Copy(result, overrides)
 	return result
 }
