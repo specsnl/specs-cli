@@ -118,6 +118,15 @@ One-step command — downloads, executes, discards. No registry entry created.
 | Local path (explicit) | `file:./my-template` |
 | Local path (implicit) | `./my-template` or `/absolute/path` |
 
+**Source validation rules** (enforced at parse time, before any network call):
+
+- **GitHub shorthand** — owner and repo must match GitHub's naming rules: alphanumeric, dots,
+  hyphens, underscores; must start and end with an alphanumeric character; max 39 chars for
+  owner, 100 for repo; exactly one `/` separator. Branch (if given) must be non-empty, contain
+  no whitespace, and must not include `..`.
+- **HTTPS / SSH URLs** — must have a non-empty host and a path with at least two non-empty
+  segments (`/owner/repo`).
+
 SSH clones are authenticated automatically via SSH agent or standard key files
 (`~/.ssh/id_ed25519`, `id_rsa`, `id_ecdsa`). Host key verification uses `~/.ssh/known_hosts`.
 
