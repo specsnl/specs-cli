@@ -15,6 +15,7 @@ func TestParse(t *testing.T) {
 		wantLocal  string
 		wantErr    bool
 	}{
+		// --- github shorthand: valid ---
 		{
 			name:    "github shorthand",
 			input:   "github:user/repo",
@@ -27,6 +28,72 @@ func TestParse(t *testing.T) {
 			wantBranch: "main",
 		},
 		{
+			name:    "github shorthand with hyphens and underscores",
+			input:   "github:foo-bar/baz_qux",
+			wantURL: "https://github.com/foo-bar/baz_qux",
+		},
+		{
+			name:       "github shorthand branch semver tag",
+			input:      "github:foo/bar:v1.0.0",
+			wantURL:    "https://github.com/foo/bar",
+			wantBranch: "v1.0.0",
+		},
+		{
+			name:       "github shorthand branch with slash",
+			input:      "github:foo/bar:feature/x",
+			wantURL:    "https://github.com/foo/bar",
+			wantBranch: "feature/x",
+		},
+		{
+			name:    "github shorthand single-char owner and repo",
+			input:   "github:a/b",
+			wantURL: "https://github.com/a/b",
+		},
+
+		// --- github shorthand: invalid ---
+		{
+			name:    "github shorthand missing slash",
+			input:   "github:repo-only",
+			wantErr: true,
+		},
+		{
+			name:    "github shorthand empty repo",
+			input:   "github:foo/",
+			wantErr: true,
+		},
+		{
+			name:    "github shorthand empty owner",
+			input:   "github:/bar",
+			wantErr: true,
+		},
+		{
+			name:    "github shorthand owner with space",
+			input:   "github:foo bar/baz",
+			wantErr: true,
+		},
+		{
+			name:    "github shorthand too many path segments",
+			input:   "github:foo/bar/baz",
+			wantErr: true,
+		},
+		{
+			name:    "github shorthand empty branch after colon",
+			input:   "github:foo/bar:",
+			wantErr: true,
+		},
+		{
+			name:    "github shorthand branch with dotdot",
+			input:   "github:foo/bar:..",
+			wantErr: true,
+		},
+		{
+			name:    "github shorthand branch with whitespace",
+			input:   "github:foo/bar:main branch",
+			wantErr: true,
+		},
+
+		// --- HTTPS: valid ---
+		{
 			name:    "full https url",
 			input:   "https://github.com/user/repo",
 			wantURL: "https://github.com/user/repo",
@@ -36,6 +103,20 @@ func TestParse(t *testing.T) {
 			input:   "https://github.com/user/repo.git",
 			wantURL: "https://github.com/user/repo",
 		},
+
+		// --- HTTPS: invalid ---
+		{
+			name:    "https url with only one path segment",
+			input:   "https://github.com/user",
+			wantErr: true,
+		},
+		{
+			name:    "https url with empty repo segment",
+			input:   "https://github.com/user/",
+			wantErr: true,
+		},
+
+		// --- SSH: valid ---
 		{
 			name:    "scp-style ssh url",
 			input:   "git@github.com:user/repo",
@@ -51,6 +132,25 @@ func TestParse(t *testing.T) {
 			input:   "ssh://git@github.com/user/repo",
 			wantURL: "ssh://git@github.com/user/repo",
 		},
+
+		// --- SSH: invalid ---
+		{
+			name:    "scp-style ssh url with only one path segment",
+			input:   "git@github.com:user",
+			wantErr: true,
+		},
+		{
+			name:    "explicit ssh url with only one path segment",
+			input:   "ssh://git@github.com/user",
+			wantErr: true,
+		},
+		{
+			name:    "explicit ssh url with empty repo segment",
+			input:   "ssh://git@github.com/user/",
+			wantErr: true,
+		},
+
+		// --- local paths ---
 		{
 			name:      "file prefix local path",
 			input:     "file:./my-template",
@@ -71,14 +171,11 @@ func TestParse(t *testing.T) {
 			input:     "/home/user/templates/my-template",
 			wantLocal: "/home/user/templates/my-template",
 		},
+
+		// --- unrecognised ---
 		{
 			name:    "unknown format",
 			input:   "foo:bar/baz",
-			wantErr: true,
-		},
-		{
-			name:    "github shorthand missing slash",
-			input:   "github:repo-only",
 			wantErr: true,
 		},
 	}
