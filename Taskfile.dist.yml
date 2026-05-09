@@ -44,9 +44,7 @@ tasks:
       SPECS_VERSION:
         sh: git describe --tags --always --dirty="-dev" 2>/dev/null || echo "dev"
     cmds:
-      - task: dc:run:go-builder
-        vars:
-          SUB_CMD: go vet
+      - task: vet
       - >-
         docker buildx bake --file compose.yml
         --set "go-binary.output=type=local,dest=."
@@ -55,15 +53,29 @@ tasks:
         --set "go-binary.args.SPECS_VERSION={{.SPECS_VERSION}}"
         go-binary
 
-  test:
-    desc: Run go tests
+  vet:
+    desc: Run go vet
     cmds:
       - task: dc:run:go-builder
         vars:
-          SUB_CMD: "go test ./..."
+          SUB_CMD: go vet
 
-  docker:test:
-    desc: Run go tests (including integration tests) inside the Docker container
+  fix:
+    desc: Run go fix
+    cmds:
+      - task: dc:run:go-builder
+        vars:
+          SUB_CMD: "go fix ./..."
+
+  fix:diff:
+    desc: Run go fix in diff mode
+    cmds:
+      - task: dc:run:go-builder
+        vars:
+          SUB_CMD: "go fix -diff ./..."
+
+  test:
+    desc: Run go tests
     cmds:
       - task: dc:run:go-builder
         vars:

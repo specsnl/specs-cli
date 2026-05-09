@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/specsnl/specs-cli/pkg/specs"
@@ -378,11 +379,12 @@ func makeTemplateWithSelectVar(t *testing.T, varName string, options []string) s
 	if err := os.MkdirAll(tmplDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	project := varName + ":\n"
+	var project strings.Builder
+	project.WriteString(varName + ":\n")
 	for _, opt := range options {
-		project += "  - " + opt + "\n"
+		project.WriteString("  - " + opt + "\n")
 	}
-	if err := os.WriteFile(filepath.Join(dir, specs.ProjectYAMLFile), []byte(project), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, specs.ProjectYAMLFile), []byte(project.String()), 0644); err != nil {
 		t.Fatal(err)
 	}
 	content := "selected {{." + varName + "}}"

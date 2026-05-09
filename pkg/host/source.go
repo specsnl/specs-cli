@@ -69,13 +69,13 @@ func parseGitHub(input string) (*Source, error) {
 	parts := strings.SplitN(rest, ":", 2)
 
 	repoPart := parts[0]
-	slashIdx := strings.Index(repoPart, "/")
-	if slashIdx < 0 {
+	before, after, ok := strings.Cut(repoPart, "/")
+	if !ok {
 		return nil, fmt.Errorf("invalid github source: missing owner/repo separator in %q", input)
 	}
 
-	owner := repoPart[:slashIdx]
-	repo := repoPart[slashIdx+1:]
+	owner := before
+	repo := after
 
 	if strings.Contains(repo, "/") {
 		return nil, fmt.Errorf("invalid github source: too many path segments in %q", input)
@@ -189,7 +189,7 @@ func validateScpPath(path, input string) error {
 
 func countNonEmptySegments(path string) int {
 	n := 0
-	for _, seg := range strings.Split(path, "/") {
+	for seg := range strings.SplitSeq(path, "/") {
 		if seg != "" {
 			n++
 		}
