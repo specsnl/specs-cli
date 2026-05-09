@@ -43,17 +43,29 @@ specs template use my-template ./my-project
 
 ---
 
-## Development
+## Development environment
 
-**Requirements:** [Task](https://taskfile.dev) and Docker — build and test commands run inside a Docker container, so no local Go installation is needed. If you prefer to run Go commands directly on your host instead, Go 1.26+ is required.
+### Overview
 
-Build the Docker images first (one-time setup):
+The repo ships a `Dockerfile` and a `compose.yml` that together define a self-contained build and test environment. Contributors don't need a local Go installation — all builds and tests run inside a Docker container that pins the exact Go version and tooling.
+
+| File | Role |
+|------|------|
+| `Dockerfile` | Defines the build image — Go 1.26 + tooling, used by `task build` and `task test` |
+| `compose.yml` | Wires the Dockerfile stages into named services consumed by the Taskfile |
+| `Taskfile.dist.yml` | Orchestrates all developer workflows; wraps Docker Compose so you never call it directly |
+
+**Requirements:** [Task](https://taskfile.dev) and Docker.
+
+### Getting started
+
+Build the images once before running any task:
 
 ```sh
 task dc:build
 ```
 
-Then:
+Then use the standard tasks:
 
 ```sh
 task build    # Build the binary for the current platform
@@ -65,6 +77,29 @@ List all available tasks:
 ```sh
 task --list
 ```
+
+### How it works
+
+`task dc:build` builds all Docker Compose services in the `build` profile. The key service is `go-builder`, built from the `builder-download` stage of the `Dockerfile`. It mounts the repository root and two Docker volumes — one for the Go module cache and one for the build cache — so subsequent runs are fast.
+
+`task test` and `task build` spin up a one-off `go-builder` container (`docker compose run --rm`), run the Go command inside it, then discard the container. The service doesn't need to be started in advance — it is ephemeral by design.
+
+`task build` also invokes `docker buildx bake` using the `go-binary` service to produce a statically linked binary and copy it out of the image into the project root.
+
+### Without Docker (escape hatch)
+
+If you already have Go 1.26+ installed locally, you can bypass the container entirely:
+
+```sh
+go build ./...
+go test ./...
+```
+
+CI always runs through Docker and the Taskfile. The container is the source of truth for reproducible builds.
+
+### CI and agent execution
+
+All CI and agent workflows follow the same rule: use `task` commands, never call `docker compose` directly. See [`.github/instructions/executing-commands.md`](.github/instructions/executing-commands.md) for the authoritative execution rules.
 
 ---
 
