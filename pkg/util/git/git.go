@@ -185,9 +185,8 @@ func isSSHURL(url string) bool {
 // sshUser extracts the username from an SSH URL. Defaults to "git".
 func sshUser(url string) string {
 	if after, ok := strings.CutPrefix(url, "ssh://"); ok {
-		rest := after
-		if at := strings.Index(rest, "@"); at > 0 {
-			return rest[:at]
+		if at := strings.Index(after, "@"); at > 0 {
+			return after[:at]
 		}
 	} else {
 		if at := strings.Index(url, "@"); at > 0 {
