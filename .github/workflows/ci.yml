@@ -31,6 +31,10 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      - name: Fix (diff mode)
+        continue-on-error: true
+        run: go fix -diff ./...
+
       - name: Test
         run: go test -race -count=1 ./...
 
