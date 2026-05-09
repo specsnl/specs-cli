@@ -1,6 +1,7 @@
 package template_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -345,5 +346,70 @@ func TestLoadProjectFile_MissingFile(t *testing.T) {
 	_, err := pkgtemplate.LoadProjectFile(dir)
 	if err == nil {
 		t.Fatal("expected error when no project file exists, got nil")
+	}
+}
+
+func TestLoadProjectFile_MissingFile_IsErrProjectFileMissing(t *testing.T) {
+	dir := t.TempDir()
+
+	_, err := pkgtemplate.LoadProjectFile(dir)
+	if !errors.Is(err, specs.ErrProjectFileMissing) {
+		t.Errorf("expected ErrProjectFileMissing, got %v", err)
+	}
+}
+
+func TestLoadProjectFile_AmbiguousFile_IsErrAmbiguousProjectFile(t *testing.T) {
+	dir := t.TempDir()
+	writeProjectYAML(t, dir, "Name: a\n")
+	writeProjectYML(t, dir, "Name: b\n")
+
+	_, err := pkgtemplate.LoadProjectFile(dir)
+	if !errors.Is(err, specs.ErrAmbiguousProjectFile) {
+		t.Errorf("expected ErrAmbiguousProjectFile, got %v", err)
+	}
+}
+
+func TestLoadUserContext_ComputedConflict_IsErrInvalidComputedDef(t *testing.T) {
+	dir := t.TempDir()
+	writeProjectYAML(t, dir, "Name: foo\ncomputed:\n  Name: bar\n")
+
+	_, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	if !errors.Is(err, specs.ErrInvalidComputedDef) {
+		t.Errorf("expected ErrInvalidComputedDef, got %v", err)
+	}
+}
+
+func TestLoadUserContext_ComputedNotMapping_IsErrInvalidComputedDef(t *testing.T) {
+	dir := t.TempDir()
+	writeProjectYAML(t, dir, "Name: foo\ncomputed: not-a-mapping\n")
+
+	_, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	if !errors.Is(err, specs.ErrInvalidComputedDef) {
+		t.Errorf("expected ErrInvalidComputedDef, got %v", err)
+	}
+}
+
+func TestApplyComputed_Cycle_IsErrCyclicDependency(t *testing.T) {
+	dir := t.TempDir()
+	writeProjectYAML(t, dir, "Name: x\ncomputed:\n  A: \"{{.B}}\"\n  B: \"{{.A}}\"\n")
+
+	ctx, defs, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	if err != nil {
+		t.Fatalf("LoadUserContext: %v", err)
+	}
+
+	_, err = pkgtemplate.ApplyComputed(ctx, defs, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	if !errors.Is(err, specs.ErrCyclicDependency) {
+		t.Errorf("expected ErrCyclicDependency, got %v", err)
+	}
+}
+
+func TestLoadUserContext_CyclicReference_IsErrCyclicDependency(t *testing.T) {
+	dir := t.TempDir()
+	writeProjectYAML(t, dir, "A: \"{{.B}}\"\nB: \"{{.A}}\"\n")
+
+	_, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	if !errors.Is(err, specs.ErrCyclicDependency) {
+		t.Errorf("expected ErrCyclicDependency, got %v", err)
 	}
 }

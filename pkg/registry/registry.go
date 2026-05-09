@@ -64,8 +64,8 @@ func Upgrade(name string) (UpgradeResult, error) {
 
 	targetRef := meta.Branch
 	result, _ := pkggit.CheckRemote(root, meta.Repository, meta.Branch)
-	if result.ErrorKind != pkggit.CheckErrorNone {
-		return UpgradeResult{}, fmt.Errorf("could not check remote: %s", result.ErrorKind)
+	if err := result.Err(); err != nil {
+		return UpgradeResult{}, err
 	}
 	if result.IsUpToDate && result.LatestVersion == "" {
 		return UpgradeResult{AlreadyUpToDate: true}, nil

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -48,6 +49,20 @@ func TestSave_AlreadyExists(t *testing.T) {
 	_, err := executeCmd("template", "save", src, "my-tpl")
 	if err == nil {
 		t.Fatal("expected error on duplicate save")
+	}
+}
+
+func TestSave_AlreadyExists_IsErrTemplateAlreadyExists(t *testing.T) {
+	withTempRegistry(t)
+
+	src := makeFakeTemplate(t)
+	if _, err := executeCmd("template", "save", src, "my-tpl"); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := executeCmd("template", "save", src, "my-tpl")
+	if !errors.Is(err, specs.ErrTemplateAlreadyExists) {
+		t.Errorf("expected ErrTemplateAlreadyExists, got %v", err)
 	}
 }
 

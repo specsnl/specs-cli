@@ -244,6 +244,30 @@ flowchart TD
 
 ---
 
+## Error Handling (`pkg/specs/errors.go`)
+
+Sentinel errors are declared in `pkg/specs/errors.go` and should always be wrapped with `%w`
+so that callers can use `errors.Is` to distinguish them:
+
+| Sentinel | Kind string | Raised when |
+|----------|-------------|-------------|
+| `ErrTemplateNotFound` | `template_not_found` | Named template does not exist in the registry |
+| `ErrTemplateAlreadyExists` | `template_already_exists` | Template name is already in use (save/download/rename without `--force`) |
+| `ErrTemplateDirMissing` | `template_dir_missing` | Template root exists but has no `template/` subdirectory |
+| `ErrBothHookSources` | `both_hook_sources` | Both inline hooks and a `hooks/` directory are present |
+| `ErrAmbiguousProjectFile` | `ambiguous_project_file` | Both `project.yaml` and `project.yml` exist in the template root |
+| `ErrInvalidDelimiters` | `invalid_delimiters` | `__delimiters` in `project.yaml` is malformed |
+| `ErrProjectFileMissing` | `project_file_missing` | No `project.yaml`, `project.yml`, or `project.json` found |
+| `ErrHookExecutionDenied` | `hook_execution_denied` | User declined remote hook execution at the confirmation prompt |
+| `ErrLocalSource` | `local_source` | Local path given to a command that requires a remote URL |
+| `ErrInvalidComputedDef` | `invalid_computed_def` | `computed:` entry in `project.yaml` has wrong type, value type mismatch, or key conflict |
+| `ErrCyclicDependency` | `cyclic_dependency` | Cycle detected among computed or referenced-default keys |
+
+`specs.KindOf(err error) string` returns the stable kind string for any error in the chain,
+or `""` when no known sentinel is wrapped.
+
+---
+
 ## Output System (`pkg/util/output`)
 
 All user-facing output goes through the `output.Writer` interface:
@@ -253,6 +277,8 @@ type Writer interface {
     Info(format string, args ...any)
     Warn(format string, args ...any)
     Error(format string, args ...any)
+    // WriteErr renders err as an error message; JSON output includes error_kind when known.
+    WriteErr(err error)
     Table(headers []string, rows [][]string)
 }
 ```
@@ -261,8 +287,14 @@ Two implementations are selected at startup via `--output`:
 
 | Flag value | Writer | Behaviour |
 |---|---|---|
-| `pretty` (default) | `HumanWriter` | Lipgloss-styled text; `Info` → stdout, `Warn`/`Error` → stderr |
-| `json` | `JSONWriter` | NDJSON lines (`{"level":"info","message":"…"}`); `Table` → JSON array to stdout |
+| `pretty` (default) | `HumanWriter` | Lipgloss-styled text; `Info` → stdout, `Warn`/`Error`/`WriteErr` → stderr |
+| `json` | `JSONWriter` | NDJSON lines; `Table` → JSON array to stdout; `WriteErr` adds `"error_kind"` for known sentinels |
+
+`JSONWriter.WriteErr` example for a known sentinel:
+
+```json
+{"level":"error","message":"template not found: mytemplate","error_kind":"template_not_found"}
+```
 
 The `JSONWriter` is useful for scripting (`specs template list --output json`) or CI pipelines
 that parse structured output.
@@ -299,12 +331,12 @@ func (h *Hooks) Run(trigger, cwd string, ctx map[string]any, funcMap template.Fu
 
 | Package | Status | Change |
 |---------|--------|--------|
-| `pkg/specs` | **new** | XDG paths, file name constants (replaces `pkg/boilr`) |
+| `pkg/specs` | **new** | XDG paths, file name constants, sentinel errors, `KindOf()` (replaces `pkg/boilr`) |
 | `pkg/registry` | **new** | on-disk template store: `Entry`, `Load()`, `Upgrade()` |
 | `pkg/cmd` | updated | new `use.go`, `template_update.go`, `template_upgrade.go`, iterative conditional prompting; no longer reads project files or `__metadata.json` directly |
 | `pkg/template` | updated | configurable delimiters (default `{{ }}`), `context.go`, `verbatim.go`, conditional skip, AST analysis, status; exports `LoadProjectFile()`, `LoadMetadata()`, `SaveMetadata()` |
 | `pkg/hooks` | **new** | hook loading and execution |
-| `pkg/util/output` | **new** | lipgloss-based logger + table renderer (replaces tlog + tabular) |
+| `pkg/util/output` | updated | lipgloss-based logger + table renderer; `WriteErr` with JSON `error_kind` for known sentinels (replaces tlog + tabular) |
 | `pkg/util/values` | **new** | `--values` file (JSON/YAML) and `--arg` flag parsing |
 | `pkg/host` | updated | source format parsing (github:, HTTPS, SSH, local path) |
 | `pkg/prompt` | **removed** | replaced by `huh` |
@@ -312,6 +344,6 @@ func (h *Hooks) Run(trigger, cwd string, ctx map[string]any, funcMap template.Fu
 | `pkg/util/tabular` | **removed** | replaced by `pkg/util/output` |
 | `pkg/util/exec` | **removed** | no longer needed (hooks use `os/exec` directly) |
 | `pkg/util/exit` | unchanged | |
-| `pkg/util/git` | updated | SSH auth, `CheckRemoteContext()` (context-aware), `Describe()` for status tracking |
+| `pkg/util/git` | updated | SSH auth, `CheckRemoteContext()` (context-aware), `Describe()` for status tracking; `RemoteCheckResult.Err()` returns typed sentinel errors |
 | `pkg/util/osutil` | updated | `CopyDir()` recursive copy |
 | `pkg/util/validate` | updated | `Name()` validator (alphanumeric + hyphens + underscores) |

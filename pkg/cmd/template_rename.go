@@ -32,7 +32,7 @@ func newTemplateRenameCmd(app *App) *cobra.Command {
 
 			dst := specs.TemplatePath(newName)
 			if _, err := os.Stat(dst); err == nil {
-				return fmt.Errorf("name %q already exists — delete it first", newName)
+				return fmt.Errorf("%w: %s — delete it first", specs.ErrTemplateAlreadyExists, newName)
 			}
 
 			if err := os.Rename(src, dst); err != nil {

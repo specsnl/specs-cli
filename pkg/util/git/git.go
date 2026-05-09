@@ -247,11 +247,39 @@ const (
 	CheckErrorUnknown  CheckErrorKind = "unknown"
 )
 
+var (
+	// ErrCheckNetwork is returned when a remote status check fails due to a network error.
+	ErrCheckNetwork = errors.New("network error checking remote")
+	// ErrCheckAuth is returned when a remote status check fails due to an authentication error.
+	ErrCheckAuth = errors.New("authentication error checking remote")
+	// ErrCheckNotFound is returned when the remote repository is not found.
+	ErrCheckNotFound = errors.New("repository not found at remote")
+	// ErrCheckUnknown is returned when a remote status check fails for an unknown reason.
+	ErrCheckUnknown = errors.New("unknown error checking remote")
+)
+
 // RemoteCheckResult is the outcome of CheckRemote.
 type RemoteCheckResult struct {
 	IsUpToDate    bool
 	LatestVersion string
 	ErrorKind     CheckErrorKind
+}
+
+// Err returns a typed error when the check failed, or nil on success.
+// Callers can use errors.Is to distinguish the failure kind.
+func (r RemoteCheckResult) Err() error {
+	switch r.ErrorKind {
+	case CheckErrorNetwork:
+		return ErrCheckNetwork
+	case CheckErrorAuth:
+		return ErrCheckAuth
+	case CheckErrorNotFound:
+		return ErrCheckNotFound
+	case CheckErrorUnknown:
+		return ErrCheckUnknown
+	default:
+		return nil
+	}
 }
 
 // CheckRemoteContext queries the remote to determine whether the local repo at

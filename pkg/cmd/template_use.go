@@ -199,7 +199,7 @@ func (a *App) confirmRemoteHooks(h *hooks.Hooks, ctx map[string]any, tmpl *pkgte
 		return fmt.Errorf("hook confirmation: %w", err)
 	}
 	if !proceed {
-		return fmt.Errorf("hook execution not confirmed; pass --yes to allow or --no-hooks to skip hooks")
+		return specs.ErrHookExecutionDenied
 	}
 	return nil
 }
