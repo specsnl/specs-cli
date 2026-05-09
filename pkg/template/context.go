@@ -139,7 +139,7 @@ func LoadProjectFile(templateRoot string) (map[string]any, error) {
 	jsonPath := filepath.Join(templateRoot, specs.ProjectJSONFile)
 	data, err := os.ReadFile(jsonPath)
 	if err != nil {
-		return nil, fmt.Errorf("no %s, %s, or %s found in %s", specs.ProjectYAMLFile, specs.ProjectYMLFile, specs.ProjectJSONFile, templateRoot)
+		return nil, fmt.Errorf("%w in %s", specs.ErrProjectFileMissing, templateRoot)
 	}
 	var ctx map[string]any
 	if err := json.Unmarshal(data, &ctx); err != nil {
@@ -159,17 +159,17 @@ func extractComputed(raw map[string]any) (map[string]string, error) {
 
 	m, ok := v.(map[string]any)
 	if !ok {
-		return nil, fmt.Errorf("\"computed\" must be a mapping, got %T", v)
+		return nil, fmt.Errorf("%w: \"computed\" must be a mapping, got %T", specs.ErrInvalidComputedDef, v)
 	}
 
 	defs := make(map[string]string, len(m))
 	for k, val := range m {
 		if _, conflict := raw[k]; conflict {
-			return nil, fmt.Errorf("computed key %q conflicts with a user input key", k)
+			return nil, fmt.Errorf("%w: key %q conflicts with a user input key", specs.ErrInvalidComputedDef, k)
 		}
 		s, ok := val.(string)
 		if !ok {
-			return nil, fmt.Errorf("computed value for %q must be a string, got %T", k, val)
+			return nil, fmt.Errorf("%w: value for %q must be a string, got %T", specs.ErrInvalidComputedDef, k, val)
 		}
 		defs[k] = s
 	}
@@ -262,7 +262,7 @@ func topoSort(keys []string, deps map[string][]string) ([]string, error) {
 				cycle = append(cycle, k)
 			}
 		}
-		return nil, fmt.Errorf("cycle detected among keys: %s", strings.Join(cycle, ", "))
+		return nil, fmt.Errorf("%w: %s", specs.ErrCyclicDependency, strings.Join(cycle, ", "))
 	}
 
 	return sorted, nil

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -32,7 +33,7 @@ func newTemplateSaveCmd(app *App) *cobra.Command {
 
 			dest := specs.TemplatePath(name)
 			if _, err := os.Stat(dest); err == nil && !force {
-				return specs.ErrTemplateAlreadyExists
+				return fmt.Errorf("%w: %s — use --force to overwrite", specs.ErrTemplateAlreadyExists, name)
 			}
 
 			if err := os.RemoveAll(dest); err != nil {

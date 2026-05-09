@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"charm.land/lipgloss/v2"
+	"github.com/specsnl/specs-cli/pkg/specs"
 )
 
 var (
@@ -20,6 +21,9 @@ type Writer interface {
 	Info(format string, args ...any)
 	Warn(format string, args ...any)
 	Error(format string, args ...any)
+	// WriteErr renders err as an error-level message. JSON output includes an
+	// "error_kind" field when err wraps a known specs sentinel.
+	WriteErr(err error)
 	Table(headers []string, rows [][]string)
 }
 
@@ -49,6 +53,10 @@ func (w *HumanWriter) Warn(format string, args ...any) {
 
 func (w *HumanWriter) Error(format string, args ...any) {
 	lipgloss.Fprintln(w.stderr, fmt.Sprintf(styleError.Render("error")+" "+format, args...))
+}
+
+func (w *HumanWriter) WriteErr(err error) {
+	w.Error("%v", err)
 }
 
 func (w *HumanWriter) Table(headers []string, rows [][]string) {
@@ -81,6 +89,18 @@ func (w *JSONWriter) Warn(format string, args ...any) {
 func (w *JSONWriter) Error(format string, args ...any) {
 	msg := fmt.Sprintf(format, args...)
 	data, _ := json.Marshal(map[string]string{"level": "error", "message": msg})
+	fmt.Fprintln(w.stderr, string(data))
+}
+
+func (w *JSONWriter) WriteErr(err error) {
+	payload := map[string]string{
+		"level":   "error",
+		"message": err.Error(),
+	}
+	if kind := specs.KindOf(err); kind != "" {
+		payload["error_kind"] = kind
+	}
+	data, _ := json.Marshal(payload)
 	fmt.Fprintln(w.stderr, string(data))
 }
 

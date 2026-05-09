@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"os"
 	"testing"
 
@@ -48,5 +49,31 @@ func TestRename_NotFound(t *testing.T) {
 	_, err := executeCmd("template", "rename", "nonexistent", "new-tpl")
 	if err == nil {
 		t.Fatal("expected error renaming nonexistent template")
+	}
+}
+
+func TestRename_NotFound_IsErrTemplateNotFound(t *testing.T) {
+	withTempRegistry(t)
+
+	_, err := executeCmd("template", "rename", "nonexistent", "new-tpl")
+	if !errors.Is(err, specs.ErrTemplateNotFound) {
+		t.Errorf("expected ErrTemplateNotFound, got %v", err)
+	}
+}
+
+func TestRename_NameConflict_IsErrTemplateAlreadyExists(t *testing.T) {
+	withTempRegistry(t)
+
+	src := makeFakeTemplate(t)
+	if _, err := executeCmd("template", "save", src, "old-tpl"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := executeCmd("template", "save", src, "new-tpl"); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := executeCmd("template", "rename", "old-tpl", "new-tpl")
+	if !errors.Is(err, specs.ErrTemplateAlreadyExists) {
+		t.Errorf("expected ErrTemplateAlreadyExists, got %v", err)
 	}
 }
