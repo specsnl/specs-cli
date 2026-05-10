@@ -258,7 +258,6 @@ so that callers can use `errors.Is` to distinguish them:
 | `ErrAmbiguousProjectFile` | `ambiguous_project_file` | Both `project.yaml` and `project.yml` exist in the template root |
 | `ErrInvalidDelimiters` | `invalid_delimiters` | `__delimiters` in `project.yaml` is malformed |
 | `ErrProjectFileMissing` | `project_file_missing` | No `project.yaml`, `project.yml`, or `project.json` found |
-| `ErrHookExecutionDenied` | `hook_execution_denied` | User declined remote hook execution at the confirmation prompt |
 | `ErrLocalSource` | `local_source` | Local path given to a command that requires a remote URL |
 | `ErrInvalidComputedDef` | `invalid_computed_def` | `computed:` entry in `project.yaml` has wrong type, value type mismatch, or key conflict |
 | `ErrCyclicDependency` | `cyclic_dependency` | Cycle detected among computed or referenced-default keys |
