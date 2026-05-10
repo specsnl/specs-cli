@@ -21,6 +21,8 @@ Manage a local registry of named templates. Unlike `specs use`, downloaded templ
 
 `template use` accepts the same flags as `specs use` (`--values`, `--arg`, `--use-defaults`, `--no-hooks`).
 
+`template download` accepts the same source formats as `specs use` — see [Source formats](use#source-formats).
+
 `template download` and `template save` accept `-f` / `--force` to overwrite an existing template with the same name.
 
 For machine-readable `list` output, use the global `--output json` flag (see [Global Flags](global-flags)).

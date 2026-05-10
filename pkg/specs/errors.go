@@ -29,10 +29,6 @@ var (
 	// is found in the template root.
 	ErrProjectFileMissing = errors.New("no project file found")
 
-	// ErrHookExecutionDenied is returned when the user declines to execute remote hooks
-	// at the interactive confirmation prompt.
-	ErrHookExecutionDenied = errors.New("hook execution not confirmed — pass --yes to allow or --no-hooks to skip hooks")
-
 	// ErrLocalSource is returned when a local path is given to a command that requires a
 	// remote URL (e.g. specs template download).
 	ErrLocalSource = errors.New("source is a local path — use 'specs template save' to register a local template")
@@ -65,8 +61,6 @@ func KindOf(err error) string {
 		return "invalid_delimiters"
 	case errors.Is(err, ErrProjectFileMissing):
 		return "project_file_missing"
-	case errors.Is(err, ErrHookExecutionDenied):
-		return "hook_execution_denied"
 	case errors.Is(err, ErrLocalSource):
 		return "local_source"
 	case errors.Is(err, ErrInvalidComputedDef):

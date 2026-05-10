@@ -121,8 +121,12 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 	skipHooks := (a.SafeMode && !opts.allowHooks) || opts.noHooks
 
 	if !skipHooks && opts.remote && (h.HasPreUse() || h.HasPostUse()) {
-		if err := a.confirmRemoteHooks(h, ctx, tmpl, opts.yes); err != nil {
+		confirmed, err := a.confirmRemoteHooks(h, ctx, tmpl, opts.yes)
+		if err != nil {
 			return err
+		}
+		if !confirmed {
+			skipHooks = true
 		}
 	}
 
@@ -174,14 +178,16 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 }
 
 // confirmRemoteHooks displays the rendered hook commands from a remote template and
-// asks for interactive confirmation. When autoYes is true the prompt is skipped.
-func (a *App) confirmRemoteHooks(h *hooks.Hooks, ctx map[string]any, tmpl *pkgtemplate.Template, autoYes bool) error {
+// asks for interactive confirmation. Returns (true, nil) when hooks should run,
+// (false, nil) when the user declined, or (false, err) on a prompt error.
+// When autoYes is true the prompt is skipped and hooks are always confirmed.
+func (a *App) confirmRemoteHooks(h *hooks.Hooks, ctx map[string]any, tmpl *pkgtemplate.Template, autoYes bool) (bool, error) {
 	a.Output.Warn("remote template defines hooks — review before executing:")
 
 	for _, trigger := range []string{"pre-use", "post-use"} {
 		rendered, err := h.Rendered(trigger, ctx, tmpl.FuncMap(), tmpl.Delims())
 		if err != nil {
-			return fmt.Errorf("rendering %s hooks for preview: %w", trigger, err)
+			return false, fmt.Errorf("rendering %s hooks for preview: %w", trigger, err)
 		}
 		for _, cmd := range rendered {
 			a.Output.Warn("  %s: %s", trigger, strings.TrimSpace(cmd))
@@ -189,19 +195,16 @@ func (a *App) confirmRemoteHooks(h *hooks.Hooks, ctx map[string]any, tmpl *pkgte
 	}
 
 	if autoYes {
-		return nil
+		return true, nil
 	}
 
 	var proceed bool
 	if err := huh.NewForm(huh.NewGroup(
 		huh.NewConfirm().Title("Allow hook execution?").Value(&proceed),
 	)).Run(); err != nil {
-		return fmt.Errorf("hook confirmation: %w", err)
+		return false, fmt.Errorf("hook confirmation: %w", err)
 	}
-	if !proceed {
-		return specs.ErrHookExecutionDenied
-	}
-	return nil
+	return proceed, nil
 }
 
 // promptContext prompts the user for schema variables not already in provided.
