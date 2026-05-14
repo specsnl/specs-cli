@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"maps"
 	"os"
 	"path/filepath"
@@ -97,6 +98,7 @@ func ApplyComputed(ctx map[string]any, defs map[string]string, funcMap texttempl
 			return nil, fmt.Errorf("computed %q: %w", k, err)
 		}
 		result[k] = val
+		slog.Debug("context key resolved", "key", k, "source", "computed")
 	}
 
 	return result, nil

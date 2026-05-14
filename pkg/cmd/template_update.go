@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"log/slog"
 	"os"
 	"time"
 
@@ -40,12 +41,16 @@ func newTemplateUpdateCmd(app *App) *cobra.Command {
 
 			for _, name := range names {
 				root := specs.TemplatePath(name)
-				meta, _ := pkgtemplate.LoadMetadata(root)
+				meta, err := pkgtemplate.LoadMetadata(root)
+				if err != nil {
+					slog.Debug("failed to parse template metadata", "template", name, "error", err)
+				}
 				if meta == nil || meta.Repository == "" || meta.Branch == "" {
 					continue
 				}
 
-				result, _ := pkggit.CheckRemote(root, meta.Repository, meta.Branch)
+				// git layer logs the check-remote start/result
+				result := pkggit.CheckRemote(root, meta.Repository, meta.Branch)
 
 				newStatus := &pkgtemplate.TemplateStatus{
 					CheckedAt:     pkgtemplate.JSONTime{Time: time.Now().UTC()},
@@ -53,7 +58,9 @@ func newTemplateUpdateCmd(app *App) *cobra.Command {
 					LatestVersion: result.LatestVersion,
 					ErrorKind:     result.ErrorKind,
 				}
-				_ = pkgtemplate.SaveStatus(root, newStatus)
+				if err := pkgtemplate.SaveStatus(root, newStatus); err != nil {
+					slog.Debug("failed to save template status", "template", name, "error", err)
+				}
 
 				switch result.ErrorKind {
 				case pkggit.CheckErrorNetwork:
@@ -78,7 +85,11 @@ func newTemplateUpdateCmd(app *App) *cobra.Command {
 			if len(updatesAvailable) > 0 {
 				for _, name := range updatesAvailable {
 					root := specs.TemplatePath(name)
-					if s, _ := pkgtemplate.LoadStatus(root); s != nil && s.LatestVersion != "" {
+					s, err := pkgtemplate.LoadStatus(root)
+					if err != nil {
+						slog.Debug("failed to load template status", "template", name, "error", err)
+					}
+					if s != nil && s.LatestVersion != "" {
 						app.Output.Info("template %q has an update available: %s", name, s.LatestVersion)
 					} else {
 						app.Output.Info("template %q has an update available", name)

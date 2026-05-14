@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -68,7 +69,7 @@ func newTemplateUseCmd(app *App) *cobra.Command {
 func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) error {
 	cfg := a.templateConfig()
 	cfg.ContinueOnRenderError = opts.continueOnError
-	tmpl, err := pkgtemplate.Get(templateRoot, cfg, a.Logger)
+	tmpl, err := pkgtemplate.Get(templateRoot, cfg)
 	if err != nil {
 		return err
 	}
@@ -84,6 +85,10 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 
 	ctx := tmpl.Context
 	provided := make(map[string]bool)
+	// finalSource tracks the winning source for each context key, overwritten as values flow
+	// through values_file → arg_flag → prompt → default. Logged in a single batch before
+	// ApplyComputed so each key appears only once with its final source.
+	finalSource := make(map[string]string)
 
 	if opts.valuesFile != "" {
 		fileVals, err := values.LoadFile(opts.valuesFile)
@@ -92,6 +97,7 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 		}
 		for k := range fileVals {
 			provided[k] = true
+			finalSource[k] = "values_file"
 		}
 		ctx = values.Merge(ctx, fileVals)
 	}
@@ -103,14 +109,25 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 		}
 		ctx[k] = v
 		provided[k] = true
+		finalSource[k] = "arg_flag"
 	}
 
 	if !opts.useDefaults {
-		if err := promptContext(ctx, tmpl.Context, tmpl.Conditionals, tmpl.Referenced, provided); err != nil {
+		if err := promptContext(ctx, tmpl.Context, tmpl.Conditionals, tmpl.Referenced, provided, finalSource); err != nil {
 			return err
 		}
 	} else {
 		resolveSelectDefaults(ctx)
+		for k := range tmpl.Referenced {
+			if !provided[k] {
+				finalSource[k] = "default"
+			}
+		}
+	}
+
+	// Emit one log line per key in alphabetical order with its final resolved source.
+	for _, k := range sortedKeys(finalSource) {
+		slog.Debug("context key resolved", "key", k, "source", finalSource[k])
 	}
 
 	ctx, err = pkgtemplate.ApplyComputed(ctx, tmpl.ComputedDefs, tmpl.FuncMap(), tmpl.Delims())
@@ -218,11 +235,12 @@ func (a *App) confirmRemoteHooks(h *hooks.Hooks, ctx map[string]any, tmpl *pkgte
 // now-final ctx, and prompts those that are needed. This correctly handles
 // nested eq/ne gates where the gate variable is itself conditional.
 func promptContext(
-	ctx        map[string]any,
-	schema     map[string]any,
-	conds      pkgtemplate.Conditionals,
+	ctx map[string]any,
+	schema map[string]any,
+	conds pkgtemplate.Conditionals,
 	referenced map[string]bool,
-	provided   map[string]bool,
+	provided map[string]bool,
+	finalSource map[string]string,
 ) error {
 	schemaKeys := make(map[string]bool, len(schema))
 	for k := range schema {
@@ -244,7 +262,7 @@ func promptContext(
 	}
 
 	// Pass 1: always-needed variables.
-	if err := runPromptPass(ctx, schema, alwaysKeys, provided); err != nil {
+	if err := runPromptPass(ctx, schema, alwaysKeys, provided, finalSource); err != nil {
 		return err
 	}
 
@@ -287,7 +305,7 @@ func promptContext(
 			}
 		}
 
-		if err := runPromptPass(ctx, schema, toPrompt, provided); err != nil {
+		if err := runPromptPass(ctx, schema, toPrompt, provided, finalSource); err != nil {
 			return err
 		}
 
@@ -301,12 +319,13 @@ func promptContext(
 }
 
 // runPromptPass builds a huh form for the given keys and runs it.
-// Results are written back into ctx.
+// Results are written back into ctx and finalSource is updated with source="prompt".
 func runPromptPass(
 	ctx map[string]any,
 	schema map[string]any,
 	keys []string,
 	provided map[string]bool,
+	finalSource map[string]string,
 ) error {
 	var fields []huh.Field
 	stringResults := make(map[string]*string)
@@ -376,15 +395,17 @@ func runPromptPass(
 
 	for k, p := range stringResults {
 		ctx[k] = *p
+		finalSource[k] = "prompt"
 	}
 	for k, p := range boolResults {
 		ctx[k] = *p
+		finalSource[k] = "prompt"
 	}
 	return nil
 }
 
 // sortedKeys returns map keys in alphabetical order.
-func sortedKeys(m map[string]any) []string {
+func sortedKeys[V any](m map[string]V) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)
@@ -415,4 +436,3 @@ func toStringOptions(v []any) []string {
 	}
 	return opts
 }
-

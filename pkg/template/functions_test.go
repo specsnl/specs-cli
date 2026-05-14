@@ -9,7 +9,7 @@ import (
 // --- FuncMap presence ---
 
 func TestFuncMap_ContainsCustomFunctions(t *testing.T) {
-	m := pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger())
+	m := pkgtemplate.FuncMap(pkgtemplate.Config{})
 
 	expected := []string{"hostname", "username", "toBinary", "formatFilesize", "password"}
 	for _, name := range expected {
@@ -20,7 +20,7 @@ func TestFuncMap_ContainsCustomFunctions(t *testing.T) {
 }
 
 func TestFuncMap_ContainsSproutFunctions(t *testing.T) {
-	m := pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger())
+	m := pkgtemplate.FuncMap(pkgtemplate.Config{})
 
 	// Spot-check one function from each sprout registry group.
 	spotCheck := []struct {
@@ -55,7 +55,7 @@ func TestFuncMap_ContainsSproutFunctions(t *testing.T) {
 // --- Safe mode ---
 
 func TestFuncMap_SafeMode_ExcludesEnvFunctions(t *testing.T) {
-	m := pkgtemplate.FuncMap(pkgtemplate.Config{SafeMode: true}, discardLogger())
+	m := pkgtemplate.FuncMap(pkgtemplate.Config{SafeMode: true})
 
 	for _, name := range []string{"env", "expandEnv"} {
 		if _, ok := m[name]; ok {
@@ -65,7 +65,7 @@ func TestFuncMap_SafeMode_ExcludesEnvFunctions(t *testing.T) {
 }
 
 func TestFuncMap_SafeMode_ExcludesFilesystemFunctions(t *testing.T) {
-	m := pkgtemplate.FuncMap(pkgtemplate.Config{SafeMode: true}, discardLogger())
+	m := pkgtemplate.FuncMap(pkgtemplate.Config{SafeMode: true})
 
 	for _, name := range []string{"pathBase", "pathDir", "osBase", "osDir"} {
 		if _, ok := m[name]; ok {
@@ -77,7 +77,7 @@ func TestFuncMap_SafeMode_ExcludesFilesystemFunctions(t *testing.T) {
 // --- Default mode ---
 
 func TestFuncMap_DefaultMode_IncludesEnvFunctions(t *testing.T) {
-	m := pkgtemplate.FuncMap(pkgtemplate.Config{SafeMode: false}, discardLogger())
+	m := pkgtemplate.FuncMap(pkgtemplate.Config{SafeMode: false})
 
 	for _, name := range []string{"env", "expandEnv"} {
 		if _, ok := m[name]; !ok {
@@ -87,7 +87,7 @@ func TestFuncMap_DefaultMode_IncludesEnvFunctions(t *testing.T) {
 }
 
 func TestFuncMap_DefaultMode_IncludesFilesystemFunctions(t *testing.T) {
-	m := pkgtemplate.FuncMap(pkgtemplate.Config{SafeMode: false}, discardLogger())
+	m := pkgtemplate.FuncMap(pkgtemplate.Config{SafeMode: false})
 
 	for _, name := range []string{"pathBase", "pathDir", "osBase", "osDir"} {
 		if _, ok := m[name]; !ok {
@@ -104,6 +104,6 @@ func TestFuncMap_NoPanic(t *testing.T) {
 			t.Errorf("FuncMap() panicked: %v", r)
 		}
 	}()
-	pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger())
-	pkgtemplate.FuncMap(pkgtemplate.Config{SafeMode: true}, discardLogger())
+	pkgtemplate.FuncMap(pkgtemplate.Config{})
+	pkgtemplate.FuncMap(pkgtemplate.Config{SafeMode: true})
 }

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"log/slog"
 	"os"
 	"sync"
 	"time"
@@ -42,10 +43,16 @@ func newTemplateListCmd(app *App) *cobra.Command {
 				}
 				name := e.Name()
 				root := specs.TemplatePath(name)
-				meta, _ := pkgtemplate.LoadMetadata(root)
+				meta, err := pkgtemplate.LoadMetadata(root)
+				if err != nil {
+					slog.Debug("failed to parse template metadata", "template", name, "error", err)
+				}
 				var status *pkgtemplate.TemplateStatus
 				if meta != nil && meta.Repository != "" && meta.Branch != "" {
-					status, _ = pkgtemplate.LoadStatus(root)
+					status, err = pkgtemplate.LoadStatus(root)
+					if err != nil {
+						slog.Debug("failed to load template status", "template", name, "error", err)
+					}
 				}
 				tmplEntries = append(tmplEntries, templateEntry{name: name, meta: meta, status: status})
 			}
@@ -74,14 +81,17 @@ func newTemplateListCmd(app *App) *cobra.Command {
 					checkCtx, cancelCheck := context.WithTimeout(egCtx, app.checkTimeout)
 					defer cancelCheck()
 					root := specs.TemplatePath(name)
-					result, _ := app.checkRemoteFn(checkCtx, root, repo, branch)
+					// git layer logs the check-remote start/result
+					result := app.checkRemoteFn(checkCtx, root, repo, branch)
 					newStatus := &pkgtemplate.TemplateStatus{
 						CheckedAt:     pkgtemplate.JSONTime{Time: time.Now().UTC()},
 						IsUpToDate:    result.IsUpToDate,
 						LatestVersion: result.LatestVersion,
 						ErrorKind:     result.ErrorKind,
 					}
-					_ = pkgtemplate.SaveStatus(root, newStatus)
+					if err := pkgtemplate.SaveStatus(root, newStatus); err != nil {
+						slog.Debug("failed to save template status", "template", name, "error", err)
+					}
 					mu.Lock()
 					tmplEntries[i].status = newStatus
 					if result.ErrorKind == pkggit.CheckErrorNetwork {
@@ -154,4 +164,3 @@ func statusLabel(status *pkgtemplate.TemplateStatus, hasRemote bool) string {
 	}
 	return "update available"
 }
-

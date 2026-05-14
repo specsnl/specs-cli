@@ -81,13 +81,15 @@ func (h *Hooks) Run(trigger, cwd string, ctx map[string]any, funcMap template.Fu
 
 	env := buildEnv(ctx, h.EnvPrefix)
 
+	slog.Debug("running hooks", "trigger", trigger, "commands", len(commands))
+
 	for _, cmdTpl := range commands {
 		rendered, err := renderCommand(cmdTpl, ctx, funcMap, delims)
 		if err != nil {
 			return fmt.Errorf("rendering hook command: %w", err)
 		}
 
-		slog.Default().Debug("running hook", "trigger", trigger, "command", firstLine(rendered))
+		slog.Debug("running hook command", "trigger", trigger, "command", firstLine(rendered))
 
 		cmd := exec.Command("bash", "-c", rendered)
 		cmd.Dir = cwd
@@ -95,9 +97,13 @@ func (h *Hooks) Run(trigger, cwd string, ctx map[string]any, funcMap template.Fu
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 
+		slog.Debug("hook command stdout/stderr piped to process output", "trigger", trigger)
+
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("%s hook failed: %w", trigger, err)
 		}
+
+		slog.Debug("hook command completed", "trigger", trigger, "command", firstLine(rendered))
 	}
 	return nil
 }

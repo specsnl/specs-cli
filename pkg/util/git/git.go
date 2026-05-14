@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"os"
 	"path/filepath"
@@ -33,6 +34,8 @@ type CloneOptions struct {
 // SSH URLs (git@host:path or ssh://host/path) are detected automatically and authenticated
 // via SSH agent or standard key files in ~/.ssh.
 func Clone(url, dir string, opts CloneOptions) error {
+	slog.Debug("git clone start", "repo", url, "dest", dir, "branch", opts.Branch)
+
 	cloneOpts := &gogit.CloneOptions{
 		URL:      url,
 		Depth:    opts.Depth,
@@ -53,13 +56,17 @@ func Clone(url, dir string, opts CloneOptions) error {
 
 	if opts.Branch != "" {
 		cloneOpts.SingleBranch = true
-		return cloneWithRef(url, dir, cloneOpts, opts.Branch)
+		if err := cloneWithRef(url, dir, cloneOpts, opts.Branch); err != nil {
+			return err
+		}
+	} else {
+		_, err := gogit.PlainClone(dir, false, cloneOpts)
+		if err != nil {
+			return fmt.Errorf("cloning %s: %w", url, err)
+		}
 	}
 
-	_, err := gogit.PlainClone(dir, false, cloneOpts)
-	if err != nil {
-		return fmt.Errorf("cloning %s: %w", url, err)
-	}
+	slog.Debug("git clone complete", "repo", url, "dest", dir, "branch", opts.Branch)
 	return nil
 }
 
@@ -102,11 +109,13 @@ type DescribeResult struct {
 func Describe(dir string) (DescribeResult, error) {
 	repo, err := gogit.PlainOpen(dir)
 	if err != nil {
+		slog.Debug("git describe failed", "dest", dir, "error", err)
 		return DescribeResult{}, fmt.Errorf("opening repository at %s: %w", dir, err)
 	}
 
 	head, err := repo.Head()
 	if err != nil {
+		slog.Debug("git describe failed", "dest", dir, "error", err)
 		return DescribeResult{}, fmt.Errorf("reading HEAD: %w", err)
 	}
 
@@ -127,10 +136,12 @@ func Describe(dir string) (DescribeResult, error) {
 		}
 	}
 
-	return DescribeResult{
+	result := DescribeResult{
 		Commit:  commit,
 		Version: buildVersion(repo, head.Hash(), shortHash, dirty),
-	}, nil
+	}
+	slog.Debug("git describe", "dest", dir, "commit", result.Commit, "version", result.Version)
+	return result, nil
 }
 
 // buildVersion constructs a version string in git-describe style.
@@ -286,23 +297,33 @@ func (r RemoteCheckResult) Err() error {
 // and never modifies the local repository. SSH auth is resolved automatically.
 // ctx is forwarded to the underlying network call; cancel it to abort early.
 //
-// On failure, ErrorKind is set in the result and error is nil.
-func CheckRemoteContext(ctx context.Context, dir, url, branch string) (RemoteCheckResult, error) {
+// On failure, ErrorKind is set in the result; errors are never returned.
+func CheckRemoteContext(ctx context.Context, dir, url, branch string) (result RemoteCheckResult) {
+	slog.Debug("git check-remote start", "repo", url, "branch", branch, "dest", dir)
+	defer func() {
+		slog.Debug("git check-remote result",
+			"repo", url, "branch", branch, "dest", dir,
+			"up_to_date", result.IsUpToDate,
+			"latest_version", result.LatestVersion,
+			"error_kind", string(result.ErrorKind),
+		)
+	}()
+
 	repo, err := gogit.PlainOpen(dir)
 	if err != nil {
-		return RemoteCheckResult{ErrorKind: CheckErrorUnknown}, nil
+		return RemoteCheckResult{ErrorKind: CheckErrorUnknown}
 	}
 
 	remote, err := repo.Remote("origin")
 	if err != nil {
-		return RemoteCheckResult{ErrorKind: CheckErrorUnknown}, nil
+		return RemoteCheckResult{ErrorKind: CheckErrorUnknown}
 	}
 
 	listOpts := &gogit.ListOptions{}
 	if isSSHURL(url) {
 		auth, err := sshAuth(url)
 		if err != nil {
-			return RemoteCheckResult{ErrorKind: CheckErrorAuth}, nil
+			return RemoteCheckResult{ErrorKind: CheckErrorAuth}
 		}
 		listOpts.Auth = auth
 	}
@@ -310,21 +331,21 @@ func CheckRemoteContext(ctx context.Context, dir, url, branch string) (RemoteChe
 	refs, err := remote.ListContext(ctx, listOpts)
 	if err != nil {
 		if ctx.Err() != nil {
-			return RemoteCheckResult{ErrorKind: CheckErrorNetwork}, nil
+			return RemoteCheckResult{ErrorKind: CheckErrorNetwork}
 		}
-		return RemoteCheckResult{ErrorKind: classifyRemoteError(err)}, nil
+		return RemoteCheckResult{ErrorKind: classifyRemoteError(err)}
 	}
 
 	head, err := repo.Head()
 	if err != nil {
-		return RemoteCheckResult{ErrorKind: CheckErrorUnknown}, nil
+		return RemoteCheckResult{ErrorKind: CheckErrorUnknown}
 	}
 
-	return resolveStatus(refs, head.Hash(), branch), nil
+	return resolveStatus(refs, head.Hash(), branch)
 }
 
 // CheckRemote is a context-free convenience wrapper around CheckRemoteContext.
-func CheckRemote(dir, url, branch string) (RemoteCheckResult, error) {
+func CheckRemote(dir, url, branch string) RemoteCheckResult {
 	return CheckRemoteContext(context.Background(), dir, url, branch)
 }
 

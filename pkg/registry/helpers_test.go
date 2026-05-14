@@ -1,4 +1,4 @@
-package template_test
+package registry_test
 
 import (
 	"io"

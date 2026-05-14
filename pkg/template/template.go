@@ -69,7 +69,6 @@ type Template struct {
 	Metadata     *Metadata              // nil if __metadata.json is absent
 	Warnings     []RenderWarning        // non-fatal render issues collected during Execute
 	cfg          Config
-	logger       *slog.Logger
 	funcMap      texttemplate.FuncMap
 	verbatim     *VerbatimRules
 }
@@ -88,8 +87,10 @@ func (t *Template) Delims() specs.Delimiters {
 
 // Get loads a template from templateRoot. The root must contain either project.yaml or
 // project.json, and a template/ subdirectory.
-func Get(templateRoot string, cfg Config, logger *slog.Logger) (*Template, error) {
-	funcMap := FuncMap(cfg, logger)
+func Get(templateRoot string, cfg Config) (*Template, error) {
+	slog.Debug("loading template", "template", templateRoot)
+
+	funcMap := FuncMap(cfg)
 
 	// Resolve delimiters: __delimiters in project.yaml > cfg.Delims > DefaultDelimiters.
 	// Write the resolved value back into cfg so methods on the returned Template
@@ -124,7 +125,12 @@ func Get(templateRoot string, cfg Config, logger *slog.Logger) (*Template, error
 		return nil, err
 	}
 
-	meta, _ := LoadMetadata(templateRoot) // missing/malformed metadata is not an error
+	meta, err := LoadMetadata(templateRoot) // missing metadata is not an error
+	if err != nil {
+		slog.Debug("failed to parse template metadata", "template", templateRoot, "error", err)
+	}
+
+	slog.Debug("template loaded", "template", templateRoot, "keys", len(userCtx), "computed", len(computedDefs))
 
 	return &Template{
 		Root:         templateRoot,
@@ -134,7 +140,6 @@ func Get(templateRoot string, cfg Config, logger *slog.Logger) (*Template, error
 		Referenced:   referenced,
 		Metadata:     meta,
 		cfg:          cfg,
-		logger:       logger,
 		funcMap:      funcMap,
 		verbatim:     verbatim,
 	}, nil
@@ -155,7 +160,11 @@ func (t *Template) Execute(targetDir string) error {
 
 	srcRoot := filepath.Join(t.Root, specs.TemplateDirFile)
 
-	return filepath.WalkDir(srcRoot, func(srcPath string, d fs.DirEntry, err error) error {
+	slog.Debug("starting template execution", "template", t.Root, "dest", targetDir)
+
+	var rendered, skipped, verbatim int
+
+	walkErr := filepath.WalkDir(srcRoot, func(srcPath string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -176,7 +185,10 @@ func (t *Template) Execute(targetDir string) error {
 		// 2. Render the relative path as a template to get the destination path.
 		destRel, err := t.renderName(rel, ctx)
 		if err != nil || strings.TrimSpace(destRel) == "" {
-			t.logger.Debug("skipping path", "path", rel, "error", err)
+			slog.Debug("skipping path", "path", rel, "error", err)
+			if !d.IsDir() {
+				skipped++
+			}
 			if d.IsDir() {
 				return filepath.SkipDir
 			}
@@ -185,6 +197,9 @@ func (t *Template) Execute(targetDir string) error {
 
 		// 3. Skip if any path segment is empty (conditional directory exclusion).
 		if hasEmptySegment(destRel) {
+			if !d.IsDir() {
+				skipped++
+			}
 			if d.IsDir() {
 				return filepath.SkipDir
 			}
@@ -201,10 +216,27 @@ func (t *Template) Execute(targetDir string) error {
 		// 5. File: determine copy strategy.
 		relForward := filepath.ToSlash(rel)
 		if t.verbatim.Matches(relForward) || isBinary(srcPath) {
+			slog.Debug("file decision", "path", rel, "dest", destPath, "action", "verbatim")
+			verbatim++
 			return copyFile(srcPath, destPath)
 		}
+		slog.Debug("file decision", "path", rel, "dest", destPath, "action", "render")
+		rendered++
 		return t.renderFile(srcPath, destPath, relForward, ctx)
 	})
+
+	if walkErr != nil {
+		return walkErr
+	}
+
+	slog.Info("template execution complete",
+		"template", t.Root,
+		"dest", targetDir,
+		"rendered", rendered,
+		"verbatim", verbatim,
+		"skipped", skipped,
+	)
+	return nil
 }
 
 // renderName renders a file/directory path template using the configured delimiters.

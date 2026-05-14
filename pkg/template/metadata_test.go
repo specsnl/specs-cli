@@ -115,7 +115,7 @@ func TestGet_LoadsMetadata(t *testing.T) {
 		t.Fatalf("write metadata: %v", err)
 	}
 
-	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{})
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -136,7 +136,7 @@ func TestGet_LoadsMetadata(t *testing.T) {
 func TestGet_MissingMetadata_ReturnsNil(t *testing.T) {
 	root := buildTemplate(t, "Name: test\n", nil)
 
-	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{})
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -153,7 +153,7 @@ func TestGet_MalformedMetadata_ReturnsError(t *testing.T) {
 	}
 
 	// LoadMetadata errors are silently ignored by Get (missing/malformed metadata is non-fatal).
-	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{})
 	if err != nil {
 		t.Fatalf("Get: unexpected error for malformed metadata: %v", err)
 	}
@@ -183,8 +183,8 @@ func TestLoadMetadata_Malformed(t *testing.T) {
 	}
 
 	m, err := pkgtemplate.LoadMetadata(dir)
-	if err != nil {
-		t.Fatalf("LoadMetadata: unexpected error for malformed file: %v", err)
+	if err == nil {
+		t.Fatal("LoadMetadata: expected error for malformed file, got nil")
 	}
 	if m != nil {
 		t.Errorf("expected nil for malformed __metadata.json, got %+v", m)

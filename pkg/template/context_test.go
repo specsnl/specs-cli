@@ -35,7 +35,7 @@ func TestLoadUserContext_String(t *testing.T) {
 	dir := t.TempDir()
 	writeProjectYAML(t, dir, "Name: my-project\n")
 
-	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -48,7 +48,7 @@ func TestLoadUserContext_Bool(t *testing.T) {
 	dir := t.TempDir()
 	writeProjectYAML(t, dir, "UseSonar: false\n")
 
-	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -65,7 +65,7 @@ License:
   - GPL
 `)
 
-	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -82,7 +82,7 @@ func TestLoadUserContext_JSONFallback(t *testing.T) {
 	dir := t.TempDir()
 	writeProjectJSON(t, dir, `{"Name": "from-json"}`)
 
-	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -98,7 +98,7 @@ Name: My App
 Slug: "{{toKebabCase .Name}}"
 `)
 
-	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -114,7 +114,7 @@ A: "{{.B}}"
 B: "{{.A}}"
 `)
 
-	_, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	_, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
 	if err == nil {
 		t.Fatal("expected error for cyclic reference, got nil")
 	}
@@ -129,7 +129,7 @@ hooks:
     - echo hi
 `)
 
-	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -146,7 +146,7 @@ computed:
   Env: prod
 `)
 
-	ctx, computedDefs, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	ctx, computedDefs, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -170,7 +170,7 @@ computed:
   Name: bar
 `)
 
-	_, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	_, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
 	if err == nil {
 		t.Fatal("expected error for computed key conflict, got nil")
 	}
@@ -183,12 +183,12 @@ computed:
   Env: "{{toUpper .Name}}"
 `)
 
-	ctx, defs, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	ctx, defs, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("LoadUserContext: %v", err)
 	}
 
-	result, err := pkgtemplate.ApplyComputed(ctx, defs, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	result, err := pkgtemplate.ApplyComputed(ctx, defs, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("ApplyComputed: %v", err)
 	}
@@ -209,12 +209,12 @@ computed:
   DbName: "{{.Slug}}_production"
 `)
 
-	ctx, defs, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	ctx, defs, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("LoadUserContext: %v", err)
 	}
 
-	result, err := pkgtemplate.ApplyComputed(ctx, defs, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	result, err := pkgtemplate.ApplyComputed(ctx, defs, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("ApplyComputed: %v", err)
 	}
@@ -235,12 +235,12 @@ computed:
   B: "{{.A}}"
 `)
 
-	ctx, defs, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	ctx, defs, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("LoadUserContext: %v", err)
 	}
 
-	_, err = pkgtemplate.ApplyComputed(ctx, defs, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	_, err = pkgtemplate.ApplyComputed(ctx, defs, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
 	if err == nil {
 		t.Fatal("expected error for computed cycle, got nil")
 	}
@@ -248,7 +248,7 @@ computed:
 
 func TestApplyComputed_NoDefs(t *testing.T) {
 	ctx := map[string]any{"Name": "test"}
-	result, err := pkgtemplate.ApplyComputed(ctx, nil, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	result, err := pkgtemplate.ApplyComputed(ctx, nil, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -261,7 +261,7 @@ func TestLoadUserContext_YMLExtension(t *testing.T) {
 	dir := t.TempDir()
 	writeProjectYML(t, dir, "Name: from-yml\n")
 
-	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -274,7 +274,7 @@ func TestLoadUserContext_DelimitersKeyStripped(t *testing.T) {
 	dir := t.TempDir()
 	writeProjectYAML(t, dir, "Name: test\n__delimiters:\n  left: \"[[\"\n  right: \"]]\"\n")
 
-	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -291,7 +291,7 @@ func TestLoadUserContext_AmbiguousProjectFile(t *testing.T) {
 	writeProjectYAML(t, dir, "Name: from-yaml\n")
 	writeProjectYML(t, dir, "Name: from-yml\n")
 
-	_, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	_, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
 	if err == nil {
 		t.Fatal("expected error for ambiguous project file, got nil")
 	}
@@ -373,7 +373,7 @@ func TestLoadUserContext_ComputedConflict_IsErrInvalidComputedDef(t *testing.T) 
 	dir := t.TempDir()
 	writeProjectYAML(t, dir, "Name: foo\ncomputed:\n  Name: bar\n")
 
-	_, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	_, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
 	if !errors.Is(err, specs.ErrInvalidComputedDef) {
 		t.Errorf("expected ErrInvalidComputedDef, got %v", err)
 	}
@@ -383,7 +383,7 @@ func TestLoadUserContext_ComputedNotMapping_IsErrInvalidComputedDef(t *testing.T
 	dir := t.TempDir()
 	writeProjectYAML(t, dir, "Name: foo\ncomputed: not-a-mapping\n")
 
-	_, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	_, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
 	if !errors.Is(err, specs.ErrInvalidComputedDef) {
 		t.Errorf("expected ErrInvalidComputedDef, got %v", err)
 	}
@@ -393,12 +393,12 @@ func TestApplyComputed_Cycle_IsErrCyclicDependency(t *testing.T) {
 	dir := t.TempDir()
 	writeProjectYAML(t, dir, "Name: x\ncomputed:\n  A: \"{{.B}}\"\n  B: \"{{.A}}\"\n")
 
-	ctx, defs, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	ctx, defs, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("LoadUserContext: %v", err)
 	}
 
-	_, err = pkgtemplate.ApplyComputed(ctx, defs, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	_, err = pkgtemplate.ApplyComputed(ctx, defs, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
 	if !errors.Is(err, specs.ErrCyclicDependency) {
 		t.Errorf("expected ErrCyclicDependency, got %v", err)
 	}
@@ -408,7 +408,7 @@ func TestLoadUserContext_CyclicReference_IsErrCyclicDependency(t *testing.T) {
 	dir := t.TempDir()
 	writeProjectYAML(t, dir, "A: \"{{.B}}\"\nB: \"{{.A}}\"\n")
 
-	_, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}, discardLogger()), specs.DefaultDelimiters)
+	_, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
 	if !errors.Is(err, specs.ErrCyclicDependency) {
 		t.Errorf("expected ErrCyclicDependency, got %v", err)
 	}

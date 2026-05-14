@@ -18,7 +18,7 @@ import (
 
 // executeCmdWithCheckFn runs the command with a custom checkRemoteFn injected into the App.
 func executeCmdWithCheckFn(
-	fn func(ctx context.Context, dir, url, branch string) (pkggit.RemoteCheckResult, error),
+	fn func(ctx context.Context, dir, url, branch string) pkggit.RemoteCheckResult,
 	args ...string,
 ) (string, error) {
 	app := NewApp()
@@ -216,7 +216,7 @@ func TestList_ConcurrencyCap(t *testing.T) {
 		peak    int
 	)
 
-	fake := func(ctx context.Context, dir, url, branch string) (pkggit.RemoteCheckResult, error) {
+	fake := func(ctx context.Context, dir, url, branch string) pkggit.RemoteCheckResult {
 		mu.Lock()
 		current++
 		if current > peak {
@@ -231,7 +231,7 @@ func TestList_ConcurrencyCap(t *testing.T) {
 		mu.Lock()
 		current--
 		mu.Unlock()
-		return pkggit.RemoteCheckResult{IsUpToDate: true}, nil
+		return pkggit.RemoteCheckResult{IsUpToDate: true}
 	}
 
 	if _, err := executeCmdWithCheckFn(fake, "template", "list"); err != nil {
@@ -261,11 +261,11 @@ func TestList_PerCheckTimeout(t *testing.T) {
 	}
 
 	var called atomic.Bool
-	fake := func(ctx context.Context, dir, url, branch string) (pkggit.RemoteCheckResult, error) {
+	fake := func(ctx context.Context, dir, url, branch string) pkggit.RemoteCheckResult {
 		called.Store(true)
 		// Block until the per-check context times out.
 		<-ctx.Done()
-		return pkggit.RemoteCheckResult{ErrorKind: pkggit.CheckErrorNetwork}, nil
+		return pkggit.RemoteCheckResult{ErrorKind: pkggit.CheckErrorNetwork}
 	}
 
 	start := time.Now()

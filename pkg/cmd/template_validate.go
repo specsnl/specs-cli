@@ -32,7 +32,7 @@ func newTemplateValidateCmd(app *App) *cobra.Command {
 
 			cfg := app.templateConfig()
 			cfg.ContinueOnRenderError = true // validate collects all render errors; never aborts early
-			tmpl, err := pkgtemplate.Get(templateRoot, cfg, app.Logger)
+			tmpl, err := pkgtemplate.Get(templateRoot, cfg)
 			if err != nil {
 				return fmt.Errorf("invalid template: %w", err)
 			}

@@ -47,9 +47,11 @@ func newTemplateDownloadCmd(app *App) *cobra.Command {
 			}
 
 			app.Output.Info("cloning %s…", src.CloneURL)
+			// git layer logs clone start/complete
 			if err := pkggit.Clone(src.CloneURL, dest, pkggit.CloneOptions{Branch: src.Branch}); err != nil {
 				return err
 			}
+			// git layer logs describe result or failure
 			desc, _ := pkggit.Describe(dest)
 			if err := pkgtemplate.SaveMetadata(dest, name, src.CloneURL, src.Branch, desc.Commit, desc.Version, time.Now().UTC()); err != nil {
 				return err
