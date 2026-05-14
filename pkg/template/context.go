@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"maps"
 	"os"
 	"path/filepath"
@@ -31,8 +32,8 @@ func LoadUserContext(templateRoot string, funcMap texttemplate.FuncMap, delims s
 		return nil, nil, err
 	}
 
-	delete(raw, "hooks")                      // consumed by the hook runner, not a template variable
-	delete(raw, specs.ProjectDelimitersKey)   // consumed by Get(); must not appear as a user variable
+	delete(raw, "hooks")                    // consumed by the hook runner, not a template variable
+	delete(raw, specs.ProjectDelimitersKey) // consumed by Get(); must not appear as a user variable
 
 	userCtx, err = resolveReferencedDefaults(raw, funcMap, delims)
 	return userCtx, computedDefs, err
@@ -97,6 +98,7 @@ func ApplyComputed(ctx map[string]any, defs map[string]string, funcMap texttempl
 			return nil, fmt.Errorf("computed %q: %w", k, err)
 		}
 		result[k] = val
+		slog.Debug("computed value resolved", "key", k, "expression", expr)
 	}
 
 	return result, nil
@@ -115,6 +117,7 @@ func LoadProjectFile(templateRoot string) (map[string]any, error) {
 	hasYML := ymlErr == nil
 
 	if hasYAML && hasYML {
+		slog.Debug("both project.yaml and project.yml exist", "template_root", templateRoot)
 		return nil, specs.ErrAmbiguousProjectFile
 	}
 
@@ -125,6 +128,7 @@ func LoadProjectFile(templateRoot string) (map[string]any, error) {
 			chosen = ymlPath
 			chosenName = specs.ProjectYMLFile
 		}
+		slog.Debug("loading project file", "path", chosen, "file", chosenName)
 		data, err := os.ReadFile(chosen)
 		if err != nil {
 			return nil, fmt.Errorf("reading %s: %w", chosenName, err)
@@ -137,6 +141,7 @@ func LoadProjectFile(templateRoot string) (map[string]any, error) {
 	}
 
 	jsonPath := filepath.Join(templateRoot, specs.ProjectJSONFile)
+	slog.Debug("loading project file", "path", jsonPath, "file", specs.ProjectJSONFile)
 	data, err := os.ReadFile(jsonPath)
 	if err != nil {
 		return nil, fmt.Errorf("%w in %s", specs.ErrProjectFileMissing, templateRoot)

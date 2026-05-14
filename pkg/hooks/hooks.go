@@ -18,6 +18,7 @@ type Hooks struct {
 	PreUse    []string // each entry: a single command or multiline bash script
 	PostUse   []string
 	EnvPrefix string // prefix for context keys injected as env vars (e.g. "SPECS_")
+	logger    *slog.Logger
 }
 
 // Load reads hook definitions from templateRoot.
@@ -26,11 +27,12 @@ type Hooks struct {
 //   - Directory: hooks/pre-use.sh and hooks/post-use.sh under templateRoot
 //
 // envPrefix is prepended to each context key when injecting env vars (e.g. "SPECS_").
+// logger is used for structured debug logging.
 // Returns an error if both sources are present.
 // Returns an empty *Hooks (not nil) if no hooks are defined at all.
-func Load(templateRoot string, projectConfig map[string]any, envPrefix string) (*Hooks, error) {
+func Load(templateRoot string, projectConfig map[string]any, envPrefix string, logger *slog.Logger) (*Hooks, error) {
 	hasInline := false
-	h := Hooks{EnvPrefix: envPrefix}
+	h := Hooks{EnvPrefix: envPrefix, logger: logger}
 
 	if raw, ok := projectConfig["hooks"]; ok {
 		if err := h.parseInline(raw); err != nil {
@@ -75,19 +77,24 @@ func (h *Hooks) Run(trigger, cwd string, ctx map[string]any, funcMap template.Fu
 		return nil
 	}
 
+	logger := h.logger
+	if logger == nil {
+		logger = slog.Default()
+	}
+
 	if _, err := exec.LookPath("bash"); err != nil {
 		return fmt.Errorf("bash not found on PATH: install bash or pass --no-hooks to skip hook execution")
 	}
 
 	env := buildEnv(ctx, h.EnvPrefix)
 
-	for _, cmdTpl := range commands {
+	for i, cmdTpl := range commands {
 		rendered, err := renderCommand(cmdTpl, ctx, funcMap, delims)
 		if err != nil {
 			return fmt.Errorf("rendering hook command: %w", err)
 		}
 
-		slog.Default().Debug("running hook", "trigger", trigger, "command", firstLine(rendered))
+		logger.Debug("running hook", "trigger", trigger, "index", i, "command", firstLine(rendered))
 
 		cmd := exec.Command("bash", "-c", rendered)
 		cmd.Dir = cwd
@@ -114,6 +121,14 @@ func (h *Hooks) Rendered(trigger string, ctx map[string]any, funcMap template.Fu
 	default:
 		return nil, fmt.Errorf("unknown hook trigger: %q", trigger)
 	}
+
+	logger := h.logger
+	if logger == nil {
+		logger = slog.Default()
+	}
+
+	logger.Debug("rendering hook commands", "trigger", trigger, "count", len(cmds))
+
 	result := make([]string, len(cmds))
 	for i, cmd := range cmds {
 		rendered, err := renderCommand(cmd, ctx, funcMap, delims)

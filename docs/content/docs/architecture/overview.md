@@ -244,6 +244,41 @@ flowchart TD
 
 ---
 
+## Logging
+
+`slog` is used throughout the codebase for structured logging. The logger is configured via the `--debug`
+and `--output` flags in `pkg/cmd/root.go`:
+
+- `--debug` raises the log level from `Info` to `Debug`, producing detailed diagnostic output.
+- `--output=json` switches both the slog handler and the output writer to JSON mode, emitting
+  NDJSON log lines to stderr (distinct from the stdout NDJSON output for commands like `specs template ls`).
+
+When both flags are used together (`--debug --output=json`), the slog JSON handler writes structured
+logs to stderr while the command output goes to stdout, making it easy to separate diagnostics from
+command results in scripts and CI pipelines.
+
+### Log attribute conventions
+
+Consistent attribute keys are used across the codebase for correlation:
+
+| Attribute | Description |
+|-----------|-------------|
+| `template_root` | Path to the template root directory |
+| `target_dir` | Destination directory for rendered output |
+| `path` | File or directory path being processed |
+| `dest` | Destination path for a rendered file |
+| `repo` | Git repository URL |
+| `branch` | Git branch or tag reference |
+| `commit` | Git commit hash |
+| `version` | Template or git version string |
+| `key` | Context variable key |
+| `source` | Origin of a value: `default`, `prompt`, `values_file`, `arg_flag`, `computed` |
+| `trigger` | Hook trigger: `pre-use` or `post-use` |
+| `error` | Underlying error (when available) |
+
+Key events are logged at `Info` level (e.g., template execution summary with rendered/verbatim/skipped counts),
+while detailed diagnostic information (per-file decisions, per-key resolution, hook invocations) is at `Debug` level.
+
 ## Error Handling (`pkg/specs/errors.go`)
 
 Sentinel errors are declared in `pkg/specs/errors.go` and should always be wrapped with `%w`

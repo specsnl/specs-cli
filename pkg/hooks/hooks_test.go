@@ -2,6 +2,7 @@ package hooks
 
 import (
 	"errors"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,7 +14,7 @@ import (
 
 // loadNoPrefix calls Load with an empty env prefix, for tests that don't care about prefixing.
 func loadNoPrefix(templateRoot string, projectConfig map[string]any) (*Hooks, error) {
-	return Load(templateRoot, projectConfig, "")
+	return Load(templateRoot, projectConfig, "", slog.Default())
 }
 
 // --- Load: inline hooks ---

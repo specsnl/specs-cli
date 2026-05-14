@@ -3,6 +3,7 @@ package template
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
@@ -59,16 +60,20 @@ func (t JSONTime) String() string {
 
 // LoadMetadata reads __metadata.json from templateRoot.
 // Missing or malformed metadata is not an error — returns nil, nil.
+// Errors are logged at debug level for diagnostic purposes.
 func LoadMetadata(templateRoot string) (*Metadata, error) {
 	path := filepath.Join(templateRoot, specs.MetadataFile)
 	data, err := os.ReadFile(path)
 	if err != nil {
+		slog.Debug("metadata file not found or unreadable", "path", path, "template_root", templateRoot, "error", err)
 		return nil, nil //nolint:nilerr // missing or unreadable metadata is not an error
 	}
 	var m Metadata
 	if err := json.Unmarshal(data, &m); err != nil {
+		slog.Debug("metadata file malformed", "path", path, "template_root", templateRoot, "error", err)
 		return nil, nil //nolint:nilerr // malformed metadata is silently ignored
 	}
+	slog.Debug("metadata loaded successfully", "path", path, "template_root", templateRoot, "name", m.Name)
 	return &m, nil
 }
 
@@ -87,5 +92,7 @@ func SaveMetadata(templateRoot, name, repository, branch, commit, version string
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(templateRoot, specs.MetadataFile), data, 0644)
+	path := filepath.Join(templateRoot, specs.MetadataFile)
+	slog.Debug("saving metadata", "path", path, "name", name, "repository", repository, "version", version)
+	return os.WriteFile(path, data, 0644)
 }

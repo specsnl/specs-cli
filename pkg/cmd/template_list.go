@@ -6,10 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/spf13/cobra"
 	"github.com/specsnl/specs-cli/pkg/specs"
 	pkgtemplate "github.com/specsnl/specs-cli/pkg/template"
 	pkggit "github.com/specsnl/specs-cli/pkg/util/git"
+	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -43,9 +43,11 @@ func newTemplateListCmd(app *App) *cobra.Command {
 				name := e.Name()
 				root := specs.TemplatePath(name)
 				meta, _ := pkgtemplate.LoadMetadata(root)
+				app.Logger.Debug("loaded template entry", "name", name, "has_metadata", meta != nil)
 				var status *pkgtemplate.TemplateStatus
 				if meta != nil && meta.Repository != "" && meta.Branch != "" {
 					status, _ = pkgtemplate.LoadStatus(root)
+					app.Logger.Debug("loaded template status", "name", name, "has_status", status != nil)
 				}
 				tmplEntries = append(tmplEntries, templateEntry{name: name, meta: meta, status: status})
 			}
@@ -74,14 +76,19 @@ func newTemplateListCmd(app *App) *cobra.Command {
 					checkCtx, cancelCheck := context.WithTimeout(egCtx, app.checkTimeout)
 					defer cancelCheck()
 					root := specs.TemplatePath(name)
-					result, _ := app.checkRemoteFn(checkCtx, root, repo, branch)
+					result, err := app.checkRemoteFn(checkCtx, root, repo, branch)
+					if err != nil {
+						app.Logger.Debug("remote check returned unexpected error", "name", name, "repo", repo, "branch", branch, "error", err)
+					}
 					newStatus := &pkgtemplate.TemplateStatus{
 						CheckedAt:     pkgtemplate.JSONTime{Time: time.Now().UTC()},
 						IsUpToDate:    result.IsUpToDate,
 						LatestVersion: result.LatestVersion,
 						ErrorKind:     result.ErrorKind,
 					}
-					_ = pkgtemplate.SaveStatus(root, newStatus)
+					if saveErr := pkgtemplate.SaveStatus(root, newStatus); saveErr != nil {
+						app.Logger.Debug("failed to save template status", "name", name, "error", saveErr)
+					}
 					mu.Lock()
 					tmplEntries[i].status = newStatus
 					if result.ErrorKind == pkggit.CheckErrorNetwork {
@@ -154,4 +161,3 @@ func statusLabel(status *pkgtemplate.TemplateStatus, hasRemote bool) string {
 	}
 	return "update available"
 }
-

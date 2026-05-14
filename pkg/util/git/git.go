@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"os"
 	"path/filepath"
@@ -19,6 +20,9 @@ import (
 	"golang.org/x/crypto/ssh/knownhosts"
 )
 
+// defaultLogger is used when no logger is provided.
+var defaultLogger = slog.Default()
+
 // CloneOptions controls how a repository is cloned.
 type CloneOptions struct {
 	// Branch is the branch (or tag) to check out. Empty means the remote's default branch.
@@ -33,6 +37,8 @@ type CloneOptions struct {
 // SSH URLs (git@host:path or ssh://host/path) are detected automatically and authenticated
 // via SSH agent or standard key files in ~/.ssh.
 func Clone(url, dir string, opts CloneOptions) error {
+	defaultLogger.Debug("cloning repository", "url", url, "dir", dir, "branch", opts.Branch, "depth", opts.Depth)
+
 	cloneOpts := &gogit.CloneOptions{
 		URL:      url,
 		Depth:    opts.Depth,
@@ -44,6 +50,7 @@ func Clone(url, dir string, opts CloneOptions) error {
 	}
 
 	if isSSHURL(url) {
+		defaultLogger.Debug("SSH URL detected, setting up SSH auth")
 		auth, err := sshAuth(url)
 		if err != nil {
 			return err
@@ -60,6 +67,7 @@ func Clone(url, dir string, opts CloneOptions) error {
 	if err != nil {
 		return fmt.Errorf("cloning %s: %w", url, err)
 	}
+	defaultLogger.Debug("repository cloned successfully", "url", url, "dir", dir)
 	return nil
 }
 
@@ -67,9 +75,11 @@ func Clone(url, dir string, opts CloneOptions) error {
 // This lets callers pass version tags ("0.1.0", "v1.2.3") or branch names
 // ("main") without needing to know which kind of ref it is.
 func cloneWithRef(url, dir string, cloneOpts *gogit.CloneOptions, ref string) error {
+	defaultLogger.Debug("trying ref as tag", "url", url, "ref", ref)
 	cloneOpts.ReferenceName = plumbing.NewTagReferenceName(ref)
 	_, err := gogit.PlainClone(dir, false, cloneOpts)
 	if err == nil {
+		defaultLogger.Debug("cloned tag successfully", "url", url, "tag", ref)
 		return nil
 	}
 	if !strings.Contains(err.Error(), "couldn't find remote ref") {
@@ -77,12 +87,14 @@ func cloneWithRef(url, dir string, cloneOpts *gogit.CloneOptions, ref string) er
 	}
 
 	// Tag ref not found — retry as a branch.
+	defaultLogger.Debug("tag not found, retrying as branch", "url", url, "ref", ref)
 	os.RemoveAll(dir)
 	cloneOpts.ReferenceName = plumbing.NewBranchReferenceName(ref)
 	_, err = gogit.PlainClone(dir, false, cloneOpts)
 	if err != nil {
 		return fmt.Errorf("cloning %s: %w", url, err)
 	}
+	defaultLogger.Debug("cloned branch successfully", "url", url, "branch", ref)
 	return nil
 }
 
@@ -100,6 +112,8 @@ type DescribeResult struct {
 // Describe returns version information for the repository at dir.
 // Returns an error only when dir is not a git repository or HEAD cannot be read.
 func Describe(dir string) (DescribeResult, error) {
+	defaultLogger.Debug("describing git repository", "dir", dir)
+
 	repo, err := gogit.PlainOpen(dir)
 	if err != nil {
 		return DescribeResult{}, fmt.Errorf("opening repository at %s: %w", dir, err)
@@ -107,11 +121,13 @@ func Describe(dir string) (DescribeResult, error) {
 
 	head, err := repo.Head()
 	if err != nil {
-		return DescribeResult{}, fmt.Errorf("reading HEAD: %w", err)
+		return DescribeResult{}, fmt.Errorf("reading HEAD in %s: %w", dir, err)
 	}
 
 	commit := head.Hash().String()
 	shortHash := commit[:7]
+
+	defaultLogger.Debug("HEAD resolved", "dir", dir, "commit", commit, "short_hash", shortHash)
 
 	dirty := false
 	if wt, err := repo.Worktree(); err == nil {
@@ -127,10 +143,16 @@ func Describe(dir string) (DescribeResult, error) {
 		}
 	}
 
-	return DescribeResult{
+	if dirty {
+		defaultLogger.Debug("repository has uncommitted changes", "dir", dir)
+	}
+
+	result := DescribeResult{
 		Commit:  commit,
 		Version: buildVersion(repo, head.Hash(), shortHash, dirty),
-	}, nil
+	}
+	defaultLogger.Debug("describe completed", "dir", dir, "version", result.Version)
+	return result, nil
 }
 
 // buildVersion constructs a version string in git-describe style.
@@ -288,39 +310,52 @@ func (r RemoteCheckResult) Err() error {
 //
 // On failure, ErrorKind is set in the result and error is nil.
 func CheckRemoteContext(ctx context.Context, dir, url, branch string) (RemoteCheckResult, error) {
+	defaultLogger.Debug("checking remote status", "dir", dir, "url", url, "branch", branch)
+
 	repo, err := gogit.PlainOpen(dir)
 	if err != nil {
+		defaultLogger.Debug("failed to open repository", "dir", dir, "error", err)
 		return RemoteCheckResult{ErrorKind: CheckErrorUnknown}, nil
 	}
 
 	remote, err := repo.Remote("origin")
 	if err != nil {
+		defaultLogger.Debug("failed to get remote origin", "dir", dir, "error", err)
 		return RemoteCheckResult{ErrorKind: CheckErrorUnknown}, nil
 	}
 
 	listOpts := &gogit.ListOptions{}
 	if isSSHURL(url) {
+		defaultLogger.Debug("SSH URL detected for remote check, setting up SSH auth")
 		auth, err := sshAuth(url)
 		if err != nil {
+			defaultLogger.Debug("SSH auth failed for remote check", "url", url, "error", err)
 			return RemoteCheckResult{ErrorKind: CheckErrorAuth}, nil
 		}
 		listOpts.Auth = auth
 	}
 
+	defaultLogger.Debug("listing remote refs", "dir", dir, "url", url)
 	refs, err := remote.ListContext(ctx, listOpts)
 	if err != nil {
 		if ctx.Err() != nil {
+			defaultLogger.Debug("remote check cancelled by context", "dir", dir)
 			return RemoteCheckResult{ErrorKind: CheckErrorNetwork}, nil
 		}
-		return RemoteCheckResult{ErrorKind: classifyRemoteError(err)}, nil
+		errKind := classifyRemoteError(err)
+		defaultLogger.Debug("remote check failed", "dir", dir, "url", url, "error_kind", errKind, "error", err)
+		return RemoteCheckResult{ErrorKind: errKind}, nil
 	}
 
 	head, err := repo.Head()
 	if err != nil {
+		defaultLogger.Debug("failed to read HEAD", "dir", dir, "error", err)
 		return RemoteCheckResult{ErrorKind: CheckErrorUnknown}, nil
 	}
 
-	return resolveStatus(refs, head.Hash(), branch), nil
+	result := resolveStatus(refs, head.Hash(), branch)
+	defaultLogger.Debug("remote check completed", "dir", dir, "url", url, "branch", branch, "is_up_to_date", result.IsUpToDate, "latest_version", result.LatestVersion)
+	return result, nil
 }
 
 // CheckRemote is a context-free convenience wrapper around CheckRemoteContext.

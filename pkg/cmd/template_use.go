@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -77,13 +78,18 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 	if err != nil {
 		return err
 	}
-	h, err := hooks.Load(templateRoot, rawConfig, a.HookEnvPrefix)
+	h, err := hooks.Load(templateRoot, rawConfig, a.HookEnvPrefix, a.Logger)
 	if err != nil {
 		return err
 	}
 
 	ctx := tmpl.Context
 	provided := make(map[string]bool)
+
+	// Log initial context keys
+	for k := range tmpl.Context {
+		a.Logger.Debug("context key from schema", "key", k, "source", "default")
+	}
 
 	if opts.valuesFile != "" {
 		fileVals, err := values.LoadFile(opts.valuesFile)
@@ -92,6 +98,7 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 		}
 		for k := range fileVals {
 			provided[k] = true
+			a.Logger.Debug("context key from values file", "key", k, "source", "values_file")
 		}
 		ctx = values.Merge(ctx, fileVals)
 	}
@@ -103,16 +110,23 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 		}
 		ctx[k] = v
 		provided[k] = true
+		a.Logger.Debug("context key from arg flag", "key", k, "value", v, "source", "arg_flag")
 	}
 
 	if !opts.useDefaults {
-		if err := promptContext(ctx, tmpl.Context, tmpl.Conditionals, tmpl.Referenced, provided); err != nil {
+		if err := promptContext(ctx, tmpl.Context, tmpl.Conditionals, tmpl.Referenced, provided, a.Logger); err != nil {
 			return err
 		}
 	} else {
 		resolveSelectDefaults(ctx)
+		for k := range ctx {
+			if !provided[k] {
+				a.Logger.Debug("context key using default", "key", k, "source", "default")
+			}
+		}
 	}
 
+	a.Logger.Debug("applying computed values", "count", len(tmpl.ComputedDefs))
 	ctx, err = pkgtemplate.ApplyComputed(ctx, tmpl.ComputedDefs, tmpl.FuncMap(), tmpl.Delims())
 	if err != nil {
 		return err
@@ -218,11 +232,12 @@ func (a *App) confirmRemoteHooks(h *hooks.Hooks, ctx map[string]any, tmpl *pkgte
 // now-final ctx, and prompts those that are needed. This correctly handles
 // nested eq/ne gates where the gate variable is itself conditional.
 func promptContext(
-	ctx        map[string]any,
-	schema     map[string]any,
-	conds      pkgtemplate.Conditionals,
+	ctx map[string]any,
+	schema map[string]any,
+	conds pkgtemplate.Conditionals,
 	referenced map[string]bool,
-	provided   map[string]bool,
+	provided map[string]bool,
+	logger *slog.Logger,
 ) error {
 	schemaKeys := make(map[string]bool, len(schema))
 	for k := range schema {
@@ -243,8 +258,9 @@ func promptContext(
 		}
 	}
 
+	logger.Debug("starting prompt pass 1 (always-needed variables)", "count", len(alwaysKeys))
 	// Pass 1: always-needed variables.
-	if err := runPromptPass(ctx, schema, alwaysKeys, provided); err != nil {
+	if err := runPromptPass(ctx, schema, alwaysKeys, provided, logger); err != nil {
 		return err
 	}
 
@@ -252,12 +268,14 @@ func promptContext(
 	resolved := make(map[string]bool, len(alwaysKeys)+len(provided))
 	for _, k := range alwaysKeys {
 		resolved[k] = true
+		logger.Debug("prompted variable resolved", "key", k, "source", "prompt")
 	}
 	for k := range provided {
 		resolved[k] = true
 	}
 
 	// Iterative conditional passes: each round handles one dependency layer.
+	pass := 2
 	for len(remaining) > 0 {
 		// Find keys whose gate variables are all resolved (or not in schema).
 		var ready []string
@@ -275,6 +293,7 @@ func promptContext(
 		}
 
 		if len(ready) == 0 {
+			logger.Debug("no more resolvable conditional variables", "remaining_count", len(remaining))
 			break // no progress: remaining keys have unresolvable dependencies
 		}
 
@@ -287,14 +306,21 @@ func promptContext(
 			}
 		}
 
-		if err := runPromptPass(ctx, schema, toPrompt, provided); err != nil {
-			return err
+		if len(toPrompt) > 0 {
+			logger.Debug("starting prompt pass", "pass", pass, "conditional_vars_count", len(toPrompt))
+			if err := runPromptPass(ctx, schema, toPrompt, provided, logger); err != nil {
+				return err
+			}
+			for _, k := range toPrompt {
+				logger.Debug("prompted variable resolved", "key", k, "source", "prompt")
+			}
 		}
 
 		for _, k := range ready {
 			resolved[k] = true
 			delete(remaining, k)
 		}
+		pass++
 	}
 
 	return nil
@@ -307,16 +333,25 @@ func runPromptPass(
 	schema map[string]any,
 	keys []string,
 	provided map[string]bool,
+	logger *slog.Logger,
 ) error {
+	if len(keys) == 0 {
+		return nil
+	}
+
+	logger.Debug("preparing prompt form", "keys_count", len(keys))
+
 	var fields []huh.Field
 	stringResults := make(map[string]*string)
 	boolResults := make(map[string]*bool)
 
 	for _, key := range keys {
 		if provided[key] {
+			logger.Debug("skipping already provided key", "key", key, "source", "provided")
 			continue
 		}
 		defaultVal := schema[key]
+		logger.Debug("preparing prompt for key", "key", key, "default_type", fmt.Sprintf("%T", defaultVal))
 
 		switch v := defaultVal.(type) {
 		case string:
@@ -367,12 +402,16 @@ func runPromptPass(
 	}
 
 	if len(fields) == 0 {
+		logger.Debug("no fields to prompt, skipping")
 		return nil
 	}
 
+	logger.Debug("displaying prompt form", "fields_count", len(fields))
 	if err := huh.NewForm(huh.NewGroup(fields...)).Run(); err != nil {
 		return err
 	}
+
+	logger.Debug("prompt form completed successfully")
 
 	for k, p := range stringResults {
 		ctx[k] = *p
@@ -415,4 +454,3 @@ func toStringOptions(v []any) []string {
 	}
 	return opts
 }
-
