@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/specsnl/specs-cli/pkg/specs"
 	pkgtemplate "github.com/specsnl/specs-cli/pkg/template"
@@ -70,7 +71,7 @@ func Upgrade(name string) (UpgradeResult, error) {
 	if err != nil {
 		slog.Debug("failed to parse template metadata", "template", name, "error", err)
 	}
-	if meta == nil || meta.Repository == "" {
+	if meta == nil || meta.Repository == "" || strings.HasPrefix(meta.Repository, "local:") {
 		return UpgradeResult{IsLocal: true}, nil
 	}
 

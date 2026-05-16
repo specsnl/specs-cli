@@ -3,6 +3,7 @@ package cmd
 import (
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -46,7 +47,7 @@ func newTemplateUpdateCmd(app *App) *cobra.Command {
 				if err != nil {
 					slog.Debug("failed to parse template metadata", "template", name, "error", err)
 				}
-				if meta == nil || meta.Repository == "" {
+				if meta == nil || meta.Repository == "" || strings.HasPrefix(meta.Repository, "local:") {
 					continue
 				}
 
