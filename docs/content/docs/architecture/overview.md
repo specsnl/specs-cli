@@ -23,7 +23,7 @@ weight: 1
 specs-cli/
 ├── main.go                       # main() — XDG init, cmd.Execute()
 ├── go.mod
-└── pkg/
+└── internal/
     ├── specs/                    # global config & constants
     │   ├── configuration.go      # XDG paths, file name constants
     │   └── errors.go             # sentinel errors
@@ -244,9 +244,9 @@ flowchart TD
 
 ---
 
-## Error Handling (`pkg/specs/errors.go`)
+## Error Handling (`internal/specs/errors.go`)
 
-Sentinel errors are declared in `pkg/specs/errors.go` and should always be wrapped with `%w`
+Sentinel errors are declared in `internal/specs/errors.go` and should always be wrapped with `%w`
 so that callers can use `errors.Is` to distinguish them:
 
 | Sentinel | Kind string | Raised when |
@@ -267,7 +267,7 @@ or `""` when no known sentinel is wrapped.
 
 ---
 
-## Output System (`pkg/util/output`)
+## Output System (`internal/util/output`)
 
 All user-facing output goes through the `output.Writer` interface:
 
@@ -318,16 +318,16 @@ logger. `NewApp()` calls `slog.SetDefault` to install a text handler at `Info` l
 
 | Package | Function | Level | Attributes |
 |---------|----------|-------|------------|
-| `pkg/template` | `Get` | Debug | `template`, `keys`, `computed` |
-| `pkg/template` | `Execute` | Debug | `path`, `dest`, `action` (render/verbatim/skip) |
-| `pkg/template` | `Execute` | Info | `template`, `dest`, `rendered`, `verbatim`, `skipped` (summary) |
-| `pkg/template` | `ApplyComputed` | Debug | `key`, `source`="computed" |
-| `pkg/hooks` | `Hooks.Run` | Debug | `trigger`, `commands`, `command` |
-| `pkg/cmd` | `executeTemplate` | Debug | `key`, `source` (values_file/arg_flag/default/prompt) — one log per key, final source only |
-| `pkg/registry` | `Upgrade` | Debug | `template`, `repo`, `branch`, `target_ref`, `latest_version` |
-| `pkg/util/git` | `Clone` | Debug | `repo`, `dest`, `branch` (start and complete) |
-| `pkg/util/git` | `Describe` | Debug | `dest`, `commit`, `version` (or `error` on failure) |
-| `pkg/util/git` | `CheckRemoteContext` | Debug | `repo`, `branch`, `dest`, `up_to_date`, `latest_version`, `error_kind` |
+| `internal/template` | `Get` | Debug | `template`, `keys`, `computed` |
+| `internal/template` | `Execute` | Debug | `path`, `dest`, `action` (render/verbatim/skip) |
+| `internal/template` | `Execute` | Info | `template`, `dest`, `rendered`, `verbatim`, `skipped` (summary) |
+| `internal/template` | `ApplyComputed` | Debug | `key`, `source`="computed" |
+| `internal/hooks` | `Hooks.Run` | Debug | `trigger`, `commands`, `command` |
+| `internal/cmd` | `executeTemplate` | Debug | `key`, `source` (values_file/arg_flag/default/prompt) — one log per key, final source only |
+| `internal/registry` | `Upgrade` | Debug | `template`, `repo`, `branch`, `target_ref`, `latest_version` |
+| `internal/util/git` | `Clone` | Debug | `repo`, `dest`, `branch` (start and complete) |
+| `internal/util/git` | `Describe` | Debug | `dest`, `commit`, `version` (or `error` on failure) |
+| `internal/util/git` | `CheckRemoteContext` | Debug | `repo`, `branch`, `dest`, `up_to_date`, `latest_version`, `error_kind` |
 
 ### Consistent attribute keys
 
@@ -365,7 +365,7 @@ by `NewApp()` and re-set in `PersistentPreRunE` when `--debug --output=json` swa
 ## Hooks Execution
 
 ```go
-// pkg/hooks/hooks.go
+// internal/hooks/hooks.go
 
 type Hooks struct {
     PreUse    []string // each entry: single command or multiline bash script
@@ -392,19 +392,19 @@ func (h *Hooks) Run(trigger, cwd string, ctx map[string]any, funcMap template.Fu
 
 | Package | Status | Change |
 |---------|--------|--------|
-| `pkg/specs` | **new** | XDG paths, file name constants, sentinel errors, `KindOf()` (replaces `pkg/boilr`) |
-| `pkg/registry` | **new** | on-disk template store: `Entry`, `Load()`, `Upgrade()` |
-| `pkg/cmd` | updated | new `use.go`, `template_update.go`, `template_upgrade.go`, iterative conditional prompting; no longer reads project files or `__metadata.json` directly |
-| `pkg/template` | updated | configurable delimiters (default `{{ }}`), `context.go`, `verbatim.go`, conditional skip, AST analysis, status; exports `LoadProjectFile()`, `LoadMetadata()`, `SaveMetadata()` |
-| `pkg/hooks` | **new** | hook loading and execution |
-| `pkg/util/output` | updated | lipgloss-based logger + table renderer; `WriteErr` with JSON `error_kind` for known sentinels (replaces tlog + tabular) |
-| `pkg/util/values` | **new** | `--values` file (JSON/YAML) and `--arg` flag parsing |
-| `pkg/host` | updated | source format parsing (github:, HTTPS, SSH, local path) |
+| `internal/specs` | **new** | XDG paths, file name constants, sentinel errors, `KindOf()` (replaces `pkg/boilr`) |
+| `internal/registry` | **new** | on-disk template store: `Entry`, `Load()`, `Upgrade()` |
+| `internal/cmd` | updated | new `use.go`, `template_update.go`, `template_upgrade.go`, iterative conditional prompting; no longer reads project files or `__metadata.json` directly |
+| `internal/template` | updated | configurable delimiters (default `{{ }}`), `context.go`, `verbatim.go`, conditional skip, AST analysis, status; exports `LoadProjectFile()`, `LoadMetadata()`, `SaveMetadata()` |
+| `internal/hooks` | **new** | hook loading and execution |
+| `internal/util/output` | updated | lipgloss-based logger + table renderer; `WriteErr` with JSON `error_kind` for known sentinels (replaces tlog + tabular) |
+| `internal/util/values` | **new** | `--values` file (JSON/YAML) and `--arg` flag parsing |
+| `internal/host` | updated | source format parsing (github:, HTTPS, SSH, local path) |
 | `pkg/prompt` | **removed** | replaced by `huh` |
-| `pkg/util/tlog` | **removed** | replaced by `pkg/util/output` |
-| `pkg/util/tabular` | **removed** | replaced by `pkg/util/output` |
+| `pkg/util/tlog` | **removed** | replaced by `internal/util/output` |
+| `pkg/util/tabular` | **removed** | replaced by `internal/util/output` |
 | `pkg/util/exec` | **removed** | no longer needed (hooks use `os/exec` directly) |
-| `pkg/util/exit` | unchanged | |
-| `pkg/util/git` | updated | SSH auth, `CheckRemoteContext()` (context-aware), `Describe()` for status tracking; `RemoteCheckResult.Err()` returns typed sentinel errors |
-| `pkg/util/osutil` | updated | `CopyDir()` recursive copy |
-| `pkg/util/validate` | updated | `Name()` validator (alphanumeric + hyphens + underscores) |
+| `internal/util/exit` | unchanged | |
+| `internal/util/git` | updated | SSH auth, `CheckRemoteContext()` (context-aware), `Describe()` for status tracking; `RemoteCheckResult.Err()` returns typed sentinel errors |
+| `internal/util/osutil` | updated | `CopyDir()` recursive copy |
+| `internal/util/validate` | updated | `Name()` validator (alphanumeric + hyphens + underscores) |
