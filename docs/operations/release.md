@@ -25,7 +25,7 @@ GoReleaser runs only in the release workflow — not needed for local developmen
 ## Version Injection
 
 ```
--X github.com/specsnl/specs-cli/pkg/cmd.Version=<version>
+-X github.com/specsnl/specs-cli/internal/cmd.Version=<version>
 ```
 
 GoReleaser sets `Version` to the Git tag (e.g. `1.2.3`) automatically through `-ldflags`.
@@ -56,7 +56,7 @@ builds:
       - -tags=netgo
     ldflags:
       - -s -w
-      - -X github.com/specsnl/specs-cli/pkg/cmd.Version={{ .Version }}
+      - -X github.com/specsnl/specs-cli/internal/cmd.Version={{ .Version }}
     env:
       - CGO_ENABLED=0
     goos: [linux, darwin]

@@ -7,8 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/specsnl/specs-cli/pkg/cmd"
-	"github.com/specsnl/specs-cli/pkg/util/exit"
+	"github.com/specsnl/specs-cli/internal/cmd"
+	"github.com/specsnl/specs-cli/internal/util/exit"
 )
 
 func main() {

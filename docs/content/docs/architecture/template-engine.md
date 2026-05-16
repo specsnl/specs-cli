@@ -194,7 +194,7 @@ executable in the registry and in every scaffolded output.
 
 All of Go's standard `text/template` built-ins are available, plus:
 
-### Custom Functions (`pkg/template/specsregistry.go`)
+### Custom Functions (`internal/template/specsregistry.go`)
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
@@ -241,7 +241,7 @@ the filesystem beyond their own template directory.
 ## Iterative Conditional Prompting
 
 Before prompting, specs analyses the template file tree's AST to determine which variables
-are guarded behind conditions (see `pkg/template/analysis.go`). Prompting is iterative:
+are guarded behind conditions (see `internal/template/analysis.go`). Prompting is iterative:
 
 1. **Pass 1** — unconditional variables (always needed, regardless of any condition)
 2. **Pass 2+** — each round finds conditional variables whose guard variables are all resolved,

@@ -38,7 +38,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     && CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH go build \
         -trimpath \
         -tags netgo \
-        -ldflags "-s -w -X ${GO_MODULE}/pkg/cmd.Version=${SPECS_VERSION}" -o ./specs
+        -ldflags "-s -w -X ${GO_MODULE}/internal/cmd.Version=${SPECS_VERSION}" -o ./specs
 
 # Latest version: https://hub.docker.com/_/debian/tags
 FROM debian:13.4-slim

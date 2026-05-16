@@ -17,7 +17,7 @@ weight: 4
 
 ## Interactive Prompts: huh
 
-**Decision:** `charm.land/huh/v2` — full replacement for the old `pkg/prompt`.
+**Decision:** `charm.land/huh/v2` — full replacement for the old `internal/prompt`.
 
 **Rationale:**
 - Usable in standalone mode (`form.Run()` blocks like a normal function call).
@@ -42,7 +42,7 @@ weight: 4
 **Rationale:**
 - CSS-like chainable API for colour, bold/italic/underline, padding, margins, borders, and alignment.
 - Handles colour downsampling automatically (24-bit → 8-bit → 4-bit based on terminal capability).
-- `pkg/util/output` provides the logger and table renderer on top of lipgloss.
+- `internal/util/output` provides the logger and table renderer on top of lipgloss.
 
 **Libraries replaced:**
 - `github.com/fatih/color`
@@ -54,7 +54,7 @@ weight: 4
 
 `charm.land/bubbles/v2` is pulled in transitively by huh but is not used directly.
 
-The `specs template list` table renderer (`pkg/util/output/table.go`) is implemented
+The `specs template list` table renderer (`internal/util/output/table.go`) is implemented
 using lipgloss only — auto-sized columns, styled headers, and a border rendered with
 lipgloss styles. No bubbles table component is used.
 
