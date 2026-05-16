@@ -2,6 +2,8 @@ package hooks
 
 import (
 	"errors"
+	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +12,11 @@ import (
 
 	"github.com/specsnl/specs-cli/pkg/specs"
 )
+
+func TestMain(m *testing.M) {
+	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	os.Exit(m.Run())
+}
 
 // loadNoPrefix calls Load with an empty env prefix, for tests that don't care about prefixing.
 func loadNoPrefix(templateRoot string, projectConfig map[string]any) (*Hooks, error) {

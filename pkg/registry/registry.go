@@ -2,6 +2,7 @@ package registry
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/specsnl/specs-cli/pkg/specs"
@@ -36,10 +37,16 @@ func Load(name string) (*Entry, error) {
 	if _, err := os.Stat(root); os.IsNotExist(err) {
 		return nil, nil
 	}
-	meta, _ := pkgtemplate.LoadMetadata(root)
+	meta, err := pkgtemplate.LoadMetadata(root)
+	if err != nil {
+		slog.Debug("failed to parse template metadata", "template", name, "error", err)
+	}
 	var status *pkgtemplate.TemplateStatus
 	if meta != nil && meta.Repository != "" && meta.Branch != "" {
-		status, _ = pkgtemplate.LoadStatus(root)
+		status, err = pkgtemplate.LoadStatus(root)
+		if err != nil {
+			slog.Debug("failed to load template status", "template", name, "error", err)
+		}
 	}
 	return &Entry{Name: name, Root: root, Metadata: meta, Status: status}, nil
 }
@@ -57,19 +64,32 @@ func Upgrade(name string) (UpgradeResult, error) {
 		return UpgradeResult{}, fmt.Errorf("%w: %s", specs.ErrTemplateNotFound, name)
 	}
 
-	meta, _ := pkgtemplate.LoadMetadata(root)
+	slog.Debug("upgrade start", "template", name)
+
+	meta, err := pkgtemplate.LoadMetadata(root)
+	if err != nil {
+		slog.Debug("failed to parse template metadata", "template", name, "error", err)
+	}
 	if meta == nil || meta.Repository == "" || meta.Branch == "" {
 		return UpgradeResult{IsLocal: true}, nil
 	}
 
 	targetRef := meta.Branch
-	result, _ := pkggit.CheckRemote(root, meta.Repository, meta.Branch)
+	result := pkggit.CheckRemote(root, meta.Repository, meta.Branch)
 	if err := result.Err(); err != nil {
 		return UpgradeResult{}, err
 	}
 	if result.IsUpToDate && result.LatestVersion == "" {
 		return UpgradeResult{AlreadyUpToDate: true}, nil
 	}
+
+	slog.Debug("upgrade target",
+		"template", name,
+		"repo", meta.Repository,
+		"branch", meta.Branch,
+		"target_ref", targetRef,
+		"latest_version", result.LatestVersion,
+	)
 
 	newBranch := meta.Branch
 	if result.LatestVersion != "" {
@@ -84,13 +104,16 @@ func Upgrade(name string) (UpgradeResult, error) {
 		return UpgradeResult{}, err
 	}
 
-	desc, _ := pkggit.Describe(root)
+	desc, _ := pkggit.Describe(root) // errors are logged by the git layer
 	if err := pkgtemplate.SaveMetadata(root, name, meta.Repository, newBranch, desc.Commit, desc.Version, meta.Created.Time); err != nil {
 		return UpgradeResult{}, err
 	}
 
 	// Remove stale status; regenerated on next template list or update.
-	_ = os.Remove(root + "/" + specs.StatusFile)
+	if err := os.Remove(root + "/" + specs.StatusFile); err != nil && !os.IsNotExist(err) {
+		slog.Debug("removing stale status file failed", "template", name, "error", err)
+	}
 
+	slog.Debug("upgrade complete", "template", name, "target_ref", targetRef)
 	return UpgradeResult{Repository: meta.Repository, TargetRef: targetRef}, nil
 }

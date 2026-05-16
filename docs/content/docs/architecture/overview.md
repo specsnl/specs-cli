@@ -300,6 +300,68 @@ that parse structured output.
 
 ---
 
+## Logging
+
+`specs` uses `log/slog` for structured diagnostic output. All packages emit logs via the
+package-level `slog.Debug/Info/Warn/Error` functions, which route through the global default
+logger. `NewApp()` calls `slog.SetDefault` to install a text handler at `Info` level;
+`PersistentPreRunE` re-sets it when `--debug --output=json` swaps the handler to JSON.
+
+### Flags
+
+| Flag | Effect |
+|------|--------|
+| `--debug` | Raises the slog level from `Info` to `Debug`; all debug logs become visible |
+| `--output=json` + `--debug` | Swaps the slog handler to `slog.NewJSONHandler` writing to stderr; debug logs are emitted as NDJSON distinct from stdout data |
+
+### Log points
+
+| Package | Function | Level | Attributes |
+|---------|----------|-------|------------|
+| `pkg/template` | `Get` | Debug | `template`, `keys`, `computed` |
+| `pkg/template` | `Execute` | Debug | `path`, `dest`, `action` (render/verbatim/skip) |
+| `pkg/template` | `Execute` | Info | `template`, `dest`, `rendered`, `verbatim`, `skipped` (summary) |
+| `pkg/template` | `ApplyComputed` | Debug | `key`, `source`="computed" |
+| `pkg/hooks` | `Hooks.Run` | Debug | `trigger`, `commands`, `command` |
+| `pkg/cmd` | `executeTemplate` | Debug | `key`, `source` (values_file/arg_flag/default/prompt) — one log per key, final source only |
+| `pkg/registry` | `Upgrade` | Debug | `template`, `repo`, `branch`, `target_ref`, `latest_version` |
+| `pkg/util/git` | `Clone` | Debug | `repo`, `dest`, `branch` (start and complete) |
+| `pkg/util/git` | `Describe` | Debug | `dest`, `commit`, `version` (or `error` on failure) |
+| `pkg/util/git` | `CheckRemoteContext` | Debug | `repo`, `branch`, `dest`, `up_to_date`, `latest_version`, `error_kind` |
+
+### Consistent attribute keys
+
+| Key | Meaning |
+|-----|---------|
+| `template` | Registered template name (e.g. `"minimal"`) — primary user identifier |
+| `path` | Template-relative source path of a file (e.g. `"src/foo.go"`) |
+| `dest` | Absolute destination path on the filesystem |
+| `repo` | Remote repository URL |
+| `branch` | Git branch or tag ref |
+| `commit` | Full git commit SHA |
+| `version` | git-describe-style version string |
+| `trigger` | Hook trigger name (`pre-use`, `post-use`) |
+| `key` | Context variable name |
+| `source` | How a context value was provided (`default`/`prompt`/`values_file`/`arg_flag`/`computed`) |
+| `action` | File decision (`render`/`verbatim`/`skip`) |
+| `error` | Underlying error (formatted as `%v`) |
+
+### Example: structured debug output
+
+```sh
+# Text handler (default with --debug):
+specs --debug template use minimal ./out
+
+# NDJSON handler (--debug + --output=json):
+specs --debug --output=json template ls 2>debug.ndjson
+```
+
+`--output=json` controls the **data** format on stdout; `--debug` + `--output=json` controls
+the **log** format on stderr. The two streams are independent. `slog.SetDefault` is called
+by `NewApp()` and re-set in `PersistentPreRunE` when `--debug --output=json` swaps the handler.
+
+---
+
 ## Hooks Execution
 
 ```go
@@ -321,7 +383,7 @@ func Load(templateRoot string, projectConfig map[string]any, envPrefix string) (
 // ctx is injected as SPECS_-prefixed uppercase env vars: ProjectName → SPECS_PROJECTNAME.
 // {{ }} expressions in hook commands are rendered against ctx before execution.
 // Stops and returns error on first non-zero exit.
-func (h *Hooks) Run(trigger, cwd string, ctx map[string]any, funcMap template.FuncMap) error
+func (h *Hooks) Run(trigger, cwd string, ctx map[string]any, funcMap template.FuncMap, delims specs.Delimiters) error
 ```
 
 ---

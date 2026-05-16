@@ -27,9 +27,7 @@ import (
 
 // FuncMap returns all template functions for the given config.
 // In safe mode the env and filesystem registries are excluded.
-// logger is passed to sprout so it can emit structured warnings (e.g. deprecated
-// function usage).
-func FuncMap(cfg Config, logger *slog.Logger) texttemplate.FuncMap {
+func FuncMap(cfg Config) texttemplate.FuncMap {
 	registries := []sprout.Registry{
 		// Standard utility registries
 		sproutstd.NewRegistry(),
@@ -66,7 +64,7 @@ func FuncMap(cfg Config, logger *slog.Logger) texttemplate.FuncMap {
 		)
 	}
 
-	handler := sprout.New(sprout.WithLogger(logger))
+	handler := sprout.New(sprout.WithLogger(slog.Default()))
 	if err := handler.AddRegistries(registries...); err != nil {
 		// Registry registration only fails on programmer error (duplicate names);
 		// panic here surfaces the issue during development rather than silently

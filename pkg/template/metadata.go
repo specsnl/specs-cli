@@ -58,7 +58,8 @@ func (t JSONTime) String() string {
 }
 
 // LoadMetadata reads __metadata.json from templateRoot.
-// Missing or malformed metadata is not an error — returns nil, nil.
+// A missing or unreadable file is not an error — returns nil, nil.
+// A malformed file returns an error so callers can log the diagnostic.
 func LoadMetadata(templateRoot string) (*Metadata, error) {
 	path := filepath.Join(templateRoot, specs.MetadataFile)
 	data, err := os.ReadFile(path)
@@ -67,7 +68,7 @@ func LoadMetadata(templateRoot string) (*Metadata, error) {
 	}
 	var m Metadata
 	if err := json.Unmarshal(data, &m); err != nil {
-		return nil, nil //nolint:nilerr // malformed metadata is silently ignored
+		return nil, fmt.Errorf("parsing %s: %w", specs.MetadataFile, err)
 	}
 	return &m, nil
 }

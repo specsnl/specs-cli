@@ -34,7 +34,7 @@ func buildAnalysisTemplate(t *testing.T, yaml string, files map[string]string) s
 
 func analyzeTemplate(t *testing.T, root string) *pkgtemplate.Template {
 	t.Helper()
-	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{})
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}

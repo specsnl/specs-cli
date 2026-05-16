@@ -56,7 +56,7 @@ Use "specs <command> --help" for more information about a command.`,
 			if debug {
 				app.level.Set(slog.LevelDebug)
 				if outputFlag == "json" {
-					app.Logger = slog.New(slog.NewJSONHandler(cmd.ErrOrStderr(), &slog.HandlerOptions{Level: app.level}))
+					slog.SetDefault(slog.New(slog.NewJSONHandler(cmd.ErrOrStderr(), &slog.HandlerOptions{Level: app.level})))
 				}
 			} else {
 				app.level.Set(slog.LevelInfo)

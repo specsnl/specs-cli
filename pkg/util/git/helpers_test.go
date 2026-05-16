@@ -1,4 +1,4 @@
-package template_test
+package git_test
 
 import (
 	"io"

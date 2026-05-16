@@ -31,9 +31,9 @@ func WithDebug(enabled bool) Option {
 	}
 }
 
-// WithHandler returns an Option that replaces the logger with one built by the
-// provided factory. The factory receives the App's LevelVar so the handler can
-// honour runtime level changes from WithDebug.
+// WithHandler returns an Option that replaces the global default logger with one
+// built by the provided factory. The factory receives the App's LevelVar so the
+// handler can honour runtime level changes from WithDebug.
 //
 // Example — switch to JSON output:
 //
@@ -42,13 +42,12 @@ func WithDebug(enabled bool) Option {
 //	}))
 func WithHandler(factory HandlerFactory) Option {
 	return func(a *App) {
-		a.Logger = slog.New(factory(a.level))
+		slog.SetDefault(slog.New(factory(a.level)))
 	}
 }
 
 // App holds application-wide dependencies shared across all commands.
 type App struct {
-	Logger        *slog.Logger
 	Output        output.Writer
 	level         *slog.LevelVar
 	SafeMode      bool
@@ -56,22 +55,24 @@ type App struct {
 
 	// checkRemoteFn is the function used by template list to query remote status.
 	// Defaults to pkggit.CheckRemoteContext; tests may substitute a fake.
-	checkRemoteFn func(ctx context.Context, dir, url, branch string) (pkggit.RemoteCheckResult, error)
+	checkRemoteFn func(ctx context.Context, dir, url, branch string) pkggit.RemoteCheckResult
 	// checkTimeout is the per-remote timeout for each individual status check (default 10s).
 	checkTimeout time.Duration
 	// refreshTimeout is the maximum wall-clock time for the entire refresh phase (default 30s).
 	refreshTimeout time.Duration
 }
 
-// NewApp creates an App. The default logger writes text to stderr at info level.
-// Use WithHandler to substitute a different handler; use WithDebug to raise the level.
+// NewApp creates an App. The default logger writes text to stderr at info level and
+// is registered as the global slog default. Use WithHandler to substitute a different
+// handler; use WithDebug to raise the level.
 // Options are applied in order after the default logger is initialised.
 func NewApp(opts ...Option) *App {
 	level := new(slog.LevelVar)
 	level.Set(slog.LevelInfo)
 
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})))
+
 	app := &App{
-		Logger:         slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})),
 		Output:         output.NewDefaultHumanWriter(),
 		level:          level,
 		checkRemoteFn:  pkggit.CheckRemoteContext,
@@ -90,10 +91,4 @@ func NewApp(opts ...Option) *App {
 // pkg/template must not import pkg/cmd, so the translation lives here.
 func (a *App) templateConfig() pkgtemplate.Config {
 	return pkgtemplate.Config{SafeMode: a.SafeMode}
-}
-
-// templateGet is a convenience wrapper that calls template.Get with the App's
-// logger, so callers don't have to pass it explicitly every time.
-func (a *App) templateGet(templateRoot string) (*pkgtemplate.Template, error) {
-	return pkgtemplate.Get(templateRoot, a.templateConfig(), a.Logger)
 }

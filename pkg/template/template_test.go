@@ -58,7 +58,7 @@ func TestExecute_StaticFile(t *testing.T) {
 		"hello.txt": []byte("Hello {{.Name}}"),
 	})
 
-	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{})
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestExecute_ConditionalFilename_True(t *testing.T) {
 		"{{if .UseX}}feature.txt{{end}}": []byte("enabled"),
 	})
 
-	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{})
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -99,7 +99,7 @@ func TestExecute_ConditionalFilename_False(t *testing.T) {
 		"{{if .UseX}}feature.txt{{end}}": []byte("enabled"),
 	})
 
-	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{})
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -119,7 +119,7 @@ func TestExecute_ConditionalDir_False(t *testing.T) {
 		"{{if .UseX}}subdir{{end}}/file.txt": []byte("inside"),
 	})
 
-	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{})
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -144,7 +144,7 @@ func TestExecute_VerbatimCopy(t *testing.T) {
 		t.Fatalf("writing .specsverbatim: %v", err)
 	}
 
-	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{})
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -167,7 +167,7 @@ func TestExecute_BinaryFile(t *testing.T) {
 		"image.bin": content,
 	})
 
-	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{})
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -191,7 +191,7 @@ func TestExecute_WhitespaceOnly(t *testing.T) {
 		"empty.txt": []byte("{{if false}}x{{end}}"),
 	})
 
-	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{})
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -211,7 +211,7 @@ func TestExecute_NestedConditionalDir(t *testing.T) {
 		"{{if .X}}subdir{{end}}/nested/file.txt": []byte("deep"),
 	})
 
-	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{})
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -234,7 +234,7 @@ func TestExecute_ComputedValueInTemplate(t *testing.T) {
 		},
 	)
 
-	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{})
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -258,7 +258,7 @@ func TestExecute_PassthroughDoubleBrace(t *testing.T) {
 		"ci.yml": []byte("group: ${{ github.ref }}\nname: [[.Name]]"),
 	})
 
-	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{})
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -282,7 +282,7 @@ func TestExecute_CustomDelimiters_NotInContext(t *testing.T) {
 		"out.txt": []byte("[[.Name]]"),
 	})
 
-	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{})
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -304,7 +304,7 @@ func TestGet_InvalidDelimiters_ReturnsError(t *testing.T) {
 	yaml := "__delimiters: not-a-mapping\nName: x\n"
 	root := buildTemplate(t, yaml, map[string][]byte{"f.txt": []byte("{{.Name}}")})
 
-	_, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	_, err := pkgtemplate.Get(root, pkgtemplate.Config{})
 	if err == nil {
 		t.Fatal("expected error for invalid __delimiters, got nil")
 	}
@@ -318,7 +318,7 @@ func TestExecute_ParseError_ContinueOnError(t *testing.T) {
 		"compose.yml": original,
 	})
 
-	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{ContinueOnRenderError: true}, discardLogger())
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{ContinueOnRenderError: true})
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -353,7 +353,7 @@ func TestExecute_ParseError_FailFast(t *testing.T) {
 		"compose.yml": []byte("[[ .Name | undefinedFunc ]]"),
 	})
 
-	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{})
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -378,7 +378,7 @@ func TestExecute_ExecuteError_FailFast(t *testing.T) {
 		"out.txt": []byte("{{ .MissingKey }}"),
 	})
 
-	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{})
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -400,7 +400,7 @@ func TestExecute_ExecuteError_ContinueOnError(t *testing.T) {
 		"out.txt": original,
 	})
 
-	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{ContinueOnRenderError: true}, discardLogger())
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{ContinueOnRenderError: true})
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -444,7 +444,7 @@ func TestExecute_PreservesPermissions_TextFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{})
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -480,7 +480,7 @@ func TestExecute_PreservesPermissions_BinaryFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{})
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -505,7 +505,7 @@ func TestGet_CustomDelimiters_ConditionalFilename(t *testing.T) {
 		"[[if .UseX]]feature.txt[[end]]": []byte("enabled"),
 	})
 
-	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{}, discardLogger())
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{})
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
