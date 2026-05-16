@@ -61,6 +61,46 @@ func tagCommit(t *testing.T, repo *gogit.Repository, name string, hash plumbing.
 	}
 }
 
+func TestCurrentBranch_OnBranch(t *testing.T) {
+	dir, repo := initRepo(t)
+	addCommit(t, repo, dir, "init")
+
+	got, err := pkggit.CurrentBranch(dir)
+	if err != nil {
+		t.Fatalf("CurrentBranch: %v", err)
+	}
+	if got == "" {
+		t.Error("CurrentBranch: expected non-empty branch name")
+	}
+}
+
+func TestCurrentBranch_DetachedHead(t *testing.T) {
+	dir, repo := initRepo(t)
+	hash := addCommit(t, repo, dir, "init")
+
+	// Detach HEAD by checking out a commit hash directly.
+	wt, err := repo.Worktree()
+	if err != nil {
+		t.Fatalf("Worktree: %v", err)
+	}
+	if err := wt.Checkout(&gogit.CheckoutOptions{Hash: hash}); err != nil {
+		t.Fatalf("Checkout (detach): %v", err)
+	}
+
+	_, err = pkggit.CurrentBranch(dir)
+	if err == nil {
+		t.Error("CurrentBranch: expected error for detached HEAD, got nil")
+	}
+}
+
+func TestCurrentBranch_NotARepo(t *testing.T) {
+	_, err := pkggit.CurrentBranch(t.TempDir())
+	if err == nil {
+		t.Error("CurrentBranch: expected error for non-repo directory, got nil")
+	}
+}
+
+
 func TestDescribe_ExactLightweightTag(t *testing.T) {
 	dir, repo := initRepo(t)
 	hash := addCommit(t, repo, dir, "init")

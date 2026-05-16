@@ -45,3 +45,36 @@ func TestUpdate_TooManyArgs(t *testing.T) {
 		t.Fatal("expected error when too many args given")
 	}
 }
+
+func TestUpdate_NamedLocalTemplate_ProducesNoOutput(t *testing.T) {
+	registryDir := withTempRegistry(t)
+
+	// A template with a local Repository but no Branch — silently skipped.
+	tmplDir := filepath.Join(registryDir, "local-tpl")
+	if err := os.MkdirAll(tmplDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := pkgtemplate.SaveMetadata(tmplDir, "local-tpl", "/some/local/path", "", "", "", time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := executeCmd("template", "update", "local-tpl")
+	if err != nil {
+		t.Fatalf("template update local-tpl: %v", err)
+	}
+	if out != "" {
+		t.Errorf("expected no output for local/skipped template, got: %q", out)
+	}
+}
+
+func TestUpdate_NoArgs_EmptyRegistry_ProducesNoOutput(t *testing.T) {
+	withTempRegistry(t)
+
+	out, err := executeCmd("template", "update")
+	if err != nil {
+		t.Fatalf("template update with empty registry: %v", err)
+	}
+	if out != "" {
+		t.Errorf("expected no output for empty registry, got: %q", out)
+	}
+}

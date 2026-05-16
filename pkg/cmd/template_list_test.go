@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	gogit "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	pkgtemplate "github.com/specsnl/specs-cli/pkg/template"
 	pkggit "github.com/specsnl/specs-cli/pkg/util/git"
 )
@@ -91,7 +93,8 @@ func TestList_StatusColumn_LocalNoStatus(t *testing.T) {
 	if err := os.MkdirAll(tmplDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	// Local template: repository set but no branch.
+	// Local template: repository set but no branch AND no git repo — branch
+	// resolution fails, so status stays "-".
 	if err := pkgtemplate.SaveMetadata(tmplDir, "local-tpl", "/local/path", "", "", "", time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
@@ -102,6 +105,54 @@ func TestList_StatusColumn_LocalNoStatus(t *testing.T) {
 	}
 	if !strings.Contains(out, `"Status":"-"`) {
 		t.Errorf("expected '-' status for local template, got: %q", out)
+	}
+}
+
+func TestList_StatusColumn_EmptyBranchWithGitRepo(t *testing.T) {
+	registryDir := withTempRegistry(t)
+	tmplDir := filepath.Join(registryDir, "remote-tpl")
+	if err := os.MkdirAll(tmplDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Initialise a real git repo so CurrentBranch can resolve the branch.
+	repo, err := gogit.PlainInit(tmplDir, false)
+	if err != nil {
+		t.Fatalf("PlainInit: %v", err)
+	}
+	wt, _ := repo.Worktree()
+	if err := os.WriteFile(filepath.Join(tmplDir, "f.txt"), []byte("x"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := wt.Add("f.txt"); err != nil {
+		t.Fatal(err)
+	}
+	sig := &object.Signature{Name: "t", Email: "t@t.com", When: time.Now()}
+	if _, err := wt.Commit("init", &gogit.CommitOptions{Author: sig}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Save metadata with empty Branch — simulates a template downloaded without
+	// an explicit branch specification.
+	if err := pkgtemplate.SaveMetadata(tmplDir, "remote-tpl", "https://example.com/repo", "", "", "", time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := executeCmdWithCheckFn(
+		func(_ context.Context, _, _, _ string) pkggit.RemoteCheckResult {
+			return pkggit.RemoteCheckResult{IsUpToDate: true}
+		},
+		"template", "list", "--output=json",
+	)
+	if err != nil {
+		t.Fatalf("template list: %v", err)
+	}
+	// Branch was resolved from local HEAD so the check ran — status must not be "-".
+	if strings.Contains(out, `"Status":"-"`) {
+		t.Errorf("expected non-dash status when branch resolved from git HEAD, got: %q", out)
+	}
+	if !strings.Contains(out, "up-to-date") {
+		t.Errorf("expected 'up-to-date' in output, got: %q", out)
 	}
 }
 

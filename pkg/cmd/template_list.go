@@ -47,6 +47,16 @@ func newTemplateListCmd(app *App) *cobra.Command {
 				if err != nil {
 					slog.Debug("failed to parse template metadata", "template", name, "error", err)
 				}
+				// Resolve and persist the branch when metadata has none so that the
+				// status refresh below and hasRemote checks work correctly.
+				if meta != nil && meta.Repository != "" && meta.Branch == "" {
+					if b, err := pkggit.CurrentBranch(root); err == nil {
+						meta.Branch = b
+						if err := pkgtemplate.SaveMetadata(root, name, meta.Repository, b, meta.Commit, meta.Version, meta.Created.Time); err != nil {
+							slog.Debug("failed to persist resolved branch", "template", name, "error", err)
+						}
+					}
+				}
 				var status *pkgtemplate.TemplateStatus
 				if meta != nil && meta.Repository != "" && meta.Branch != "" {
 					status, err = pkgtemplate.LoadStatus(root)
