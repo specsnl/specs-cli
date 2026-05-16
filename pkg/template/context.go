@@ -283,6 +283,7 @@ func extractRefs(expr string, funcMap texttemplate.FuncMap, delims specs.Delimit
 		Funcs(funcMap).
 		Parse(expr)
 	if err != nil || tmpl == nil || tmpl.Tree == nil || tmpl.Tree.Root == nil {
+		slog.Debug("extractRefs: failed to parse expression; dependency detection skipped", "err", err)
 		return nil // parse errors surface during actual rendering
 	}
 	seen := make(map[string]bool)
