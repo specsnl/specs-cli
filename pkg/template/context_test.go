@@ -246,6 +246,32 @@ computed:
 	}
 }
 
+func TestApplyComputed_ChainWithCustomDelimitersAndBuiltins(t *testing.T) {
+	// Regression: extractRefs used parse.New (raw parser) which does not include
+	// Go's builtin template functions (eq, ne, and, or, not, …). Expressions using
+	// those builtins silently produced nil deps, causing non-deterministic topo sort
+	// and a "map has no entry" error at execution time.
+	ctx := map[string]any{"PhpVersion": "8.5"}
+	delims := specs.Delimiters{Left: "[[", Right: "]]"}
+	defs := map[string]string{
+		"Php85DockerTag": "0.5.3",
+		"Php84DockerTag": "1.5.3",
+		"Php83DockerTag": "1.8.3",
+		"PhpDockerTag":   `[[ eq .PhpVersion "8.4" | ternary .Php84DockerTag (eq .PhpVersion "8.3" | ternary .Php83DockerTag .Php85DockerTag) ]]`,
+	}
+
+	result, err := pkgtemplate.ApplyComputed(ctx, defs, pkgtemplate.FuncMap(pkgtemplate.Config{}), delims)
+	if err != nil {
+		t.Fatalf("ApplyComputed: %v", err)
+	}
+	if result["PhpDockerTag"] != "0.5.3" {
+		t.Errorf("PhpDockerTag = %q, want %q", result["PhpDockerTag"], "0.5.3")
+	}
+	if result["Php84DockerTag"] != "1.5.3" {
+		t.Errorf("Php84DockerTag = %q, want %q", result["Php84DockerTag"], "1.5.3")
+	}
+}
+
 func TestApplyComputed_NoDefs(t *testing.T) {
 	ctx := map[string]any{"Name": "test"}
 	result, err := pkgtemplate.ApplyComputed(ctx, nil, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
