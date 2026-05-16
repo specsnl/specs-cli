@@ -114,8 +114,8 @@ func TestUpgrade_LocalTemplate(t *testing.T) {
 	if err := os.MkdirAll(tmplDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	// Local template: has repository but no branch.
-	if err := pkgtemplate.SaveMetadata(tmplDir, "local-tpl", "/local/path", "", "", "", time.Now().UTC()); err != nil {
+	// "local:" prefix is what `specs template save` stores in Repository.
+	if err := pkgtemplate.SaveMetadata(tmplDir, "local-tpl", "local:/local/path", "", "", "", time.Now().UTC()); err != nil {
 		t.Fatalf("SaveMetadata: %v", err)
 	}
 
@@ -124,7 +124,35 @@ func TestUpgrade_LocalTemplate(t *testing.T) {
 		t.Fatalf("Upgrade: unexpected error: %v", err)
 	}
 	if !result.IsLocal {
-		t.Error("expected IsLocal=true for template without a remote branch")
+		t.Error("expected IsLocal=true for template with local: repository")
+	}
+}
+
+// TestUpgrade_LocalTemplate_WithGitHistory reproduces the bug where a template saved from a
+// git-tracked directory had git history copied into the registry. CurrentBranch would succeed,
+// causing Upgrade to attempt a network clone of the "local:/path" URL instead of skipping it.
+func TestUpgrade_LocalTemplate_WithGitHistory(t *testing.T) {
+	registryDir := withTempRegistry(t)
+
+	tmplDir := filepath.Join(registryDir, "local-git-tpl")
+	if err := os.MkdirAll(tmplDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	// Simulate a .git directory so that CurrentBranch would succeed if we reached that code.
+	if err := os.MkdirAll(filepath.Join(tmplDir, ".git"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := pkgtemplate.SaveMetadata(tmplDir, "local-git-tpl", "local:/Users/user/my-template", "", "", "", time.Now().UTC()); err != nil {
+		t.Fatalf("SaveMetadata: %v", err)
+	}
+
+	result, err := registry.Upgrade("local-git-tpl")
+	if err != nil {
+		t.Fatalf("Upgrade: unexpected error: %v", err)
+	}
+	if !result.IsLocal {
+		t.Error("expected IsLocal=true — must not attempt network clone of local: repository")
 	}
 }
 
