@@ -70,12 +70,22 @@ func Upgrade(name string) (UpgradeResult, error) {
 	if err != nil {
 		slog.Debug("failed to parse template metadata", "template", name, "error", err)
 	}
-	if meta == nil || meta.Repository == "" || meta.Branch == "" {
+	if meta == nil || meta.Repository == "" {
 		return UpgradeResult{IsLocal: true}, nil
 	}
 
-	targetRef := meta.Branch
-	result := pkggit.CheckRemote(root, meta.Repository, meta.Branch)
+	branch := meta.Branch
+	if branch == "" {
+		b, err := pkggit.CurrentBranch(root)
+		if err != nil {
+			slog.Debug("could not resolve branch from local HEAD, treating as local", "template", name, "error", err)
+			return UpgradeResult{IsLocal: true}, nil
+		}
+		branch = b
+	}
+
+	targetRef := branch
+	result := pkggit.CheckRemote(root, meta.Repository, branch)
 	if err := result.Err(); err != nil {
 		return UpgradeResult{}, err
 	}
@@ -91,7 +101,7 @@ func Upgrade(name string) (UpgradeResult, error) {
 		"latest_version", result.LatestVersion,
 	)
 
-	newBranch := meta.Branch
+	newBranch := branch
 	if result.LatestVersion != "" {
 		targetRef = result.LatestVersion
 		newBranch = result.LatestVersion

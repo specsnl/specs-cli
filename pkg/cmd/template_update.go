@@ -38,6 +38,7 @@ func newTemplateUpdateCmd(app *App) *cobra.Command {
 
 			networkErrorSeen := false
 			updatesAvailable := []string{}
+			checkedCount := 0
 
 			for _, name := range names {
 				root := specs.TemplatePath(name)
@@ -45,12 +46,27 @@ func newTemplateUpdateCmd(app *App) *cobra.Command {
 				if err != nil {
 					slog.Debug("failed to parse template metadata", "template", name, "error", err)
 				}
-				if meta == nil || meta.Repository == "" || meta.Branch == "" {
+				if meta == nil || meta.Repository == "" {
 					continue
 				}
 
+				branch := meta.Branch
+				if branch == "" {
+					b, err := pkggit.CurrentBranch(root)
+					if err != nil {
+						slog.Debug("could not resolve branch from local HEAD, skipping", "template", name, "error", err)
+						continue
+					}
+					branch = b
+					// Persist the resolved branch so future runs skip this fallback.
+					if err := pkgtemplate.SaveMetadata(root, name, meta.Repository, branch, meta.Commit, meta.Version, meta.Created.Time); err != nil {
+						slog.Debug("failed to persist resolved branch", "template", name, "error", err)
+					}
+				}
+
+				checkedCount++
 				// git layer logs the check-remote start/result
-				result := pkggit.CheckRemote(root, meta.Repository, meta.Branch)
+				result := pkggit.CheckRemote(root, meta.Repository, branch)
 
 				newStatus := &pkgtemplate.TemplateStatus{
 					CheckedAt:     pkgtemplate.JSONTime{Time: time.Now().UTC()},
@@ -95,8 +111,12 @@ func newTemplateUpdateCmd(app *App) *cobra.Command {
 						app.Output.Info("template %q has an update available", name)
 					}
 				}
-			} else if !networkErrorSeen {
-				app.Output.Info("all templates are up-to-date")
+			} else if !networkErrorSeen && checkedCount > 0 {
+				if len(names) == 1 {
+					app.Output.Info("template %q is up-to-date", names[0])
+				} else {
+					app.Output.Info("all templates are up-to-date")
+				}
 			}
 
 			return nil

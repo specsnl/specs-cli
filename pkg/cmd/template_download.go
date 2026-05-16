@@ -51,9 +51,19 @@ func newTemplateDownloadCmd(app *App) *cobra.Command {
 			if err := pkggit.Clone(src.CloneURL, dest, pkggit.CloneOptions{Branch: src.Branch}); err != nil {
 				return err
 			}
+
+			// When no branch was specified, resolve the actual checked-out branch so that
+			// future update/upgrade checks can compare against the correct remote ref.
+			branch := src.Branch
+			if branch == "" {
+				if b, err := pkggit.CurrentBranch(dest); err == nil {
+					branch = b
+				}
+			}
+
 			// git layer logs describe result or failure
 			desc, _ := pkggit.Describe(dest)
-			if err := pkgtemplate.SaveMetadata(dest, name, src.CloneURL, src.Branch, desc.Commit, desc.Version, time.Now().UTC()); err != nil {
+			if err := pkgtemplate.SaveMetadata(dest, name, src.CloneURL, branch, desc.Commit, desc.Version, time.Now().UTC()); err != nil {
 				return err
 			}
 

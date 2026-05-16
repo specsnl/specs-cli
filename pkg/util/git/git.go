@@ -246,6 +246,24 @@ func sshAuth(url string) (transport.AuthMethod, error) {
 	return nil, fmt.Errorf("no SSH authentication available: SSH agent not running and no usable key file found in ~/.ssh")
 }
 
+// CurrentBranch returns the short name of the currently checked-out branch in dir.
+// Returns an error when dir is not a git repository, HEAD cannot be read, or HEAD is in a
+// detached state (e.g. a tag checkout).
+func CurrentBranch(dir string) (string, error) {
+	repo, err := gogit.PlainOpen(dir)
+	if err != nil {
+		return "", fmt.Errorf("opening repository at %s: %w", dir, err)
+	}
+	head, err := repo.Head()
+	if err != nil {
+		return "", fmt.Errorf("reading HEAD: %w", err)
+	}
+	if !head.Name().IsBranch() {
+		return "", fmt.Errorf("HEAD is not on a branch (detached HEAD or tag checkout)")
+	}
+	return head.Name().Short(), nil
+}
+
 // CheckErrorKind classifies why a remote status check failed.
 type CheckErrorKind string
 
