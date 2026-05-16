@@ -272,18 +272,23 @@ func topoSort(keys []string, deps map[string][]string) ([]string, error) {
 
 // extractRefs parses a delimited template expression and returns all
 // top-level .Key references found in it.
+// It uses texttemplate.New (not parse.New) so that Go's builtin functions
+// such as eq, ne, and, or, not are registered and the parser accepts them.
 func extractRefs(expr string, funcMap texttemplate.FuncMap, delims specs.Delimiters) []string {
 	if !strings.Contains(expr, delims.Left) {
 		return nil
 	}
-	funcs := map[string]any(funcMap)
-	tree, err := parse.New("t").Parse(expr, delims.Left, delims.Right, map[string]*parse.Tree{}, funcs)
-	if err != nil || tree == nil || tree.Root == nil {
+	tmpl, err := texttemplate.New("").
+		Delims(delims.Left, delims.Right).
+		Funcs(funcMap).
+		Parse(expr)
+	if err != nil || tmpl == nil || tmpl.Tree == nil || tmpl.Tree.Root == nil {
+		slog.Debug("extractRefs: failed to parse expression; dependency detection skipped", "err", err)
 		return nil // parse errors surface during actual rendering
 	}
 	seen := make(map[string]bool)
 	var refs []string
-	walkForRefs(tree.Root, seen, &refs)
+	walkForRefs(tmpl.Tree.Root, seen, &refs)
 	return refs
 }
 
