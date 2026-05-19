@@ -9,7 +9,7 @@ require (
 	github.com/adrg/xdg v0.5.3
 	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964
 	github.com/docker/go-units v0.5.0
-	github.com/go-git/go-git/v5 v5.19.0
+	github.com/go-git/go-git/v5 v5.19.1
 	github.com/go-sprout/sprout v1.0.3
 	github.com/sethvargo/go-password v0.3.1
 	github.com/spf13/cobra v1.10.2
