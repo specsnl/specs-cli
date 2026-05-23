@@ -63,7 +63,7 @@ type RenderWarning struct {
 type Template struct {
 	Root         string                 // path to the template root (contains project.yaml + template/)
 	Context      map[string]any         // user input map with referenced defaults resolved
-	ComputedDefs map[string]string      // raw computed definitions; resolved by ApplyComputed post-prompt
+	ComputedDefs map[string]string      // raw computed definitions; caller must apply via ApplyComputed before Execute
 	Conditionals Conditionals           // varName → Cond; absent means always prompt
 	Referenced   map[string]bool        // schema variables referenced in template files or computed expressions
 	Metadata     *Metadata              // nil if __metadata.json is absent
@@ -146,17 +146,10 @@ func Get(templateRoot string, cfg Config) (*Template, error) {
 }
 
 // Execute renders the template/ subdirectory into targetDir, which must already exist.
-// If ComputedDefs is non-empty, computed values are resolved and merged into the context
-// before the walk begins.
+// Context must already contain all resolved values (user inputs and computed); call
+// ApplyComputed before Execute when ComputedDefs are present.
 func (t *Template) Execute(targetDir string) error {
 	ctx := t.Context
-	if len(t.ComputedDefs) > 0 {
-		var err error
-		ctx, err = ApplyComputed(t.Context, t.ComputedDefs, t.funcMap, t.cfg.delims())
-		if err != nil {
-			return err
-		}
-	}
 
 	srcRoot := filepath.Join(t.Root, specs.TemplateDirFile)
 

@@ -180,6 +180,7 @@ func extractComputed(raw map[string]any) (map[string]string, error) {
 
 // resolveReferencedDefaults renders string values containing the left delimiter in
 // topological order so that each key's pre-fill value is correct before the user is prompted.
+// It returns a new map; the caller's input is never modified.
 func resolveReferencedDefaults(ctx map[string]any, funcMap texttemplate.FuncMap, delims specs.Delimiters) (map[string]any, error) {
 	// Find keys whose string value is a template expression.
 	var refKeys []string
@@ -202,15 +203,19 @@ func resolveReferencedDefaults(ctx map[string]any, funcMap texttemplate.FuncMap,
 		return nil, fmt.Errorf("referenced defaults: %w", err)
 	}
 
+	// Copy the input map so the caller's map is not mutated.
+	result := make(map[string]any, len(ctx))
+	maps.Copy(result, ctx)
+
 	for _, k := range sorted {
-		val, err := renderExpr(ctx[k].(string), ctx, funcMap, delims)
+		val, err := renderExpr(result[k].(string), result, funcMap, delims)
 		if err != nil {
 			return nil, fmt.Errorf("referenced default %q: %w", k, err)
 		}
-		ctx[k] = val
+		result[k] = val
 	}
 
-	return ctx, nil
+	return result, nil
 }
 
 // topoSort returns keys in an order where each key comes after all of its
