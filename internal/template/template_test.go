@@ -239,6 +239,13 @@ func TestExecute_ComputedValueInTemplate(t *testing.T) {
 		t.Fatalf("Get: %v", err)
 	}
 
+	// Caller is responsible for applying computed values before Execute.
+	ctx, err := pkgtemplate.ApplyComputed(tmpl.Context, tmpl.ComputedDefs, tmpl.FuncMap(), tmpl.Delims())
+	if err != nil {
+		t.Fatalf("ApplyComputed: %v", err)
+	}
+	tmpl.Context = ctx
+
 	target := t.TempDir()
 	if err := tmpl.Execute(target); err != nil {
 		t.Fatalf("Execute: %v", err)
@@ -247,6 +254,27 @@ func TestExecute_ComputedValueInTemplate(t *testing.T) {
 	got := readFile(t, target, "config.txt")
 	if got != "DB=acme_production" {
 		t.Errorf("config.txt = %q, want %q", got, "DB=acme_production")
+	}
+}
+
+func TestExecute_ComputedNotAppliedByExecute(t *testing.T) {
+	// Execute does not call ApplyComputed internally; a missing computed key causes an error.
+	root := buildTemplate(t,
+		"Name: acme\ncomputed:\n  DbName: \"{{toSnakeCase .Name}}_production\"\n",
+		map[string][]byte{
+			"config.txt": []byte("DB={{.DbName}}"),
+		},
+	)
+
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{})
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+
+	// Intentionally skip ApplyComputed — Execute must NOT apply it internally.
+	target := t.TempDir()
+	if err := tmpl.Execute(target); err == nil {
+		t.Fatal("Execute: expected error for missing computed key DbName, got nil")
 	}
 }
 

@@ -41,6 +41,14 @@ func newTemplateValidateCmd(app *App) *cobra.Command {
 			// Use the first option so the template engine can compare them as strings.
 			resolveSelectDefaults(tmpl.Context)
 
+			if len(tmpl.ComputedDefs) > 0 {
+				computed, err := pkgtemplate.ApplyComputed(tmpl.Context, tmpl.ComputedDefs, tmpl.FuncMap(), tmpl.Delims())
+				if err != nil {
+					return fmt.Errorf("resolving computed values: %w", err)
+				}
+				tmpl.Context = computed
+			}
+
 			tmp, err := os.MkdirTemp("", "specs-validate-*")
 			if err != nil {
 				return err

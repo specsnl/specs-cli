@@ -161,7 +161,6 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 	defer os.RemoveAll(tmp)
 
 	tmpl.Context = ctx
-	tmpl.ComputedDefs = nil // already applied above
 	if err := tmpl.Execute(tmp); err != nil {
 		return err
 	}
