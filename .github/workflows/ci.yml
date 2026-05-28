@@ -13,13 +13,16 @@ jobs:
   test:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout
+        uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v6
+      - name: Set up Go
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
 
-      - uses: actions/cache@v5
+      - name: Cache Go modules
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cache/go/pkg/mod
@@ -40,3 +43,27 @@ jobs:
 
       - name: Build (smoke)
         run: go build -o /dev/null .
+
+  integration:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Cache Go modules
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cache/go/pkg/mod
+            ~/.cache/go/build
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Integration tests (no network)
+        run: go test -tags=integration -race -count=1 ./internal/cmd/...

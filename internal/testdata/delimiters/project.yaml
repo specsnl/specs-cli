@@ -1,0 +1,4 @@
+__delimiters:
+  left: "[["
+  right: "]]"
+ProjectName: my-project
