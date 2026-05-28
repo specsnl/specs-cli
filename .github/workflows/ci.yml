@@ -10,7 +10,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
+  unit-tests:
+    name: Unit tests
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -44,7 +45,8 @@ jobs:
       - name: Build (smoke)
         run: go build -o /dev/null .
 
-  integration:
+  integration-tests:
+    name: Integration tests
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
