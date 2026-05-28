@@ -1,0 +1,3 @@
+ProjectName: my-project
+UseDatabase: false
+DatabaseName: mydb

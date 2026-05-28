@@ -1,0 +1,6 @@
+ProjectName: my-project
+ProjectShortName: acme
+computed:
+  ProjectSlug: "{{ .ProjectShortName | toKebabCase }}"
+  DbName: "{{ .ProjectSlug }}_production"
+  DbTestName: "{{ .DbName | replace \"_production\" \"_test\" }}"

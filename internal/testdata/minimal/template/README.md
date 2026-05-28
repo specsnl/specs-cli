@@ -1,0 +1,3 @@
+# {{ .ProjectName }}
+
+Author: {{ .Author }}

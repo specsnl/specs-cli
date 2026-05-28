@@ -1,0 +1,6 @@
+# Standard GitHub Actions syntax passes through unchanged with custom delimiters:
+name: ${{ github.repository }}
+ref: ${{ github.ref }}
+
+# Rendered with custom delimiters:
+project: [[ .ProjectName ]]

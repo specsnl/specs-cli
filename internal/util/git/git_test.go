@@ -54,7 +54,7 @@ func TestClone_SpecificTag(t *testing.T) {
 		t.Fatalf("Clone with tag: %v", err)
 	}
 
-	if _, err := os.Stat(dir + "/composer.json"); os.IsNotExist(err) {
+	if _, err := os.Stat(dir + "/template/composer.json"); os.IsNotExist(err) {
 		t.Error("cloned repo missing composer.json")
 	}
 }

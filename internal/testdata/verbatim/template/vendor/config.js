@@ -1,0 +1,2 @@
+// {{ .ProjectName }}
+const config = {};

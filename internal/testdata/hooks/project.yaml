@@ -1,0 +1,4 @@
+ProjectName: my-project
+hooks:
+  post-use:
+    - echo "{{ .ProjectName }}" > hook-output.txt
