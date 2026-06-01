@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
+	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
@@ -303,8 +304,13 @@ func contentPreview(data []byte) string {
 	return s
 }
 
-// isBinary returns true if the file contains a null byte or invalid UTF-8.
-// Only the first 512 bytes are examined for performance.
+// isBinary reports whether the file should be copied verbatim rather than rendered.
+// Only the first 512 bytes are examined. Two checks run in order:
+//
+//  1. http.DetectContentType: if the content is not a text/* type (e.g. image/jpeg,
+//     application/pdf, application/octet-stream), the file is binary.
+//  2. Null-byte / invalid-UTF-8 fallback: catches edge cases that DetectContentType
+//     classifies as text/plain (e.g. a binary payload whose prefix looks like text).
 func isBinary(path string) bool {
 	f, err := os.Open(path)
 	if err != nil {
@@ -315,6 +321,10 @@ func isBinary(path string) bool {
 	buf := make([]byte, 512)
 	n, _ := f.Read(buf)
 	buf = buf[:n]
+
+	if ct := http.DetectContentType(buf); !strings.HasPrefix(ct, "text/") {
+		return true
+	}
 
 	if slices.Contains(buf, 0) {
 		return true
