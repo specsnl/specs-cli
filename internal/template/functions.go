@@ -65,12 +65,13 @@ func FuncMap(cfg Config) texttemplate.FuncMap {
 	}
 
 	handler := sprout.New(sprout.WithLogger(slog.Default()))
-	if err := handler.AddRegistries(registries...); err != nil {
-		// Registry registration only fails on programmer error (duplicate names);
-		// panic here surfaces the issue during development rather than silently
-		// producing an incomplete FuncMap.
+	mustAddRegistries(handler, registries...)
+	return handler.Build()
+}
+
+// mustAddRegistries registers regs into h, panicking on programmer error (duplicate names).
+func mustAddRegistries(h *sprout.DefaultHandler, regs ...sprout.Registry) {
+	if err := h.AddRegistries(regs...); err != nil {
 		panic("sprout registry registration failed: " + err.Error())
 	}
-
-	return handler.Build()
 }
