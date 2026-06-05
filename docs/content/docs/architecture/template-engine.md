@@ -170,8 +170,36 @@ If any `RenderWarning` entries are present after `Execute` returns (only possibl
 
 ### Binary Detection
 
-A file is treated as binary if the first 512 bytes contain a null byte or are not valid UTF-8.
-Binary files are copied byte-for-byte; no template rendering is attempted.
+The engine inspects the first 512 bytes of every file using a two-stage check. Binary files
+are copied byte-for-byte; no template rendering is attempted.
+
+**Detection order:**
+
+1. **`http.DetectContentType`** — identifies known binary formats by magic bytes (JPEG, PNG,
+   PDF, ZIP, gzip, and others). If the detected content type is not a `text/*` type, the
+   file is treated as binary.
+2. **Null-byte / invalid-UTF-8 fallback** — if `DetectContentType` returns `text/plain`,
+   the file is still treated as binary when the first 512 bytes contain a null byte or are
+   not valid UTF-8. This catches edge cases such as UTF-16 LE files (which have many null
+   bytes) or binary payloads whose prefix happens to look like text.
+
+**Limitations and `.specsverbatim`:**
+Binary detection is best-effort. Any file that must be copied verbatim should be listed
+explicitly in `.specsverbatim` rather than relying on auto-detection:
+
+```
+# .specsverbatim — recommended patterns for common binary assets
+*.png
+*.jpg
+*.ico
+*.woff
+*.woff2
+*.ttf
+*.pdf
+*.gz
+*.tar
+*.zip
+```
 
 ### File Permissions
 

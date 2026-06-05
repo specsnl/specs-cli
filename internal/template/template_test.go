@@ -526,6 +526,117 @@ func TestExecute_PreservesPermissions_BinaryFile(t *testing.T) {
 	}
 }
 
+// Binary detection tests — each case documents the expected behaviour of isBinary
+// under the two-stage check: http.DetectContentType first, null/UTF-8 fallback second.
+
+func TestExecute_BinaryDetection_JPEG(t *testing.T) {
+	// JPEG magic bytes (FF D8 FF) — detected as image/jpeg by http.DetectContentType.
+	// Content includes a template marker to prove the file is NOT rendered as a template.
+	content := append([]byte{0xFF, 0xD8, 0xFF, 0xE0}, []byte("{{ .Name }}")...)
+	root := buildTemplate(t, "Name: test\n", map[string][]byte{
+		"photo.jpg": content,
+	})
+
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{})
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	target := t.TempDir()
+	if err := tmpl.Execute(target); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	got, err := os.ReadFile(filepath.Join(target, "photo.jpg"))
+	if err != nil {
+		t.Fatalf("reading photo.jpg: %v", err)
+	}
+	if string(got) != string(content) {
+		t.Error("photo.jpg not copied verbatim (JPEG magic bytes should be detected as binary)")
+	}
+}
+
+func TestExecute_BinaryDetection_Gzip(t *testing.T) {
+	// Gzip magic bytes (1F 8B) — 0x1F is a binary data byte per the WHATWG sniff
+	// algorithm, so http.DetectContentType returns application/octet-stream.
+	content := append([]byte{0x1F, 0x8B, 0x08, 0x00}, []byte("{{ .Name }}")...)
+	root := buildTemplate(t, "Name: test\n", map[string][]byte{
+		"archive.tar.gz": content,
+	})
+
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{})
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	target := t.TempDir()
+	if err := tmpl.Execute(target); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	got, err := os.ReadFile(filepath.Join(target, "archive.tar.gz"))
+	if err != nil {
+		t.Fatalf("reading archive.tar.gz: %v", err)
+	}
+	if string(got) != string(content) {
+		t.Error("archive.tar.gz not copied verbatim (gzip magic bytes should be detected as binary)")
+	}
+}
+
+func TestExecute_BinaryDetection_UTF16BOM(t *testing.T) {
+	// UTF-16 LE BOM (FF FE) — 0xFF is in the high-byte range, so
+	// http.DetectContentType returns application/octet-stream.
+	// Preserved as binary; template expansion is never attempted.
+	content := []byte{0xFF, 0xFE, 0x41, 0x00, 0x42, 0x00, 0x43, 0x00} // BOM + "ABC" in UTF-16 LE
+	root := buildTemplate(t, "Name: test\n", map[string][]byte{
+		"utf16.txt": content,
+	})
+
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{})
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	target := t.TempDir()
+	if err := tmpl.Execute(target); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	got, err := os.ReadFile(filepath.Join(target, "utf16.txt"))
+	if err != nil {
+		t.Fatalf("reading utf16.txt: %v", err)
+	}
+	if string(got) != string(content) {
+		t.Error("utf16.txt not copied verbatim (UTF-16 BOM should be detected as binary)")
+	}
+}
+
+func TestExecute_BinaryDetection_PDFHeader(t *testing.T) {
+	// PDF header (%PDF-) — all bytes are valid ASCII/UTF-8 with no null bytes, so
+	// the old null/UTF-8 heuristic alone would treat this as text. http.DetectContentType
+	// recognises the magic bytes and returns application/pdf, which the primary check
+	// catches as non-text → the file is copied verbatim.
+	// The embedded {{ .Name }} must be preserved literally, not expanded.
+	content := []byte("%PDF-1.4\n{{ .Name }}")
+	root := buildTemplate(t, "Name: test\n", map[string][]byte{
+		"document.pdf": content,
+	})
+
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{})
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	target := t.TempDir()
+	if err := tmpl.Execute(target); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	got, err := os.ReadFile(filepath.Join(target, "document.pdf"))
+	if err != nil {
+		t.Fatalf("reading document.pdf: %v", err)
+	}
+	if string(got) != string(content) {
+		t.Errorf("document.pdf = %q, want verbatim %q (PDF header should be detected as binary even though bytes are valid UTF-8)", got, string(content))
+	}
+}
+
 func TestGet_CustomDelimiters_ConditionalFilename(t *testing.T) {
 	// Custom delimiters affect filename templates too.
 	yaml := "UseX: true\n__delimiters:\n  left: \"[[\"\n  right: \"]]\"\n"
