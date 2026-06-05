@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -65,11 +64,10 @@ func runUse(app *App, rawSource, targetDir string, opts executeOpts) error {
 		}
 		templateRoot = tmp
 	} else {
-		// go-git requires the destination to not exist; use a subdirectory.
-		cloneDir := filepath.Join(tmp, "repo")
 		app.Output.Info("cloning %s…", src.CloneURL)
 		// git layer logs clone start/complete
-		if err := pkggit.Clone(src.CloneURL, cloneDir, pkggit.CloneOptions{Branch: src.Branch}); err != nil {
+		cloneDir, err := pkggit.CloneInto(tmp, "repo", src.CloneURL, pkggit.CloneOptions{Branch: src.Branch})
+		if err != nil {
 			return err
 		}
 		templateRoot = cloneDir

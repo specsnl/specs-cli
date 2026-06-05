@@ -29,6 +29,17 @@ type CloneOptions struct {
 	Depth int
 }
 
+// CloneInto clones url into a new subdirectory named name inside parent.
+// parent must already exist; name must not — go-git requires a non-existent destination.
+// Returns the path of the created clone directory.
+func CloneInto(parent, name, url string, opts CloneOptions) (string, error) {
+	dir := filepath.Join(parent, name)
+	if err := Clone(url, dir, opts); err != nil {
+		return "", err
+	}
+	return dir, nil
+}
+
 // Clone clones the repository at url into dir using a shallow clone (Depth 1 by default).
 // dir must not already exist — go-git creates it.
 // SSH URLs (git@host:path or ssh://host/path) are detected automatically and authenticated

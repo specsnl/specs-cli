@@ -75,3 +75,19 @@ func TestClone_InvalidURL(t *testing.T) {
 func TestClone_SSH(t *testing.T) {
 	t.Skip("SSH clone not tested — see comment above")
 }
+
+func TestCloneInto_CreatesSubdirectory(t *testing.T) {
+	parent := t.TempDir()
+
+	cloneDir, err := pkggit.CloneInto(parent, "repo", "https://github.com/specsnl/php85", pkggit.CloneOptions{Depth: 1})
+	if err != nil {
+		t.Fatalf("CloneInto: %v", err)
+	}
+
+	if cloneDir == parent {
+		t.Fatal("CloneInto returned parent dir instead of subdirectory")
+	}
+	if _, err := os.Stat(cloneDir + "/README.md"); os.IsNotExist(err) {
+		t.Error("cloned repo missing README.md")
+	}
+}

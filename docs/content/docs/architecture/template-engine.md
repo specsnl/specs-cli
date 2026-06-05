@@ -87,6 +87,22 @@ MARIADB_DATABASE: "[[ .ProjectShortName | toSnakeCase ]]_test"
 
 ---
 
+## Always-ignored files
+
+The following files are silently skipped during rendering, regardless of any other
+configuration. They are OS/editor metadata that should never appear in scaffolded output:
+
+| Filename | Origin |
+|----------|--------|
+| `.DS_Store` | macOS Finder |
+| `Thumbs.db` | Windows Explorer |
+
+These files are skipped at the walk stage — they are never copied, rendered, or passed to
+`.specsverbatim`. This list is fixed; use `.specsignore` if per-template suppression is
+ever added in the future.
+
+---
+
 ## `.specsverbatim` — Verbatim Copy
 
 A `.specsverbatim` file at the template root lists glob patterns for files that should be
