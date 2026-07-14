@@ -49,6 +49,12 @@ var (
 	// ErrSpecsVersionUnsatisfied is returned when the running CLI version does not
 	// satisfy the "__specs__version" constraint declared by the template.
 	ErrSpecsVersionUnsatisfied = errors.New("specs version constraint not satisfied")
+
+	// ErrReservedVariableName is returned when a template defines a variable
+	// (top-level key or computed value) whose name starts with the reserved "__"
+	// prefix. That namespace is reserved for specs configuration keys such as
+	// __delimiters.
+	ErrReservedVariableName = errors.New(`variable names starting with "__" are reserved for specs configuration`)
 )
 
 // KindOf returns a stable, machine-readable string identifier for the sentinel
@@ -80,6 +86,8 @@ func KindOf(err error) string {
 		return "invalid_specs_version"
 	case errors.Is(err, ErrSpecsVersionUnsatisfied):
 		return "specs_version_unsatisfied"
+	case errors.Is(err, ErrReservedVariableName):
+		return "reserved_variable_name"
 	default:
 		return ""
 	}

@@ -52,6 +52,15 @@ func newTemplateDownloadCmd(app *App) *cobra.Command {
 				return err
 			}
 
+			// Reject templates that use the reserved "__" variable namespace. Remove the
+			// freshly cloned directory so a rejected template is not left registered.
+			if raw, perr := pkgtemplate.LoadProjectFile(dest); perr == nil {
+				if err := pkgtemplate.CheckReservedNames(raw); err != nil {
+					_ = os.RemoveAll(dest)
+					return err
+				}
+			}
+
 			// When no branch was specified, resolve the actual checked-out branch so that
 			// future update/upgrade checks can compare against the correct remote ref.
 			branch := src.Branch

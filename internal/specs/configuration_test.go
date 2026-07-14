@@ -34,3 +34,23 @@ func TestTemplateDir_XDGOverride(t *testing.T) {
 	}
 }
 
+func TestIsReservedName(t *testing.T) {
+	cases := []struct {
+		name string
+		want bool
+	}{
+		{"name", false},
+		{"_private", false},
+		{"__delimiters", false}, // recognised configuration key
+		{"__foo", true},
+		{"__", true},
+		{"__custom_config", true},
+	}
+
+	for _, tc := range cases {
+		if got := specs.IsReservedName(tc.name); got != tc.want {
+			t.Errorf("IsReservedName(%q) = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}
+

@@ -32,6 +32,8 @@ func TestKindOf_KnownSentinels(t *testing.T) {
 		{fmt.Errorf("%w: got int", specs.ErrInvalidSpecsVersion), "invalid_specs_version"},
 		{specs.ErrSpecsVersionUnsatisfied, "specs_version_unsatisfied"},
 		{fmt.Errorf("%w: template requires specs %s, but this binary is %s", specs.ErrSpecsVersionUnsatisfied, "^0.2.0", "0.1.0"), "specs_version_unsatisfied"},
+		{specs.ErrReservedVariableName, "reserved_variable_name"},
+		{fmt.Errorf("%w: __foo", specs.ErrReservedVariableName), "reserved_variable_name"},
 	}
 
 	for _, tc := range cases {
@@ -74,6 +76,7 @@ func TestErrorsIs_AllSentinelsWrapCorrectly(t *testing.T) {
 		specs.ErrCyclicDependency,
 		specs.ErrInvalidSpecsVersion,
 		specs.ErrSpecsVersionUnsatisfied,
+		specs.ErrReservedVariableName,
 	}
 
 	for _, sentinel := range sentinels {

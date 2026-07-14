@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/specsnl/specs-cli/internal/specs"
 	"github.com/specsnl/specs-cli/internal/util/exit"
 )
 
@@ -16,6 +17,19 @@ func TestValidate_ValidTemplate(t *testing.T) {
 
 	if _, err := executeCmd("template", "validate", src); err != nil {
 		t.Fatalf("template validate: %v", err)
+	}
+}
+
+func TestValidate_ReservedVariableName(t *testing.T) {
+	withTempRegistry(t)
+	src := makeValidateTemplate(t,
+		"Name: \"\"\n__future: \"nope\"\n",
+		map[string]string{"README.md": "# {{ .Name }}\n"},
+	)
+
+	_, err := executeCmd("template", "validate", src)
+	if !errors.Is(err, specs.ErrReservedVariableName) {
+		t.Fatalf("expected ErrReservedVariableName, got %v", err)
 	}
 }
 

@@ -72,6 +72,25 @@ __delimiters:
 
 Both `left` and `right` must be non-empty strings. The `__delimiters` key is reserved and never exposed as a template variable.
 
+### Reserved `__` namespace
+
+The entire `__` prefix is reserved for specs configuration keys (such as `__delimiters`), so
+that future configuration can be added without clashing with existing template variables.
+A template may **not** define a user variable or a computed value whose name starts with `__`
+unless it is a recognised configuration key. Any other `__`-prefixed name is rejected with
+`ErrReservedVariableName` (`error_kind: reserved_variable_name`).
+
+The check runs whenever a project file is loaded — during `template download`, `template use`
+(and `specs use`), and `template validate` — so a template that misuses the namespace is
+rejected at download time rather than only failing later at execution.
+
+```yaml
+Name: my-project
+__future: nope   # error: variable names starting with "__" are reserved
+computed:
+  __derived: "{{ .Name }}"   # error: computed names are reserved too
+```
+
 With `[[ ]]` delimiters configured, `{{ }}` in your files passes through unchanged:
 
 ```yaml
