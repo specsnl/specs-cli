@@ -13,6 +13,8 @@ import (
 	texttemplate "text/template"
 	"unicode/utf8"
 
+	"github.com/Masterminds/semver/v3"
+
 	"github.com/specsnl/specs-cli/internal/specs"
 )
 
@@ -34,6 +36,12 @@ type Config struct {
 	// Enable this via --continue-on-error when the template has intentionally
 	// unrenderable files that cannot use .specsverbatim.
 	ContinueOnRenderError bool
+
+	// Version is the running specs CLI version, injected by the cmd layer so that
+	// Get() can enforce a template's __specs__version constraint without pkg/template
+	// importing pkg/cmd. An empty value or "dev" (or any otherwise unparseable
+	// version) skips the constraint check.
+	Version string
 }
 
 // delims returns the configured delimiters, falling back to specs.DefaultDelimiters
@@ -62,13 +70,13 @@ type RenderWarning struct {
 
 // Template holds everything needed to execute a boilr template.
 type Template struct {
-	Root         string                 // path to the template root (contains project.yaml + template/)
-	Context      map[string]any         // user input map with referenced defaults resolved
-	ComputedDefs map[string]string      // raw computed definitions; caller must apply via ApplyComputed before Execute
-	Conditionals Conditionals           // varName → Cond; absent means always prompt
-	Referenced   map[string]bool        // schema variables referenced in template files or computed expressions
-	Metadata     *Metadata              // nil if __metadata.json is absent
-	Warnings     []RenderWarning        // non-fatal render issues collected during Execute
+	Root         string            // path to the template root (contains project.yaml + template/)
+	Context      map[string]any    // user input map with referenced defaults resolved
+	ComputedDefs map[string]string // raw computed definitions; caller must apply via ApplyComputed before Execute
+	Conditionals Conditionals      // varName → Cond; absent means always prompt
+	Referenced   map[string]bool   // schema variables referenced in template files or computed expressions
+	Metadata     *Metadata         // nil if __metadata.json is absent
+	Warnings     []RenderWarning   // non-fatal render issues collected during Execute
 	cfg          Config
 	funcMap      texttemplate.FuncMap
 	verbatim     *VerbatimRules
@@ -101,6 +109,12 @@ func Get(templateRoot string, cfg Config) (*Template, error) {
 		return nil, fmt.Errorf("reading delimiters from project file: %w", err)
 	}
 	cfg.Delims = delims
+
+	// Enforce a template-declared __specs__version constraint against the running CLI.
+	// Fires for both `specs use` and `specs template use`; `template save` never calls Get().
+	if err := checkSpecsVersion(templateRoot, cfg.Version); err != nil {
+		return nil, err
+	}
 
 	userCtx, computedDefs, err := LoadUserContext(templateRoot, funcMap, delims)
 	if err != nil {
@@ -144,6 +158,35 @@ func Get(templateRoot string, cfg Config) (*Template, error) {
 		funcMap:      funcMap,
 		verbatim:     verbatim,
 	}, nil
+}
+
+// checkSpecsVersion enforces a __specs__version constraint declared in project.yaml
+// against the running CLI version. It is a no-op when the key is absent.
+//
+// When cliVersion is empty, "dev", or otherwise unparseable, the check is skipped and
+// a debug log is emitted: developers building from source (Version defaults to "dev")
+// must never be locked out. This mirrors how latestSemverTag tolerates unparseable tags.
+func checkSpecsVersion(templateRoot, cliVersion string) error {
+	constraint, raw, err := ExtractSpecsVersion(templateRoot)
+	if err != nil {
+		return err
+	}
+	if constraint == nil {
+		return nil // no constraint declared — nothing to enforce
+	}
+
+	v, err := semver.NewVersion(cliVersion)
+	if err != nil {
+		slog.Debug("skipping specs version check: CLI version is not a parseable semver",
+			"version", cliVersion, "constraint", raw)
+		return nil
+	}
+
+	if !constraint.Check(v) {
+		return fmt.Errorf("%w: template requires specs %s, but this binary is %s",
+			specs.ErrSpecsVersionUnsatisfied, raw, cliVersion)
+	}
+	return nil
 }
 
 // Execute renders the template/ subdirectory into targetDir, which must already exist.

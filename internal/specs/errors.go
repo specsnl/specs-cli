@@ -40,6 +40,15 @@ var (
 	// ErrCyclicDependency is returned when a cycle is detected among computed or
 	// referenced-default keys in project.yaml.
 	ErrCyclicDependency = errors.New("cyclic dependency detected among keys")
+
+	// ErrInvalidSpecsVersion is returned when the reserved "__specs__version" key in
+	// project.yaml is present but is not a string or is not a parseable semver
+	// constraint string.
+	ErrInvalidSpecsVersion = errors.New(`"__specs__version" must be a valid semver constraint string`)
+
+	// ErrSpecsVersionUnsatisfied is returned when the running CLI version does not
+	// satisfy the "__specs__version" constraint declared by the template.
+	ErrSpecsVersionUnsatisfied = errors.New("specs version constraint not satisfied")
 )
 
 // KindOf returns a stable, machine-readable string identifier for the sentinel
@@ -67,6 +76,10 @@ func KindOf(err error) string {
 		return "invalid_computed_def"
 	case errors.Is(err, ErrCyclicDependency):
 		return "cyclic_dependency"
+	case errors.Is(err, ErrInvalidSpecsVersion):
+		return "invalid_specs_version"
+	case errors.Is(err, ErrSpecsVersionUnsatisfied):
+		return "specs_version_unsatisfied"
 	default:
 		return ""
 	}

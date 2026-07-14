@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -272,6 +273,45 @@ func TestUse_FailFast_ParseError(t *testing.T) {
 	_, err := executeCmd("use", "--use-defaults", "file:"+srcDir, targetDir)
 	if err == nil {
 		t.Fatal("expected error on parse failure in fail-fast mode, got nil")
+	}
+}
+
+func TestUse_SpecsVersionUnsatisfied(t *testing.T) {
+	// Pin a parseable CLI version so the __specs__version gate actually fires
+	// (the default "dev" build would skip the check).
+	prev := Version
+	Version = "0.1.0"
+	t.Cleanup(func() { Version = prev })
+
+	srcDir := t.TempDir()
+	buildMinimalTemplate(t, srcDir, "Name: world\n__specs__version: ^0.2.0\n", "out.txt", "{{.Name}}")
+	targetDir := t.TempDir()
+
+	_, err := executeCmd("use", "--use-defaults", "file:"+srcDir, targetDir)
+	if !errors.Is(err, specs.ErrSpecsVersionUnsatisfied) {
+		t.Fatalf("expected ErrSpecsVersionUnsatisfied, got %v", err)
+	}
+}
+
+func TestUse_SpecsVersionSatisfied(t *testing.T) {
+	prev := Version
+	Version = "0.1.5"
+	t.Cleanup(func() { Version = prev })
+
+	srcDir := t.TempDir()
+	buildMinimalTemplate(t, srcDir, "Name: world\n__specs__version: ^0.1.0\n", "out.txt", "{{.Name}}")
+	targetDir := t.TempDir()
+
+	_, err := executeCmd("use", "--use-defaults", "file:"+srcDir, targetDir)
+	if err != nil {
+		t.Fatalf("use: expected success when version satisfies constraint, got %v", err)
+	}
+	got, err := os.ReadFile(filepath.Join(targetDir, "out.txt"))
+	if err != nil {
+		t.Fatalf("output file missing: %v", err)
+	}
+	if string(got) != "world" {
+		t.Errorf("got %q, want %q", string(got), "world")
 	}
 }
 

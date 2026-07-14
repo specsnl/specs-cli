@@ -45,6 +45,15 @@ __delimiters:
 
 With `[[ ]]` configured, `{{ }}` in your template files passes through unchanged.
 
+## Reserved keys
+
+Keys prefixed with `__` in the project file are reserved by `specs` and are never exposed as template variables:
+
+| Key | Purpose |
+|-----|---------|
+| `__delimiters` | Override the default `{{ }}` delimiters (see above). |
+| `__specs__version` | Declare a semver constraint on the `specs` CLI version required to use the template, e.g. `__specs__version: ^0.1.0`. `specs use` and `specs template use` refuse to run the template when the running binary does not satisfy the constraint (development builds are exempt). See _The project file_ page for accepted constraint shapes. |
+
 ## File permissions
 
 File permission bits are always preserved from template source to output. A script

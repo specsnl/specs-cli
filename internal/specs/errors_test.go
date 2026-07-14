@@ -28,6 +28,10 @@ func TestKindOf_KnownSentinels(t *testing.T) {
 		{fmt.Errorf("%w: key %q conflicts with a user input key", specs.ErrInvalidComputedDef, "foo"), "invalid_computed_def"},
 		{specs.ErrCyclicDependency, "cyclic_dependency"},
 		{fmt.Errorf("%w: a, b", specs.ErrCyclicDependency), "cyclic_dependency"},
+		{specs.ErrInvalidSpecsVersion, "invalid_specs_version"},
+		{fmt.Errorf("%w: got int", specs.ErrInvalidSpecsVersion), "invalid_specs_version"},
+		{specs.ErrSpecsVersionUnsatisfied, "specs_version_unsatisfied"},
+		{fmt.Errorf("%w: template requires specs %s, but this binary is %s", specs.ErrSpecsVersionUnsatisfied, "^0.2.0", "0.1.0"), "specs_version_unsatisfied"},
 	}
 
 	for _, tc := range cases {
@@ -68,6 +72,8 @@ func TestErrorsIs_AllSentinelsWrapCorrectly(t *testing.T) {
 		specs.ErrLocalSource,
 		specs.ErrInvalidComputedDef,
 		specs.ErrCyclicDependency,
+		specs.ErrInvalidSpecsVersion,
+		specs.ErrSpecsVersionUnsatisfied,
 	}
 
 	for _, sentinel := range sentinels {

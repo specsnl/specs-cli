@@ -1,10 +1,12 @@
 package template_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/specsnl/specs-cli/internal/specs"
 	pkgtemplate "github.com/specsnl/specs-cli/internal/template"
 )
 
@@ -634,6 +636,63 @@ func TestExecute_BinaryDetection_PDFHeader(t *testing.T) {
 	}
 	if string(got) != string(content) {
 		t.Errorf("document.pdf = %q, want verbatim %q (PDF header should be detected as binary even though bytes are valid UTF-8)", got, string(content))
+	}
+}
+
+func TestGet_SpecsVersion_Satisfied(t *testing.T) {
+	root := buildTemplate(t, "Name: World\n__specs__version: ^0.1.0\n", map[string][]byte{
+		"hello.txt": []byte("Hello {{.Name}}"),
+	})
+
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{Version: "0.1.5"})
+	if err != nil {
+		t.Fatalf("Get: expected success when version satisfies constraint, got %v", err)
+	}
+	// Reserved key must not leak into the context.
+	if _, ok := tmpl.Context["__specs__version"]; ok {
+		t.Error("__specs__version should not appear in the template context")
+	}
+}
+
+func TestGet_SpecsVersion_Unsatisfied(t *testing.T) {
+	root := buildTemplate(t, "Name: World\n__specs__version: ^0.2.0\n", map[string][]byte{
+		"hello.txt": []byte("Hello {{.Name}}"),
+	})
+
+	_, err := pkgtemplate.Get(root, pkgtemplate.Config{Version: "0.1.0"})
+	if !errors.Is(err, specs.ErrSpecsVersionUnsatisfied) {
+		t.Fatalf("Get: expected ErrSpecsVersionUnsatisfied, got %v", err)
+	}
+}
+
+func TestGet_SpecsVersion_SkippedWhenDev(t *testing.T) {
+	root := buildTemplate(t, "Name: World\n__specs__version: ^0.2.0\n", map[string][]byte{
+		"hello.txt": []byte("Hello {{.Name}}"),
+	})
+
+	if _, err := pkgtemplate.Get(root, pkgtemplate.Config{Version: "dev"}); err != nil {
+		t.Fatalf("Get: expected check to be skipped for dev version, got %v", err)
+	}
+}
+
+func TestGet_SpecsVersion_SkippedWhenEmpty(t *testing.T) {
+	root := buildTemplate(t, "Name: World\n__specs__version: ^0.2.0\n", map[string][]byte{
+		"hello.txt": []byte("Hello {{.Name}}"),
+	})
+
+	if _, err := pkgtemplate.Get(root, pkgtemplate.Config{}); err != nil {
+		t.Fatalf("Get: expected check to be skipped for empty version, got %v", err)
+	}
+}
+
+func TestGet_SpecsVersion_Malformed(t *testing.T) {
+	root := buildTemplate(t, "Name: World\n__specs__version: \"not a version\"\n", map[string][]byte{
+		"hello.txt": []byte("Hello {{.Name}}"),
+	})
+
+	_, err := pkgtemplate.Get(root, pkgtemplate.Config{Version: "0.1.0"})
+	if !errors.Is(err, specs.ErrInvalidSpecsVersion) {
+		t.Fatalf("Get: expected ErrInvalidSpecsVersion, got %v", err)
 	}
 }
 

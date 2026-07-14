@@ -87,6 +87,36 @@ MARIADB_DATABASE: "[[ .ProjectShortName | toSnakeCase ]]_test"
 
 ---
 
+## Version Gate (`__specs__version`)
+
+Before loading a template's context, `template.Get()` runs a pre-flight check against the
+reserved `__specs__version` key in `project.yml`. It lets a template author declare which
+`specs` CLI versions the template supports:
+
+```yaml
+__specs__version: ^0.1.0
+```
+
+The value is any valid [Masterminds/semver](https://github.com/Masterminds/semver) constraint
+string (`0.1.0`, `^0.1.0`, `~0.1.0`, `>= 0.1.0, < 2.0`, …), so both lower and upper bounds can
+be expressed. `template.ExtractSpecsVersion` parses it with `semver.NewConstraint`; the private
+`checkSpecsVersion` helper then evaluates it against the running CLI version (injected via
+`Config.Version` from the cmd layer, so `pkg/template` never imports `pkg/cmd`):
+
+| Condition | Outcome |
+|-----------|---------|
+| Key absent | No check — proceed |
+| Present but not a string, or not a parseable constraint | `ErrInvalidSpecsVersion` — refuse to load |
+| `Config.Version` is empty, `dev`, or otherwise unparseable | Check skipped with a `slog.Debug` line — never lock out source builds |
+| Parsed CLI version does not satisfy the constraint | `ErrSpecsVersionUnsatisfied` (wrapped with `%w`) |
+| Parsed CLI version satisfies the constraint | Proceed |
+
+The gate fires for both `specs use` and `specs template use` (which share `executeTemplate`).
+`specs template save` never calls `Get()`, so a newer template can still be saved on an older
+CLI. The reserved key is consumed during load and never exposed as a template variable.
+
+---
+
 ## Always-ignored files
 
 The following files are silently skipped during rendering, regardless of any other

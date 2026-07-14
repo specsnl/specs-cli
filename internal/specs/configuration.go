@@ -31,6 +31,15 @@ const (
 	//	  left: "[["
 	//	  right: "]]"
 	ProjectDelimitersKey = "__delimiters"
+
+	// ProjectSpecsVersionKey is the reserved project.yaml key that declares a semver
+	// constraint on the specs CLI version required to use the template. Its value must
+	// be a valid Masterminds/semver constraint string (both lower and upper bounds are
+	// supported). The key is consumed during template load and never exposed as a
+	// template variable. Example:
+	//
+	//	__specs__version: ^0.1.0
+	ProjectSpecsVersionKey = "__specs__version"
 )
 
 // ConfigDir returns the specs configuration directory.

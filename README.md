@@ -43,6 +43,19 @@ specs template use my-template ./my-project
 
 ---
 
+## The project file
+
+A template's `project.yml` declares its variables, defaults, computed values, and hooks. A few `__`-prefixed keys are reserved by `specs` and never exposed as template variables:
+
+| Key | Purpose |
+|-----|---------|
+| `__delimiters` | Override the default `{{ }}` template delimiters with a custom pair (e.g. `[[ ]]`). |
+| `__specs__version` | Declare a [semver](https://github.com/Masterminds/semver) constraint on the `specs` CLI version required to use the template, e.g. `__specs__version: ^0.1.0`. `specs use` and `specs template use` refuse to run the template unless the running binary satisfies the constraint (development builds are exempt; `specs template save` skips the check). |
+
+See the [documentation](https://cli.specs.dev) for the full project-file reference.
+
+---
+
 ## Development environment
 
 ### Overview
