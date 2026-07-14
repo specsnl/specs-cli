@@ -307,6 +307,11 @@ package-level `slog.Debug/Info/Warn/Error` functions, which route through the gl
 logger. `NewApp()` calls `slog.SetDefault` to install a text handler at `Info` level;
 `PersistentPreRunE` re-sets it when `--debug --output=json` swaps the handler to JSON.
 
+`slog` is a **debug-only diagnostic channel** on **stderr** — it is silent on a normal run (every
+log point is `Debug`, suppressed at the default `Info` level) and is distinct from the two
+`output.Writer` formats (`pretty`/`json`) that produce user-facing output on stdout. Do not use
+`slog` for user-facing reporting; use `output.Writer`.
+
 ### Flags
 
 | Flag | Effect |
@@ -320,7 +325,7 @@ logger. `NewApp()` calls `slog.SetDefault` to install a text handler at `Info` l
 |---------|----------|-------|------------|
 | `internal/template` | `Get` | Debug | `template`, `keys`, `computed` |
 | `internal/template` | `Execute` | Debug | `path`, `dest`, `action` (render/verbatim/skip) |
-| `internal/template` | `Execute` | Info | `template`, `dest`, `rendered`, `verbatim`, `skipped` (summary) |
+| `internal/template` | `Execute` | Debug | `template`, `dest`, `rendered`, `verbatim`, `skipped` (summary) |
 | `internal/template` | `ApplyComputed` | Debug | `key`, `source`="computed" |
 | `internal/hooks` | `Hooks.Run` | Debug | `trigger`, `commands`, `command` |
 | `internal/cmd` | `executeTemplate` | Debug | `key`, `source` (values_file/arg_flag/default/prompt) — one log per key, final source only |
