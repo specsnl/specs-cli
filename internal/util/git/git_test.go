@@ -46,8 +46,8 @@ func TestClone_SpecificBranch(t *testing.T) {
 func TestClone_SpecificTag(t *testing.T) {
 	dir := t.TempDir()
 
-	err := pkggit.Clone("https://github.com/specsnl/boilr-laravel-project", dir, pkggit.CloneOptions{
-		Branch: "0.1.0",
+	err := pkggit.Clone("https://github.com/specsnl/specs-laravel-project", dir, pkggit.CloneOptions{
+		Branch: "1.0.0",
 		Depth:  1,
 	})
 	if err != nil {
