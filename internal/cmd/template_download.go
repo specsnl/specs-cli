@@ -63,7 +63,8 @@ func newTemplateDownloadCmd(app *App) *cobra.Command {
 
 			// git layer logs describe result or failure
 			desc, _ := pkggit.Describe(dest)
-			if err := pkgtemplate.SaveMetadata(dest, name, src.CloneURL, branch, desc.Commit, desc.Version, time.Now().UTC()); err != nil {
+			now := time.Now().UTC()
+			if err := pkgtemplate.SaveMetadata(dest, name, src.CloneURL, branch, desc.Commit, desc.Version, now, now); err != nil {
 				return err
 			}
 

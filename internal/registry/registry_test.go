@@ -73,7 +73,7 @@ func TestLoad_WithMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 	created := time.Now().Add(-24 * time.Hour).UTC().Truncate(time.Second)
-	if err := pkgtemplate.SaveMetadata(tmplDir, "my-tpl", "https://example.com/repo", "main", "abc123", "v1.0.0", created); err != nil {
+	if err := pkgtemplate.SaveMetadata(tmplDir, "my-tpl", "https://example.com/repo", "main", "abc123", "v1.0.0", created, created); err != nil {
 		t.Fatalf("SaveMetadata: %v", err)
 	}
 
@@ -115,7 +115,7 @@ func TestUpgrade_LocalTemplate(t *testing.T) {
 		t.Fatal(err)
 	}
 	// "local:" prefix is what `specs template save` stores in Repository.
-	if err := pkgtemplate.SaveMetadata(tmplDir, "local-tpl", "local:/local/path", "", "", "", time.Now().UTC()); err != nil {
+	if err := pkgtemplate.SaveMetadata(tmplDir, "local-tpl", "local:/local/path", "", "", "", time.Now().UTC(), time.Now().UTC()); err != nil {
 		t.Fatalf("SaveMetadata: %v", err)
 	}
 
@@ -143,7 +143,7 @@ func TestUpgrade_LocalTemplate_WithGitHistory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := pkgtemplate.SaveMetadata(tmplDir, "local-git-tpl", "local:/Users/user/my-template", "", "", "", time.Now().UTC()); err != nil {
+	if err := pkgtemplate.SaveMetadata(tmplDir, "local-git-tpl", "local:/Users/user/my-template", "", "", "", time.Now().UTC(), time.Now().UTC()); err != nil {
 		t.Fatalf("SaveMetadata: %v", err)
 	}
 

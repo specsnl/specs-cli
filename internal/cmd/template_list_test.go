@@ -87,6 +87,37 @@ func TestList_JSONOutput(t *testing.T) {
 	}
 }
 
+func TestList_UpdatedColumn(t *testing.T) {
+	registryDir := withTempRegistry(t)
+	tmplDir := filepath.Join(registryDir, "local-tpl")
+	if err := os.MkdirAll(tmplDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	created := time.Now().Add(-30 * 24 * time.Hour).UTC()
+	updated := time.Now().Add(-2 * 24 * time.Hour).UTC()
+	if err := pkgtemplate.SaveMetadata(tmplDir, "local-tpl", "/local/path", "", "", "", created, updated); err != nil {
+		t.Fatal(err)
+	}
+
+	// Table output must carry an Updated header.
+	out, err := executeCmd("template", "list")
+	if err != nil {
+		t.Fatalf("template list: %v", err)
+	}
+	if !strings.Contains(out, "Updated") {
+		t.Errorf("expected table to contain 'Updated' header, got: %q", out)
+	}
+
+	// JSON output must carry an Updated key distinct from Created.
+	jsonOut, err := executeCmd("template", "list", "--output=json")
+	if err != nil {
+		t.Fatalf("template list --output=json: %v", err)
+	}
+	if !strings.Contains(jsonOut, `"Updated"`) {
+		t.Errorf("expected JSON to contain 'Updated' key, got: %q", jsonOut)
+	}
+}
+
 func TestList_StatusColumn_LocalNoStatus(t *testing.T) {
 	registryDir := withTempRegistry(t)
 	tmplDir := filepath.Join(registryDir, "local-tpl")
@@ -95,7 +126,7 @@ func TestList_StatusColumn_LocalNoStatus(t *testing.T) {
 	}
 	// Local template: repository set but no branch AND no git repo — branch
 	// resolution fails, so status stays "-".
-	if err := pkgtemplate.SaveMetadata(tmplDir, "local-tpl", "/local/path", "", "", "", time.Now().UTC()); err != nil {
+	if err := pkgtemplate.SaveMetadata(tmplDir, "local-tpl", "/local/path", "", "", "", time.Now().UTC(), time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -134,7 +165,7 @@ func TestList_StatusColumn_EmptyBranchWithGitRepo(t *testing.T) {
 
 	// Save metadata with empty Branch — simulates a template downloaded without
 	// an explicit branch specification.
-	if err := pkgtemplate.SaveMetadata(tmplDir, "remote-tpl", "https://example.com/repo", "", "", "", time.Now().UTC()); err != nil {
+	if err := pkgtemplate.SaveMetadata(tmplDir, "remote-tpl", "https://example.com/repo", "", "", "", time.Now().UTC(), time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -162,7 +193,7 @@ func TestList_StatusColumn_FreshUpToDate(t *testing.T) {
 	if err := os.MkdirAll(tmplDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := pkgtemplate.SaveMetadata(tmplDir, "remote-tpl", "https://example.com/repo", "main", "", "", time.Now().UTC()); err != nil {
+	if err := pkgtemplate.SaveMetadata(tmplDir, "remote-tpl", "https://example.com/repo", "main", "", "", time.Now().UTC(), time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
 	// Write a fresh status so no network call is made.
@@ -216,7 +247,7 @@ func TestList_StatusColumn_NetworkWarn(t *testing.T) {
 	if err := os.MkdirAll(tmplDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := pkgtemplate.SaveMetadata(tmplDir, "remote-tpl", "https://example.com/repo", "main", "", "", time.Now().UTC()); err != nil {
+	if err := pkgtemplate.SaveMetadata(tmplDir, "remote-tpl", "https://example.com/repo", "main", "", "", time.Now().UTC(), time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
 	// Write a stale status with network error.
@@ -249,7 +280,7 @@ func TestList_ConcurrencyCap(t *testing.T) {
 		if err := os.MkdirAll(tmplDir, 0755); err != nil {
 			t.Fatal(err)
 		}
-		if err := pkgtemplate.SaveMetadata(tmplDir, name, "https://example.com/repo", "main", "", "", time.Now().UTC()); err != nil {
+		if err := pkgtemplate.SaveMetadata(tmplDir, name, "https://example.com/repo", "main", "", "", time.Now().UTC(), time.Now().UTC()); err != nil {
 			t.Fatal(err)
 		}
 		stale := &pkgtemplate.TemplateStatus{
@@ -300,7 +331,7 @@ func TestList_PerCheckTimeout(t *testing.T) {
 	if err := os.MkdirAll(tmplDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := pkgtemplate.SaveMetadata(tmplDir, "slow-tpl", "https://example.com/repo", "main", "", "", time.Now().UTC()); err != nil {
+	if err := pkgtemplate.SaveMetadata(tmplDir, "slow-tpl", "https://example.com/repo", "main", "", "", time.Now().UTC(), time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
 	stale := &pkgtemplate.TemplateStatus{

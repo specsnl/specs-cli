@@ -60,7 +60,7 @@ func newTemplateUpdateCmd(app *App) *cobra.Command {
 					}
 					branch = b
 					// Persist the resolved branch so future runs skip this fallback.
-					if err := pkgtemplate.SaveMetadata(root, name, meta.Repository, branch, meta.Commit, meta.Version, meta.Created.Time); err != nil {
+					if err := pkgtemplate.SaveMetadata(root, name, meta.Repository, branch, meta.Commit, meta.Version, meta.Created.Time, meta.Updated.Time); err != nil {
 						slog.Debug("failed to persist resolved branch", "template", name, "error", err)
 					}
 				}

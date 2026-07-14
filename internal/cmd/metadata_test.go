@@ -13,7 +13,7 @@ func TestWriteMetadata_PreservesSuppliedCreated(t *testing.T) {
 	// RFC1123Z has second-level precision, so truncate before round-tripping.
 	want := time.Now().Add(-30 * 24 * time.Hour).UTC().Truncate(time.Second)
 
-	if err := pkgtemplate.SaveMetadata(dir, "tpl", "https://example.com/repo", "main", "abc123", "v1.0.0", want); err != nil {
+	if err := pkgtemplate.SaveMetadata(dir, "tpl", "https://example.com/repo", "main", "abc123", "v1.0.0", want, want); err != nil {
 		t.Fatalf("SaveMetadata: %v", err)
 	}
 
@@ -27,6 +27,9 @@ func TestWriteMetadata_PreservesSuppliedCreated(t *testing.T) {
 	if !got.Created.Time.Equal(want) {
 		t.Errorf("Created = %s, want %s", got.Created.Time, want)
 	}
+	if !got.Updated.Time.Equal(want) {
+		t.Errorf("Updated = %s, want %s", got.Updated.Time, want)
+	}
 }
 
 // Verifies the upgrade-flow contract: passing meta.Created.Time back into
@@ -36,8 +39,8 @@ func TestWriteMetadata_UpgradeRoundTripPreservesCreated(t *testing.T) {
 
 	original := time.Now().Add(-90 * 24 * time.Hour).UTC().Truncate(time.Second)
 
-	// Initial install.
-	if err := pkgtemplate.SaveMetadata(dir, "tpl", "https://example.com/repo", "main", "old-sha", "v1.0.0", original); err != nil {
+	// Initial install: created and updated are the same.
+	if err := pkgtemplate.SaveMetadata(dir, "tpl", "https://example.com/repo", "main", "old-sha", "v1.0.0", original, original); err != nil {
 		t.Fatalf("SaveMetadata (install): %v", err)
 	}
 
@@ -49,9 +52,11 @@ func TestWriteMetadata_UpgradeRoundTripPreservesCreated(t *testing.T) {
 		t.Fatal("LoadMetadata returned nil metadata")
 	}
 
-	// Simulate an upgrade: re-write metadata with new commit/version but the
-	// original Created threaded through, the same way registry.Upgrade does.
-	if err := pkgtemplate.SaveMetadata(dir, "tpl", "https://example.com/repo", "main", "new-sha", "v1.1.0", meta.Created.Time); err != nil {
+	// Simulate an upgrade: re-write metadata with new commit/version and a fresh
+	// Updated timestamp but the original Created threaded through, the same way
+	// registry.Upgrade does.
+	upgradedAt := time.Now().Add(-1 * 24 * time.Hour).UTC().Truncate(time.Second)
+	if err := pkgtemplate.SaveMetadata(dir, "tpl", "https://example.com/repo", "main", "new-sha", "v1.1.0", meta.Created.Time, upgradedAt); err != nil {
 		t.Fatalf("SaveMetadata (upgrade): %v", err)
 	}
 
@@ -64,6 +69,9 @@ func TestWriteMetadata_UpgradeRoundTripPreservesCreated(t *testing.T) {
 	}
 	if !upgraded.Created.Time.Equal(original) {
 		t.Errorf("Created after upgrade = %s, want %s", upgraded.Created.Time, original)
+	}
+	if !upgraded.Updated.Time.Equal(upgradedAt) {
+		t.Errorf("Updated after upgrade = %s, want %s", upgraded.Updated.Time, upgradedAt)
 	}
 	if upgraded.Commit != "new-sha" {
 		t.Errorf("Commit after upgrade = %q, want %q", upgraded.Commit, "new-sha")

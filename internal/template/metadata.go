@@ -16,6 +16,7 @@ type Metadata struct {
 	Repository string   `json:"Repository"`
 	Branch     string   `json:"Branch,omitempty"`
 	Created    JSONTime `json:"Created"`
+	Updated    JSONTime `json:"Updated"`
 	Commit     string   `json:"Commit,omitempty"`
 	Version    string   `json:"Version,omitempty"`
 }
@@ -70,17 +71,25 @@ func LoadMetadata(templateRoot string) (*Metadata, error) {
 	if err := json.Unmarshal(data, &m); err != nil {
 		return nil, fmt.Errorf("parsing %s: %w", specs.MetadataFile, err)
 	}
+	// Metadata written before the Updated field existed has no Updated timestamp.
+	// Fall back to Created so pre-existing templates display a sensible value.
+	if m.Updated.Time.IsZero() {
+		m.Updated = m.Created
+	}
 	return &m, nil
 }
 
-// SaveMetadata writes __metadata.json into templateRoot. The created timestamp is
-// supplied by the caller so that upgrades can preserve the original install time.
-func SaveMetadata(templateRoot, name, repository, branch, commit, version string, created time.Time) error {
+// SaveMetadata writes __metadata.json into templateRoot. The created and updated
+// timestamps are supplied by the caller so that upgrades can preserve the original
+// install time (created) while recording the most recent upgrade (updated). On the
+// first install both timestamps are the same.
+func SaveMetadata(templateRoot, name, repository, branch, commit, version string, created, updated time.Time) error {
 	m := Metadata{
 		Name:       name,
 		Repository: repository,
 		Branch:     branch,
 		Created:    JSONTime{Time: created},
+		Updated:    JSONTime{Time: updated},
 		Commit:     commit,
 		Version:    version,
 	}

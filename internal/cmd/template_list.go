@@ -52,7 +52,7 @@ func newTemplateListCmd(app *App) *cobra.Command {
 				if meta != nil && meta.Repository != "" && meta.Branch == "" {
 					if b, err := pkggit.CurrentBranch(root); err == nil {
 						meta.Branch = b
-						if err := pkgtemplate.SaveMetadata(root, name, meta.Repository, b, meta.Commit, meta.Version, meta.Created.Time); err != nil {
+						if err := pkgtemplate.SaveMetadata(root, name, meta.Repository, b, meta.Commit, meta.Version, meta.Created.Time, meta.Updated.Time); err != nil {
 							slog.Debug("failed to persist resolved branch", "template", name, "error", err)
 						}
 					}
@@ -113,21 +113,22 @@ func newTemplateListCmd(app *App) *cobra.Command {
 			}
 			_ = eg.Wait()
 
-			headers := []string{"Name", "Repository", "Version", "Status", "Created"}
+			headers := []string{"Name", "Repository", "Version", "Status", "Created", "Updated"}
 			var rows [][]string
 
 			for _, entry := range tmplEntries {
-				repo, version, created := "-", "-", "-"
+				repo, version, created, updated := "-", "-", "-", "-"
 				if entry.meta != nil {
 					repo = entry.meta.Repository
 					created = entry.meta.Created.String()
+					updated = entry.meta.Updated.String()
 					if entry.meta.Version != "" {
 						version = entry.meta.Version
 					}
 				}
 				hasRemote := entry.meta != nil && entry.meta.Repository != "" && entry.meta.Branch != ""
 				statusStr := statusLabel(entry.status, hasRemote)
-				rows = append(rows, []string{entry.name, repo, version, statusStr, created})
+				rows = append(rows, []string{entry.name, repo, version, statusStr, created, updated})
 			}
 
 			if len(rows) == 0 {

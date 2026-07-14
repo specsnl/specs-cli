@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/specsnl/specs-cli/internal/specs"
 	pkgtemplate "github.com/specsnl/specs-cli/internal/template"
@@ -116,7 +117,7 @@ func Upgrade(name string) (UpgradeResult, error) {
 	}
 
 	desc, _ := pkggit.Describe(root) // errors are logged by the git layer
-	if err := pkgtemplate.SaveMetadata(root, name, meta.Repository, newBranch, desc.Commit, desc.Version, meta.Created.Time); err != nil {
+	if err := pkgtemplate.SaveMetadata(root, name, meta.Repository, newBranch, desc.Commit, desc.Version, meta.Created.Time, time.Now().UTC()); err != nil {
 		return UpgradeResult{}, err
 	}
 
