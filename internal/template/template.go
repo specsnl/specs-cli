@@ -223,7 +223,7 @@ func (t *Template) Execute(targetDir string) error {
 		return walkErr
 	}
 
-	slog.Info("template execution complete",
+	slog.Debug("template execution complete",
 		"template", t.Root,
 		"dest", targetDir,
 		"rendered", rendered,
