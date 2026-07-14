@@ -82,7 +82,9 @@ unless it is a recognised configuration key. Any other `__`-prefixed name is rej
 
 The check runs whenever a project file is loaded — during `template download`, `template use`
 (and `specs use`), and `template validate` — so a template that misuses the namespace is
-rejected at download time rather than only failing later at execution.
+rejected at download time rather than only failing later at execution. Runtime overrides are
+held to the same rule: a reserved name supplied via `--arg __foo=…` or a `--values` file is
+also rejected.
 
 ```yaml
 Name: my-project
