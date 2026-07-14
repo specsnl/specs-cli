@@ -11,7 +11,7 @@ Manage a local registry of named templates. Unlike `specs use`, downloaded templ
 |------------|-------------|
 | `list` / `ls` | List registered templates with update status. Stale statuses (older than 24 hours) are refreshed automatically. Use `--output json` for machine-readable NDJSON output. |
 | `save <path> <name>` | Register a local directory as a template |
-| `download <source> <name>` | Download a remote template and save it to the local registry |
+| `download` / `add <source> <name>` | Download a remote template and save it to the local registry |
 | `use <name> <target-dir>` | Execute a registered template |
 | `validate <path>` | Check if a template directory is valid |
 | `rename` / `mv <old> <new>` | Rename a registered template |

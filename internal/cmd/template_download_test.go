@@ -24,3 +24,14 @@ func TestDownload_LocalSource_IsErrLocalSource(t *testing.T) {
 		t.Errorf("expected ErrLocalSource, got %v", err)
 	}
 }
+
+func TestDownload_AddAlias(t *testing.T) {
+	withTempRegistry(t)
+
+	// The "add" alias resolves to the download command, so a local source is
+	// rejected the same way as `template download`.
+	_, err := executeCmd("template", "add", "./local-path", "my-tpl")
+	if !errors.Is(err, specs.ErrLocalSource) {
+		t.Errorf("expected ErrLocalSource via add alias, got %v", err)
+	}
+}

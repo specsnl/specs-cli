@@ -17,9 +17,10 @@ func newTemplateDownloadCmd(app *App) *cobra.Command {
 	var force bool
 
 	cmd := &cobra.Command{
-		Use:   "download <source> <name>",
-		Short: "Download a template from a remote repository",
-		Args:  cobra.ExactArgs(2),
+		Use:     "download <source> <name>",
+		Aliases: []string{"add"},
+		Short:   "Download a template from a remote repository",
+		Args:    cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			rawSource, name := args[0], args[1]
 
