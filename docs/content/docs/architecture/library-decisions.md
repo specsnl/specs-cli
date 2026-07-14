@@ -128,8 +128,10 @@ configDir := filepath.Join(xdg.ConfigHome, "specs")
 **Decision:** `github.com/Masterminds/semver/v3` for semver-aware version comparison.
 
 **Rationale:**
-- `specs template upgrade` compares local and remote tag versions to find the highest
-  available semver tag greater than the currently installed version.
+- `specs template update`/`upgrade` compare local and remote tag versions to find the highest
+  available semver tag greater than the currently installed version. This applies both to
+  tag-tracked templates and to branch-tracked templates whose checkout sits on a semver tag, so
+  a lower-numbered tag published on a later commit is never mistaken for an update (issue #83).
 - `semver.NewVersion()` + `GreaterThan()` replaces hand-rolled string comparison.
 
 ---

@@ -434,7 +434,7 @@ The `update` command forces an immediate refresh for one or all templates.
 ```go
 type TemplateStatus struct {
     CheckedAt     JSONTime              // time of last remote check
-    IsUpToDate    bool                  // true when local HEAD matches remote
+    IsUpToDate    bool                  // true when no newer version is available (see below)
     LatestVersion string                // set when a newer semver tag is available
     ErrorKind     pkggit.CheckErrorKind // "network", "auth", "not-found", "unknown", or ""
 }
@@ -442,3 +442,24 @@ type TemplateStatus struct {
 
 `specs template list` displays a `Status` column with labels: `up-to-date`,
 `update: <version>`, `update available`, `unknown (offline?)`, `auth error`, `not found`.
+
+### How a newer version is determined
+
+`resolveStatus` compares the remote refs against the local checkout using two modes:
+
+- **Tag-tracked** — the tracked ref is itself a semver tag (e.g. the template was downloaded
+  with `github:owner/repo:1.1.0`). A newer version is the **highest semver tag strictly
+  greater** than the current one. A lower-numbered tag published later (e.g. `1.0.1` after
+  `1.1.0`) is never treated as an update.
+- **Branch-tracked** — the tracked ref is a branch (the default when no ref is given). If the
+  local checkout sits exactly on a released semver tag, the same semver rule as above applies:
+  an update requires a strictly-greater semver tag, so `1.0.1` pushed on a commit newer than
+  the installed `1.1.0` is **not** reported as an update. When the checkout is not on a semver
+  tag (a rolling branch), the check falls back to comparing the branch-tip commit against the
+  local `HEAD`, so any new commit counts as an update.
+
+This ensures "newer" always follows semantic-versioning rules for tagged templates, regardless
+of the order in which tags were pushed (issue #83). Determining whether the checkout is on a
+released version uses the tag that points exactly at `HEAD` (dereferencing annotated tags)
+rather than parsing git-describe output, whose `-<n>-g<hash>` suffix would otherwise be
+misread as a semver pre-release.
