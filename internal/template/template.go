@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
+	"maps"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -75,6 +76,7 @@ type Template struct {
 	ComputedDefs map[string]string // raw computed definitions; caller must apply via ApplyComputed before Execute
 	Conditionals Conditionals      // varName → Cond; absent means always prompt
 	Referenced   map[string]bool   // schema variables referenced in template files or computed expressions
+	Reserved     map[string]any    // recognised reserved config values (e.g. __delimiters), exposed to templates during rendering
 	Metadata     *Metadata         // nil if __metadata.json is absent
 	Warnings     []RenderWarning   // non-fatal render issues collected during Execute
 	cfg          Config
@@ -121,6 +123,13 @@ func Get(templateRoot string, cfg Config) (*Template, error) {
 		return nil, err
 	}
 
+	// Reserved config keys are stripped from userCtx but their values are still made
+	// available to templates under their original key (e.g. {{ .__specs__version }}).
+	reserved, err := ReservedValues(templateRoot)
+	if err != nil {
+		return nil, err
+	}
+
 	conds, referenced, err := AnalyzeConditionals(templateRoot, userCtx, funcMap, delims)
 	if err != nil {
 		return nil, err
@@ -153,6 +162,7 @@ func Get(templateRoot string, cfg Config) (*Template, error) {
 		ComputedDefs: computedDefs,
 		Conditionals: conds,
 		Referenced:   referenced,
+		Reserved:     reserved,
 		Metadata:     meta,
 		cfg:          cfg,
 		funcMap:      funcMap,
@@ -194,6 +204,16 @@ func checkSpecsVersion(templateRoot, cliVersion string) error {
 // ApplyComputed before Execute when ComputedDefs are present.
 func (t *Template) Execute(targetDir string) error {
 	ctx := t.Context
+	// Expose recognised reserved config values (e.g. __delimiters, __specs__version) to
+	// templates. They are kept out of Context so they are never prompted for or flagged as
+	// unused, so merge them into a copy of the render context here. User/computed values can
+	// never collide with these keys — CheckReservedNames forbids user __ keys.
+	if len(t.Reserved) > 0 {
+		merged := make(map[string]any, len(ctx)+len(t.Reserved))
+		maps.Copy(merged, ctx)
+		maps.Copy(merged, t.Reserved)
+		ctx = merged
+	}
 
 	srcRoot := filepath.Join(t.Root, specs.TemplateDirFile)
 

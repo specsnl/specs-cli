@@ -3,6 +3,7 @@ package specs
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/adrg/xdg"
 )
@@ -40,7 +41,26 @@ const (
 	//
 	//	__specs__version: ^0.1.0
 	ProjectSpecsVersionKey = "__specs__version"
+
+	// ReservedKeyPrefix marks project.yaml keys that carry specs configuration rather
+	// than user variables. The whole namespace is reserved so future configuration keys
+	// can be added without clashing with existing template variables; templates may not
+	// define variables (or computed values) with this prefix.
+	ReservedKeyPrefix = "__"
 )
+
+// ReservedConfigKeys is the set of recognised __-prefixed keys that carry configuration.
+// Any other __-prefixed key in a project file is rejected via ErrReservedVariableName.
+var ReservedConfigKeys = map[string]bool{
+	ProjectDelimitersKey:   true,
+	ProjectSpecsVersionKey: true,
+}
+
+// IsReservedName reports whether name uses the reserved __ prefix without being a
+// recognised configuration key. Such names may not be used as template variables.
+func IsReservedName(name string) bool {
+	return strings.HasPrefix(name, ReservedKeyPrefix) && !ReservedConfigKeys[name]
+}
 
 // ConfigDir returns the specs configuration directory.
 // Defaults to $XDG_CONFIG_HOME/specs (~/.config/specs).

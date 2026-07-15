@@ -99,6 +99,9 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 			return err
 		}
 		for k := range fileVals {
+			if specs.IsReservedName(k) {
+				return fmt.Errorf("%w: %q (from --values)", specs.ErrReservedVariableName, k)
+			}
 			provided[k] = true
 			finalSource[k] = "values_file"
 		}
@@ -109,6 +112,9 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 		k, v, err := values.ParseArg(pair)
 		if err != nil {
 			return err
+		}
+		if specs.IsReservedName(k) {
+			return fmt.Errorf("%w: %q (from --arg)", specs.ErrReservedVariableName, k)
 		}
 		ctx[k] = v
 		provided[k] = true

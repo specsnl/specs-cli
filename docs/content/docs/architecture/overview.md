@@ -263,6 +263,7 @@ so that callers can use `errors.Is` to distinguish them:
 | `ErrCyclicDependency` | `cyclic_dependency` | Cycle detected among computed or referenced-default keys |
 | `ErrInvalidSpecsVersion` | `invalid_specs_version` | `__specs__version` in `project.yaml` is not a string or not a parseable semver constraint |
 | `ErrSpecsVersionUnsatisfied` | `specs_version_unsatisfied` | Running CLI version does not satisfy the template's `__specs__version` constraint |
+| `ErrReservedVariableName` | `reserved_variable_name` | A variable or computed name uses the reserved `__` prefix without being a recognised configuration key |
 
 `specs.KindOf(err error) string` returns the stable kind string for any error in the chain,
 or `""` when no known sentinel is wrapped.

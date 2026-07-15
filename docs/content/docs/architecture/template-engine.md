@@ -70,7 +70,34 @@ __delimiters:
   right: "]]"
 ```
 
-Both `left` and `right` must be non-empty strings. The `__delimiters` key is reserved and never exposed as a template variable.
+Both `left` and `right` must be non-empty strings. The `__delimiters` key is reserved: it is never treated as a user variable (never prompted for, never flagged as unused), but its value is available to templates for reading as `{{ .__delimiters }}` — see below.
+
+### Reserved `__` namespace
+
+The entire `__` prefix is reserved for specs configuration keys (such as `__delimiters`), so
+that future configuration can be added without clashing with existing template variables.
+A template may **not** define a user variable or a computed value whose name starts with `__`
+unless it is a recognised configuration key. Any other `__`-prefixed name is rejected with
+`ErrReservedVariableName` (`error_kind: reserved_variable_name`).
+
+The check runs whenever a project file is loaded — during `template download`, `template use`
+(and `specs use`), and `template validate` — so a template that misuses the namespace is
+rejected at download time rather than only failing later at execution. Runtime overrides are
+held to the same rule: a reserved name supplied via `--arg __foo=…` or a `--values` file is
+also rejected.
+
+```yaml
+Name: my-project
+__future: nope   # error: variable names starting with "__" are reserved
+computed:
+  __derived: "{{ .Name }}"   # error: computed names are reserved too
+```
+
+Reserved keys are held out of the schema context (`Template.Context`) so they are never prompted
+for or reported as unused. Their raw values are captured separately in `Template.Reserved` and
+merged into the render context in `Execute`, so templates can read them under their original key —
+e.g. `{{ .__specs__version }}` or `{{ .__delimiters.left }}`. `Validate` also treats these keys
+as defined, so referencing one is never flagged as an unknown variable.
 
 With `[[ ]]` delimiters configured, `{{ }}` in your files passes through unchanged:
 

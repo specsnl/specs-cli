@@ -380,6 +380,94 @@ func TestLoadUserContext_SpecsVersionKeyStripped(t *testing.T) {
 	}
 }
 
+func TestLoadUserContext_ReservedVariableName(t *testing.T) {
+	dir := t.TempDir()
+	writeProjectYAML(t, dir, "Name: test\n__future: nope\n")
+
+	_, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
+	if !errors.Is(err, specs.ErrReservedVariableName) {
+		t.Fatalf("expected ErrReservedVariableName, got %v", err)
+	}
+}
+
+func TestLoadUserContext_ReservedComputedName(t *testing.T) {
+	dir := t.TempDir()
+	writeProjectYAML(t, dir, "Name: test\ncomputed:\n  __derived: \"{{ .Name }}\"\n")
+
+	_, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
+	if !errors.Is(err, specs.ErrReservedVariableName) {
+		t.Fatalf("expected ErrReservedVariableName, got %v", err)
+	}
+}
+
+func TestLoadUserContext_DelimitersKeyNotReserved(t *testing.T) {
+	dir := t.TempDir()
+	writeProjectYAML(t, dir, "Name: test\n__delimiters:\n  left: \"[[\"\n  right: \"]]\"\n")
+
+	if _, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestReservedValues(t *testing.T) {
+	dir := t.TempDir()
+	writeProjectYAML(t, dir, "Name: demo\n__specs__version: \">=0.0.1\"\n__delimiters:\n  left: \"[[\"\n  right: \"]]\"\n")
+
+	reserved, err := pkgtemplate.ReservedValues(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if reserved["__specs__version"] != ">=0.0.1" {
+		t.Errorf("reserved[__specs__version] = %v, want %q", reserved["__specs__version"], ">=0.0.1")
+	}
+	if _, ok := reserved["__delimiters"]; !ok {
+		t.Error("reserved should contain __delimiters")
+	}
+	if _, ok := reserved["Name"]; ok {
+		t.Error("reserved must not contain non-reserved user keys")
+	}
+}
+
+func TestReservedValues_None(t *testing.T) {
+	dir := t.TempDir()
+	writeProjectYAML(t, dir, "Name: demo\n")
+
+	reserved, err := pkgtemplate.ReservedValues(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(reserved) != 0 {
+		t.Errorf("reserved = %v, want empty", reserved)
+	}
+}
+
+func TestCheckReservedNames(t *testing.T) {
+	cases := []struct {
+		name    string
+		raw     map[string]any
+		wantErr bool
+	}{
+		{"no reserved keys", map[string]any{"Name": "x", "hooks": map[string]any{}}, false},
+		{"delimiters allowed", map[string]any{"__delimiters": map[string]any{"left": "[["}}, false},
+		{"specs version allowed", map[string]any{"__specs__version": "^0.1.0"}, false},
+		{"reserved top-level", map[string]any{"__foo": "bar"}, true},
+		{"reserved computed", map[string]any{"computed": map[string]any{"__c": "x"}}, true},
+		{"computed non-mapping ignored", map[string]any{"computed": "not-a-map"}, false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := pkgtemplate.CheckReservedNames(tc.raw)
+			if tc.wantErr && !errors.Is(err, specs.ErrReservedVariableName) {
+				t.Fatalf("expected ErrReservedVariableName, got %v", err)
+			}
+			if !tc.wantErr && err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
 func TestLoadUserContext_AmbiguousProjectFile(t *testing.T) {
 	dir := t.TempDir()
 	writeProjectYAML(t, dir, "Name: from-yaml\n")

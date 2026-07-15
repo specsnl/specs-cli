@@ -121,6 +121,76 @@ func TestTemplateUse_ArgBeatsValues(t *testing.T) {
 	}
 }
 
+func TestTemplateUse_ReservedValueRenderedIntoOutput(t *testing.T) {
+	// Reserved config values are stripped from the schema but still available to templates.
+	withTempRegistry(t)
+
+	dir := t.TempDir()
+	tmplDir := filepath.Join(dir, specs.TemplateDirFile)
+	if err := os.MkdirAll(tmplDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	project := "Name: demo\n__specs__version: \">=0.0.1\"\n"
+	if err := os.WriteFile(filepath.Join(dir, specs.ProjectYAMLFile), []byte(project), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmplDir, "out.txt"), []byte("v={{ .__specs__version }}"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	target := t.TempDir()
+	if err := saveAndUse(t, dir, "tpl", target, "--use-defaults"); err != nil {
+		t.Fatalf("template use: %v", err)
+	}
+	got, err := os.ReadFile(filepath.Join(target, "out.txt"))
+	if err != nil {
+		t.Fatalf("output file missing: %v", err)
+	}
+	if string(got) != "v=>=0.0.1" {
+		t.Errorf("got %q, want %q", string(got), "v=>=0.0.1")
+	}
+}
+
+func TestTemplateUse_ReservedArgRejected(t *testing.T) {
+	withTempRegistry(t)
+	src := makeTemplateWithVar(t, "Name", "default")
+	target := t.TempDir()
+
+	err := saveAndUse(t, src, "tpl", target, "--use-defaults", "--arg", "__foo=bar")
+	if !errors.Is(err, specs.ErrReservedVariableName) {
+		t.Fatalf("expected ErrReservedVariableName, got %v", err)
+	}
+}
+
+func TestTemplateUse_ReservedValuesFileRejected(t *testing.T) {
+	withTempRegistry(t)
+	src := makeTemplateWithVar(t, "Name", "default")
+
+	vf := filepath.Join(t.TempDir(), "vals.json")
+	data, _ := json.Marshal(map[string]string{"__foo": "bar"})
+	if err := os.WriteFile(vf, data, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	target := t.TempDir()
+	err := saveAndUse(t, src, "tpl", target, "--use-defaults", "--values", vf)
+	if !errors.Is(err, specs.ErrReservedVariableName) {
+		t.Fatalf("expected ErrReservedVariableName, got %v", err)
+	}
+}
+
+func TestTemplateUse_DelimitersArgAllowed(t *testing.T) {
+	// __delimiters is a recognised configuration key, so it is not rejected as a
+	// reserved variable when passed via --arg (though as an arg it is inert).
+	withTempRegistry(t)
+	src := makeTemplateWithVar(t, "Name", "default")
+	target := t.TempDir()
+
+	if err := saveAndUse(t, src, "tpl", target, "--use-defaults", "--arg", "__delimiters=x"); err != nil {
+		t.Fatalf("template use: %v", err)
+	}
+}
+
 func TestTemplateUse_NotFound(t *testing.T) {
 	withTempRegistry(t)
 	_, err := executeCmd("template", "use", "--use-defaults", "no-such-name", t.TempDir())

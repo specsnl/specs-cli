@@ -54,6 +54,16 @@ Keys prefixed with `__` in the project file are reserved by `specs` and are neve
 | `__delimiters` | Override the default `{{ }}` delimiters (see above). |
 | `__specs__version` | Declare a semver constraint on the `specs` CLI version required to use the template, e.g. `__specs__version: ^0.1.0`. `specs use` and `specs template use` refuse to run the template when the running binary does not satisfy the constraint (development builds are exempt). See _The project file_ page for accepted constraint shapes. |
 
+The whole `__` namespace is reserved. You cannot define a variable or computed value whose name
+starts with `__` unless it is one of the recognised configuration keys above. Doing so makes
+`specs template download`, `specs template use`, and `specs template validate` fail with a
+"reserved" error, keeping the namespace free for future configuration. The same rule applies to
+values passed at run time via `--arg` or a `--values` file.
+
+Even though they are reserved, the recognised keys' values are made available to your templates
+under their original name, so you can reference them directly — for example
+`{{ .__specs__version }}` or `{{ .__delimiters.left }}`.
+
 ## File permissions
 
 File permission bits are always preserved from template source to output. A script

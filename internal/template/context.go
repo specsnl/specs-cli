@@ -8,6 +8,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	texttemplate "text/template"
 	"text/template/parse"
@@ -25,6 +26,10 @@ import (
 func LoadUserContext(templateRoot string, funcMap texttemplate.FuncMap, delims specs.Delimiters) (userCtx map[string]any, computedDefs map[string]string, err error) {
 	raw, err := LoadProjectFile(templateRoot)
 	if err != nil {
+		return nil, nil, err
+	}
+
+	if err := CheckReservedNames(raw); err != nil {
 		return nil, nil, err
 	}
 
@@ -87,6 +92,25 @@ func ExtractSpecsVersion(templateRoot string) (constraint *semver.Constraints, r
 		return nil, "", fmt.Errorf("%w: %q: %v", specs.ErrInvalidSpecsVersion, s, err)
 	}
 	return c, s, nil
+}
+
+// ReservedValues reads the project file and returns the values of the recognised reserved
+// configuration keys (e.g. __delimiters, __specs__version) that are present. These are the
+// only __-prefixed keys allowed in a project file — CheckReservedNames rejects any others —
+// and their values are made available to templates under their original key during rendering.
+// Returns an empty (non-nil) map when no reserved key is present.
+func ReservedValues(templateRoot string) (map[string]any, error) {
+	raw, err := LoadProjectFile(templateRoot)
+	if err != nil {
+		return nil, err
+	}
+	reserved := make(map[string]any)
+	for k := range specs.ReservedConfigKeys {
+		if v, ok := raw[k]; ok {
+			reserved[k] = v
+		}
+	}
+	return reserved, nil
 }
 
 // ApplyComputed resolves computed definitions against the finalised context (post-prompt)
@@ -174,6 +198,39 @@ func LoadProjectFile(templateRoot string) (map[string]any, error) {
 		return nil, fmt.Errorf("parsing %s: %w", specs.ProjectJSONFile, err)
 	}
 	return ctx, nil
+}
+
+// CheckReservedNames returns ErrReservedVariableName if raw defines any variable whose
+// name uses the reserved "__" prefix without being a recognised configuration key (such
+// as __delimiters). Both top-level keys and computed value names are checked, since both
+// become template context keys. The "__" namespace is reserved so future specs
+// configuration keys can be added without clashing with existing template variables.
+func CheckReservedNames(raw map[string]any) error {
+	seen := make(map[string]bool)
+	var offending []string
+	collect := func(name string) {
+		if specs.IsReservedName(name) && !seen[name] {
+			seen[name] = true
+			offending = append(offending, name)
+		}
+	}
+
+	for k, v := range raw {
+		collect(k)
+		if k == "computed" {
+			if m, ok := v.(map[string]any); ok {
+				for ck := range m {
+					collect(ck)
+				}
+			}
+		}
+	}
+
+	if len(offending) == 0 {
+		return nil
+	}
+	sort.Strings(offending)
+	return fmt.Errorf("%w: %s", specs.ErrReservedVariableName, strings.Join(offending, ", "))
 }
 
 // extractComputed removes the "computed" key from raw and returns its string entries.

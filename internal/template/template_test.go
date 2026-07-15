@@ -329,6 +329,56 @@ func TestExecute_CustomDelimiters_NotInContext(t *testing.T) {
 	}
 }
 
+func TestExecute_ReservedSpecsVersionAvailable(t *testing.T) {
+	// A recognised reserved config key is stripped from the schema context but its value
+	// is still made available to templates under its original key during rendering.
+	root := buildTemplate(t,
+		"Name: demo\n__specs__version: \">=0.0.1\"\n",
+		map[string][]byte{"out.txt": []byte("v={{ .__specs__version }}")},
+	)
+
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{})
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if _, ok := tmpl.Context["__specs__version"]; ok {
+		t.Error("__specs__version should not appear in the schema context")
+	}
+	if tmpl.Reserved["__specs__version"] != ">=0.0.1" {
+		t.Errorf("Reserved[__specs__version] = %v, want %q", tmpl.Reserved["__specs__version"], ">=0.0.1")
+	}
+
+	target := t.TempDir()
+	if err := tmpl.Execute(target); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if got := readFile(t, target, "out.txt"); got != "v=>=0.0.1" {
+		t.Errorf("out.txt = %q, want %q", got, "v=>=0.0.1")
+	}
+}
+
+func TestExecute_ReservedDelimitersAvailable(t *testing.T) {
+	// The __delimiters mapping is available to templates as nested fields, rendered with
+	// the very delimiters it configures.
+	yaml := "Name: demo\n__delimiters:\n  left: \"[[\"\n  right: \"]]\"\n"
+	root := buildTemplate(t, yaml, map[string][]byte{
+		"out.txt": []byte("d=[[ .__delimiters.left ]][[ .__delimiters.right ]]"),
+	})
+
+	tmpl, err := pkgtemplate.Get(root, pkgtemplate.Config{})
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+
+	target := t.TempDir()
+	if err := tmpl.Execute(target); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if got := readFile(t, target, "out.txt"); got != "d=[[]]" {
+		t.Errorf("out.txt = %q, want %q", got, "d=[[]]")
+	}
+}
+
 func TestGet_InvalidDelimiters_ReturnsError(t *testing.T) {
 	// __delimiters present but malformed — Get must return an error.
 	yaml := "__delimiters: not-a-mapping\nName: x\n"
