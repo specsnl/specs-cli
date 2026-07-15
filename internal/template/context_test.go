@@ -409,6 +409,38 @@ func TestLoadUserContext_DelimitersKeyNotReserved(t *testing.T) {
 	}
 }
 
+func TestReservedValues(t *testing.T) {
+	dir := t.TempDir()
+	writeProjectYAML(t, dir, "Name: demo\n__specs__version: \">=0.0.1\"\n__delimiters:\n  left: \"[[\"\n  right: \"]]\"\n")
+
+	reserved, err := pkgtemplate.ReservedValues(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if reserved["__specs__version"] != ">=0.0.1" {
+		t.Errorf("reserved[__specs__version] = %v, want %q", reserved["__specs__version"], ">=0.0.1")
+	}
+	if _, ok := reserved["__delimiters"]; !ok {
+		t.Error("reserved should contain __delimiters")
+	}
+	if _, ok := reserved["Name"]; ok {
+		t.Error("reserved must not contain non-reserved user keys")
+	}
+}
+
+func TestReservedValues_None(t *testing.T) {
+	dir := t.TempDir()
+	writeProjectYAML(t, dir, "Name: demo\n")
+
+	reserved, err := pkgtemplate.ReservedValues(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(reserved) != 0 {
+		t.Errorf("reserved = %v, want empty", reserved)
+	}
+}
+
 func TestCheckReservedNames(t *testing.T) {
 	cases := []struct {
 		name    string

@@ -70,7 +70,7 @@ __delimiters:
   right: "]]"
 ```
 
-Both `left` and `right` must be non-empty strings. The `__delimiters` key is reserved and never exposed as a template variable.
+Both `left` and `right` must be non-empty strings. The `__delimiters` key is reserved: it is never treated as a user variable (never prompted for, never flagged as unused), but its value is available to templates for reading as `{{ .__delimiters }}` — see below.
 
 ### Reserved `__` namespace
 
@@ -92,6 +92,12 @@ __future: nope   # error: variable names starting with "__" are reserved
 computed:
   __derived: "{{ .Name }}"   # error: computed names are reserved too
 ```
+
+Reserved keys are held out of the schema context (`Template.Context`) so they are never prompted
+for or reported as unused. Their raw values are captured separately in `Template.Reserved` and
+merged into the render context in `Execute`, so templates can read them under their original key —
+e.g. `{{ .__specs__version }}` or `{{ .__delimiters.left }}`. `Validate` also treats these keys
+as defined, so referencing one is never flagged as an unknown variable.
 
 With `[[ ]]` delimiters configured, `{{ }}` in your files passes through unchanged:
 

@@ -63,11 +63,16 @@ func HasUnused(issues []ValidationIssue) bool {
 //     is never referenced in any template file, path expression, or computed
 //     expression.
 func (t *Template) Validate() ([]ValidationIssue, error) {
-	allDefined := make(map[string]bool, len(t.Context)+len(t.ComputedDefs))
+	allDefined := make(map[string]bool, len(t.Context)+len(t.ComputedDefs)+len(t.Reserved))
 	for k := range t.Context {
 		allDefined[k] = true
 	}
 	for k := range t.ComputedDefs {
+		allDefined[k] = true
+	}
+	// Reserved config values (e.g. __delimiters, __specs__version) are exposed to templates
+	// during rendering, so a reference to one is a known variable — not an unknown.
+	for k := range t.Reserved {
 		allDefined[k] = true
 	}
 

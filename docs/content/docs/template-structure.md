@@ -60,6 +60,10 @@ starts with `__` unless it is one of the recognised configuration keys above. Do
 "reserved" error, keeping the namespace free for future configuration. The same rule applies to
 values passed at run time via `--arg` or a `--values` file.
 
+Even though they are reserved, the recognised keys' values are made available to your templates
+under their original name, so you can reference them directly — for example
+`{{ .__specs__version }}` or `{{ .__delimiters.left }}`.
+
 ## File permissions
 
 File permission bits are always preserved from template source to output. A script

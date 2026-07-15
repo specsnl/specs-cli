@@ -94,6 +94,25 @@ func ExtractSpecsVersion(templateRoot string) (constraint *semver.Constraints, r
 	return c, s, nil
 }
 
+// ReservedValues reads the project file and returns the values of the recognised reserved
+// configuration keys (e.g. __delimiters, __specs__version) that are present. These are the
+// only __-prefixed keys allowed in a project file — CheckReservedNames rejects any others —
+// and their values are made available to templates under their original key during rendering.
+// Returns an empty (non-nil) map when no reserved key is present.
+func ReservedValues(templateRoot string) (map[string]any, error) {
+	raw, err := LoadProjectFile(templateRoot)
+	if err != nil {
+		return nil, err
+	}
+	reserved := make(map[string]any)
+	for k := range specs.ReservedConfigKeys {
+		if v, ok := raw[k]; ok {
+			reserved[k] = v
+		}
+	}
+	return reserved, nil
+}
+
 // ApplyComputed resolves computed definitions against the finalised context (post-prompt)
 // and returns a new map containing both user inputs and computed values.
 // Called after prompting and --values/--arg overrides are complete.

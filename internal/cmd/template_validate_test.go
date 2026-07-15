@@ -33,6 +33,20 @@ func TestValidate_ReservedVariableName(t *testing.T) {
 	}
 }
 
+func TestValidate_ReservedValueReferenceIsKnown(t *testing.T) {
+	// Referencing a reserved config value (exposed to templates) must not be reported as an
+	// unknown variable, and the template must validate cleanly.
+	withTempRegistry(t)
+	src := makeValidateTemplate(t,
+		"Name: \"\"\n__specs__version: \">=0.0.1\"\n",
+		map[string]string{"README.md": "# {{ .Name }} needs specs {{ .__specs__version }}\n"},
+	)
+
+	if _, err := executeCmd("template", "validate", src); err != nil {
+		t.Fatalf("expected clean validation, got %v", err)
+	}
+}
+
 func TestValidate_MissingTemplateDir(t *testing.T) {
 	withTempRegistry(t)
 
