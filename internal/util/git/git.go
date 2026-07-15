@@ -370,7 +370,46 @@ func CheckRemoteContext(ctx context.Context, dir, url, branch string) (result Re
 		return RemoteCheckResult{ErrorKind: CheckErrorUnknown}
 	}
 
-	return resolveStatus(refs, head.Hash(), branch)
+	// currentVersion is the semver tag the local checkout sits exactly on, or "" when
+	// HEAD is on an untagged branch commit. resolveStatus uses it to decide whether a
+	// branch-tracked template should be compared by semver or by branch-tip commit.
+	currentVersion := semverTagAtCommit(repo, head.Hash())
+
+	return resolveStatus(refs, head.Hash(), branch, currentVersion)
+}
+
+// semverTagAtCommit returns the highest valid semver tag that points directly at
+// hash (dereferencing annotated tags), or "" when no semver tag is exactly on that
+// commit. This tells CheckRemoteContext whether the local checkout is pinned to a
+// released version — as opposed to sitting on an arbitrary branch commit — without
+// relying on git-describe output, whose "-<n>-g<hash>" suffix would otherwise be
+// misread as a semver pre-release.
+func semverTagAtCommit(repo *gogit.Repository, hash plumbing.Hash) string {
+	tags, err := repo.Tags()
+	if err != nil {
+		return ""
+	}
+	var best *semver.Version
+	var bestOrig string
+	_ = tags.ForEach(func(ref *plumbing.Reference) error {
+		h := ref.Hash()
+		if obj, err := repo.TagObject(h); err == nil {
+			h = obj.Target // annotated tag: resolve to the commit it points at
+		}
+		if h != hash {
+			return nil
+		}
+		v, err := semver.NewVersion(ref.Name().Short())
+		if err != nil {
+			return nil
+		}
+		if best == nil || v.GreaterThan(best) {
+			best = v
+			bestOrig = v.Original()
+		}
+		return nil
+	})
+	return bestOrig
 }
 
 // CheckRemote is a context-free convenience wrapper around CheckRemoteContext.
@@ -396,7 +435,11 @@ func classifyRemoteError(err error) CheckErrorKind {
 
 // resolveStatus compares remote refs against the local HEAD for the given ref.
 // Tag-first resolution is used, consistent with Clone behaviour.
-func resolveStatus(refs []*plumbing.Reference, localHead plumbing.Hash, ref string) RemoteCheckResult {
+//
+// currentVersion is the semver tag the local checkout sits exactly on (or "").
+// It is only consulted for branch-tracked templates: when it is a valid semver
+// version the check is resolved by semver rather than by branch-tip commit (see below).
+func resolveStatus(refs []*plumbing.Reference, localHead plumbing.Hash, ref, currentVersion string) RemoteCheckResult {
 	tagRef := plumbing.NewTagReferenceName(ref)
 	branchRef := plumbing.NewBranchReferenceName(ref)
 
@@ -421,6 +464,18 @@ func resolveStatus(refs []*plumbing.Reference, localHead plumbing.Hash, ref stri
 	// Branch fallback.
 	for _, r := range refs {
 		if r.Name() == branchRef {
+			// When the local checkout sits exactly on a released semver version, a newer
+			// version must be a strictly-greater semver tag — not merely a newer commit on
+			// the branch. This stops a lower-numbered tag pushed on a later commit (e.g.
+			// 1.0.1 after 1.1.0) from being reported as an update (issue #83). Rolling
+			// branches with no semver version fall back to comparing the branch-tip commit.
+			if _, err := semver.NewVersion(currentVersion); err == nil {
+				latest := latestSemverTag(remoteTags, currentVersion)
+				if latest == "" || latest == currentVersion {
+					return RemoteCheckResult{IsUpToDate: true}
+				}
+				return RemoteCheckResult{IsUpToDate: false, LatestVersion: latest}
+			}
 			return RemoteCheckResult{IsUpToDate: r.Hash() == localHead}
 		}
 	}
