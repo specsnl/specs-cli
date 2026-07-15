@@ -26,6 +26,10 @@
         "dismiss_stale_reviews_on_push": false,
         "required_reviewers": [],
         "require_code_owner_review": false,
+        "dismissal_restriction": {
+          "enabled": false,
+          "allowed_actors": []
+        },
         "require_last_push_approval": false,
         "required_review_thread_resolution": true,
         "allowed_merge_methods": [
@@ -45,6 +49,10 @@
           },
           {
             "context": "Integration tests",
+            "integration_id": 15368
+          },
+          {
+            "context": "Markdown gate",
             "integration_id": 15368
           }
         ]
