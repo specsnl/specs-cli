@@ -53,7 +53,7 @@ specs-cli/
     │   ├── analysis.go           # AST-based conditional variable analysis
     │   ├── cond.go               # Cond interface and implementations
     │   ├── metadata.go           # Metadata struct, JSONTime, LoadMetadata(), SaveMetadata()
-    │   ├── status.go             # TemplateStatus — remote stale-check caching
+    │   ├── status.go             # TemplateStatus — status caching (stale + version + local/remote)
     │   └── validate.go           # template validation helpers
     ├── hooks/                    # hook execution
     │   └── hooks.go              # Load(), Run(), context → env vars
@@ -95,7 +95,7 @@ specs [--version|-v]
 │   │     [--no-hooks]
 │   ├── list|ls
 │   ├── update   [name]                     refresh status cache (all if no name)
-│   ├── upgrade  [name]                     re-clone to latest (all if no name)
+│   ├── upgrade  [name]                     re-clone remote / re-copy local to latest (all if no name)
 │   ├── delete|remove|rm|del <name>...
 │   ├── validate <path>
 │   └── rename|mv <old> <new>
@@ -139,7 +139,7 @@ SSH clones are authenticated automatically via SSH agent or standard key files
 ├── project.yml              # variable schema, defaults, optional inline hooks
 ├── .specsverbatim            # verbatim-copy glob patterns (opt-out from rendering)
 ├── __metadata.json           # written by specs on download/save
-├── __status.json             # remote status cache (written by specs template list)
+├── __status.json             # update-status cache (remote or local source; written by specs template list/update)
 ├── hooks/                    # script-based hooks (mutually exclusive with hooks: in project.yml)
 │   ├── pre-use.sh
 │   └── post-use.sh
@@ -336,6 +336,7 @@ log point is `Debug`, suppressed at the default `Info` level) and is distinct fr
 | `internal/util/git` | `Clone`              | Debug | `repo`, `dest`, `branch` (start and complete)                                              |
 | `internal/util/git` | `Describe`           | Debug | `dest`, `commit`, `version` (or `error` on failure)                                        |
 | `internal/util/git` | `CheckRemoteContext` | Debug | `repo`, `branch`, `dest`, `up_to_date`, `latest_version`, `error_kind`                     |
+| `internal/util/git` | `CheckLocalSource`   | Debug | `source`, `saved_commit`, `saved_version`, `up_to_date`, `latest_version`, `error_kind`    |
 
 ### Consistent attribute keys
 
@@ -398,21 +399,21 @@ func (h *Hooks) Run(trigger, cwd string, ctx map[string]any, funcMap template.Fu
 
 ## Packages Added / Changed vs boilr v1
 
-| Package                  | Status      | Change                                                                                                                                                                          |
-|--------------------------|-------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `internal/specs`         | **new**     | XDG paths, file name constants, sentinel errors, `KindOf()` (replaces `pkg/boilr`)                                                                                              |
-| `internal/registry`      | **new**     | on-disk template store: `Entry`, `Load()`, `Upgrade()`                                                                                                                          |
-| `internal/cmd`           | updated     | new `use.go`, `template_update.go`, `template_upgrade.go`, iterative conditional prompting; no longer reads project files or `__metadata.json` directly                         |
-| `internal/template`      | updated     | configurable delimiters (default `{{ }}`), `context.go`, `verbatim.go`, conditional skip, AST analysis, status; exports `LoadProjectFile()`, `LoadMetadata()`, `SaveMetadata()` |
-| `internal/hooks`         | **new**     | hook loading and execution                                                                                                                                                      |
-| `internal/util/output`   | updated     | lipgloss-based logger + table renderer; `WriteErr` with JSON `error_kind` for known sentinels (replaces tlog + tabular)                                                         |
-| `internal/util/values`   | **new**     | `--values` file (JSON/YAML) and `--arg` flag parsing                                                                                                                            |
-| `internal/host`          | updated     | source format parsing (github:, HTTPS, SSH, local path)                                                                                                                         |
-| `pkg/prompt`             | **removed** | replaced by `huh`                                                                                                                                                               |
-| `pkg/util/tlog`          | **removed** | replaced by `internal/util/output`                                                                                                                                              |
-| `pkg/util/tabular`       | **removed** | replaced by `internal/util/output`                                                                                                                                              |
-| `pkg/util/exec`          | **removed** | no longer needed (hooks use `os/exec` directly)                                                                                                                                 |
-| `internal/util/exit`     | unchanged   |                                                                                                                                                                                 |
-| `internal/util/git`      | updated     | SSH auth, `CheckRemoteContext()` (context-aware), `Describe()` for status tracking; `RemoteCheckResult.Err()` returns typed sentinel errors                                     |
-| `internal/util/osutil`   | updated     | `CopyDir()` recursive copy                                                                                                                                                      |
-| `internal/util/validate` | updated     | `Name()` validator (alphanumeric + hyphens + underscores)                                                                                                                       |
+| Package                  | Status      | Change                                                                                                                                                                                |
+|--------------------------|-------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `internal/specs`         | **new**     | XDG paths, file name constants, sentinel errors, `KindOf()` (replaces `pkg/boilr`)                                                                                                    |
+| `internal/registry`      | **new**     | on-disk template store: `Entry`, `Load()`, `Upgrade()`                                                                                                                                |
+| `internal/cmd`           | updated     | new `use.go`, `template_update.go`, `template_upgrade.go`, iterative conditional prompting; no longer reads project files or `__metadata.json` directly                               |
+| `internal/template`      | updated     | configurable delimiters (default `{{ }}`), `context.go`, `verbatim.go`, conditional skip, AST analysis, status; exports `LoadProjectFile()`, `LoadMetadata()`, `SaveMetadata()`       |
+| `internal/hooks`         | **new**     | hook loading and execution                                                                                                                                                            |
+| `internal/util/output`   | updated     | lipgloss-based logger + table renderer; `WriteErr` with JSON `error_kind` for known sentinels (replaces tlog + tabular)                                                               |
+| `internal/util/values`   | **new**     | `--values` file (JSON/YAML) and `--arg` flag parsing                                                                                                                                  |
+| `internal/host`          | updated     | source format parsing (github:, HTTPS, SSH, local path)                                                                                                                               |
+| `pkg/prompt`             | **removed** | replaced by `huh`                                                                                                                                                                     |
+| `pkg/util/tlog`          | **removed** | replaced by `internal/util/output`                                                                                                                                                    |
+| `pkg/util/tabular`       | **removed** | replaced by `internal/util/output`                                                                                                                                                    |
+| `pkg/util/exec`          | **removed** | no longer needed (hooks use `os/exec` directly)                                                                                                                                       |
+| `internal/util/exit`     | unchanged   |                                                                                                                                                                                       |
+| `internal/util/git`      | updated     | SSH auth, `CheckRemoteContext()` (context-aware), `CheckLocalSource()` (local-path status), `Describe()` for status tracking; `RemoteCheckResult.Err()` returns typed sentinel errors |
+| `internal/util/osutil`   | updated     | `CopyDir()` recursive copy                                                                                                                                                            |
+| `internal/util/validate` | updated     | `Name()` validator (alphanumeric + hyphens + underscores)                                                                                                                             |

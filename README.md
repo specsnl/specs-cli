@@ -43,6 +43,25 @@ specs template download github:specsnl/my-template my-template
 specs template use my-template ./my-project
 ```
 
+You can also register a local directory as a template:
+
+```sh
+specs template save ./my-template my-template
+```
+
+### Keeping templates up to date
+
+`specs template list` shows an update `Status` for each registered template:
+
+- **Remote templates** (from `download`) are checked against their git remote.
+- **Local templates** (from `save`) are checked against their **source directory on disk** —
+  `update available` means the source path has moved ahead of what was saved (`source missing`
+  if that path is gone).
+
+`specs template upgrade [name]` applies available updates: remote templates are re-cloned, local
+templates are re-copied from their source path. Cached statuses refresh automatically once older
+than 24 hours or when written by a different `specs` version.
+
 ---
 
 ## The project file
