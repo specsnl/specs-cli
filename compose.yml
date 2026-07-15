@@ -51,3 +51,11 @@ services:
       - ./docs/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
       - "8080:80"
+
+  node:
+    profiles: ["markdown"]
+    # Latest version: https://hub.docker.com/_/node/tags
+    image: node:24.15.0-bookworm
+    working_dir: /src
+    volumes:
+      - .:/src
