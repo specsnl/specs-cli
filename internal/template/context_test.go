@@ -312,6 +312,74 @@ func TestLoadUserContext_DelimitersKeyStripped(t *testing.T) {
 	}
 }
 
+func TestExtractSpecsVersion_Missing(t *testing.T) {
+	dir := t.TempDir()
+	writeProjectYAML(t, dir, "Name: test\n")
+
+	constraint, raw, err := pkgtemplate.ExtractSpecsVersion(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if constraint != nil {
+		t.Errorf("constraint = %v, want nil when key absent", constraint)
+	}
+	if raw != "" {
+		t.Errorf("raw = %q, want empty when key absent", raw)
+	}
+}
+
+func TestExtractSpecsVersion_Valid(t *testing.T) {
+	dir := t.TempDir()
+	writeProjectYAML(t, dir, "Name: test\n__specs__version: ^0.1.0\n")
+
+	constraint, raw, err := pkgtemplate.ExtractSpecsVersion(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if constraint == nil {
+		t.Fatal("constraint = nil, want a parsed constraint")
+	}
+	if raw != "^0.1.0" {
+		t.Errorf("raw = %q, want %q", raw, "^0.1.0")
+	}
+}
+
+func TestExtractSpecsVersion_WrongType(t *testing.T) {
+	dir := t.TempDir()
+	writeProjectYAML(t, dir, "Name: test\n__specs__version: 123\n")
+
+	_, _, err := pkgtemplate.ExtractSpecsVersion(dir)
+	if !errors.Is(err, specs.ErrInvalidSpecsVersion) {
+		t.Errorf("expected ErrInvalidSpecsVersion, got %v", err)
+	}
+}
+
+func TestExtractSpecsVersion_InvalidConstraint(t *testing.T) {
+	dir := t.TempDir()
+	writeProjectYAML(t, dir, "Name: test\n__specs__version: \"not a version\"\n")
+
+	_, _, err := pkgtemplate.ExtractSpecsVersion(dir)
+	if !errors.Is(err, specs.ErrInvalidSpecsVersion) {
+		t.Errorf("expected ErrInvalidSpecsVersion, got %v", err)
+	}
+}
+
+func TestLoadUserContext_SpecsVersionKeyStripped(t *testing.T) {
+	dir := t.TempDir()
+	writeProjectYAML(t, dir, "Name: test\n__specs__version: ^0.1.0\n")
+
+	ctx, _, err := pkgtemplate.LoadUserContext(dir, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, ok := ctx["__specs__version"]; ok {
+		t.Error("__specs__version should be stripped from user context")
+	}
+	if ctx["Name"] != "test" {
+		t.Errorf("ctx[Name] = %q, want %q", ctx["Name"], "test")
+	}
+}
+
 func TestLoadUserContext_AmbiguousProjectFile(t *testing.T) {
 	dir := t.TempDir()
 	writeProjectYAML(t, dir, "Name: from-yaml\n")

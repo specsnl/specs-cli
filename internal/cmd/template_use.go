@@ -69,6 +69,9 @@ func newTemplateUseCmd(app *App) *cobra.Command {
 func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) error {
 	cfg := a.templateConfig()
 	cfg.ContinueOnRenderError = opts.continueOnError
+	// Inject the running CLI version so Get() can enforce a template's __specs__version
+	// constraint. Covers both `specs use` and `specs template use`, which share this path.
+	cfg.Version = Version
 	tmpl, err := pkgtemplate.Get(templateRoot, cfg)
 	if err != nil {
 		return err

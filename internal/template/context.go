@@ -12,6 +12,7 @@ import (
 	texttemplate "text/template"
 	"text/template/parse"
 
+	"github.com/Masterminds/semver/v3"
 	"gopkg.in/yaml.v3"
 
 	"github.com/specsnl/specs-cli/internal/specs"
@@ -34,6 +35,7 @@ func LoadUserContext(templateRoot string, funcMap texttemplate.FuncMap, delims s
 
 	delete(raw, "hooks")                      // consumed by the hook runner, not a template variable
 	delete(raw, specs.ProjectDelimitersKey)   // consumed by Get(); must not appear as a user variable
+	delete(raw, specs.ProjectSpecsVersionKey) // consumed by Get(); must not appear as a user variable
 
 	userCtx, err = resolveReferencedDefaults(raw, funcMap, delims)
 	return userCtx, computedDefs, err
@@ -61,6 +63,30 @@ func ExtractProjectDelimiters(templateRoot string, fallback specs.Delimiters) (s
 		return fallback, specs.ErrInvalidDelimiters
 	}
 	return specs.Delimiters{Left: left, Right: right}, nil
+}
+
+// ExtractSpecsVersion reads project.yaml and returns the semver constraint configured
+// under the __specs__version key, together with the raw constraint string.
+// It returns (nil, "", nil) when the key is absent. It returns ErrInvalidSpecsVersion
+// when the key is present but is not a string or is not a parseable constraint.
+func ExtractSpecsVersion(templateRoot string) (constraint *semver.Constraints, raw string, err error) {
+	rawCtx, err := LoadProjectFile(templateRoot)
+	if err != nil {
+		return nil, "", err
+	}
+	v, ok := rawCtx[specs.ProjectSpecsVersionKey]
+	if !ok {
+		return nil, "", nil
+	}
+	s, ok := v.(string)
+	if !ok {
+		return nil, "", fmt.Errorf("%w: got %T", specs.ErrInvalidSpecsVersion, v)
+	}
+	c, err := semver.NewConstraint(s)
+	if err != nil {
+		return nil, "", fmt.Errorf("%w: %q: %v", specs.ErrInvalidSpecsVersion, s, err)
+	}
+	return c, s, nil
 }
 
 // ApplyComputed resolves computed definitions against the finalised context (post-prompt)

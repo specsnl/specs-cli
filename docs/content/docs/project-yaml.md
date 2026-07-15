@@ -43,6 +43,27 @@ hooks:
     - go mod tidy
 ```
 
+## Required specs version
+
+Set the reserved `__specs__version` key to declare which `specs` CLI versions a template supports. When present, `specs use` and `specs template use` refuse to run the template unless the running binary satisfies the constraint:
+
+```yaml
+__specs__version: ^0.1.0
+```
+
+The value is any valid [Masterminds/semver](https://github.com/Masterminds/semver) constraint string — both lower and upper bounds are supported:
+
+| Value | Meaning |
+|-------|---------|
+| `0.1.0` | exactly `0.1.0` |
+| `^0.1.0` | `>= 0.1.0, < 0.2.0` |
+| `^1.1.1` | `>= 1.1.1, < 2.0.0` |
+| `~0.1.0` | `>= 0.1.0, < 0.2.0` |
+| `>= 0.1.0` | `>= 0.1.0` |
+| `>= 0.1.0, < 2.0` | explicit range |
+
+A development build (version `dev`, the default when building from source) skips the check so contributors are never locked out. The key is reserved and never exposed as a template variable. `specs template save` intentionally does **not** run the check — you can save a newer template on an older CLI for later use.
+
 ## Computed values
 
 Entries under `computed:` are evaluated after all prompting is complete. They add new keys to the template context and are never shown as prompts. Values may reference user-provided variables.

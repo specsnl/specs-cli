@@ -261,6 +261,8 @@ so that callers can use `errors.Is` to distinguish them:
 | `ErrLocalSource` | `local_source` | Local path given to a command that requires a remote URL |
 | `ErrInvalidComputedDef` | `invalid_computed_def` | `computed:` entry in `project.yaml` has wrong type, value type mismatch, or key conflict |
 | `ErrCyclicDependency` | `cyclic_dependency` | Cycle detected among computed or referenced-default keys |
+| `ErrInvalidSpecsVersion` | `invalid_specs_version` | `__specs__version` in `project.yaml` is not a string or not a parseable semver constraint |
+| `ErrSpecsVersionUnsatisfied` | `specs_version_unsatisfied` | Running CLI version does not satisfy the template's `__specs__version` constraint |
 
 `specs.KindOf(err error) string` returns the stable kind string for any error in the chain,
 or `""` when no known sentinel is wrapped.
