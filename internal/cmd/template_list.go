@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -13,6 +14,28 @@ import (
 	pkggit "github.com/specsnl/specs-cli/internal/util/git"
 	"golang.org/x/sync/errgroup"
 )
+
+// localRepoPrefix marks a Repository value that refers to a directory on disk
+// (registered via 'specs template save') rather than a remote git URL.
+const localRepoPrefix = "local:"
+
+// isLocalRepo reports whether repo refers to a local source path.
+func isLocalRepo(repo string) bool {
+	return strings.HasPrefix(repo, localRepoPrefix)
+}
+
+// isTrackable reports whether a template carries enough metadata for a status
+// check. A remote template needs a repository and a branch; a local template
+// needs a recorded commit to compare its source path against.
+func isTrackable(meta *pkgtemplate.Metadata) bool {
+	if meta == nil || meta.Repository == "" {
+		return false
+	}
+	if isLocalRepo(meta.Repository) {
+		return meta.Commit != ""
+	}
+	return meta.Branch != ""
+}
 
 func newTemplateListCmd(app *App) *cobra.Command {
 	cmd := &cobra.Command{
@@ -80,24 +103,37 @@ func newTemplateListCmd(app *App) *cobra.Command {
 			eg.SetLimit(maxConcurrency)
 
 			for i, entry := range tmplEntries {
-				if entry.meta == nil || entry.meta.Repository == "" || entry.meta.Branch == "" {
+				if !isTrackable(entry.meta) {
 					continue
 				}
-				if entry.status != nil && !entry.status.IsStale() {
+				// A version change forces a refresh even within the 24h window, so a
+				// status written by an older binary with different check logic is not trusted.
+				if entry.status != nil && !entry.status.NeedsRefresh(Version) {
 					continue
 				}
-				i, name, repo, branch := i, entry.name, entry.meta.Repository, entry.meta.Branch
+				i, name := i, entry.name
+				repo, branch := entry.meta.Repository, entry.meta.Branch
+				commit, version := entry.meta.Commit, entry.meta.Version
+				local := isLocalRepo(repo)
 				eg.Go(func() error {
-					checkCtx, cancelCheck := context.WithTimeout(egCtx, app.checkTimeout)
-					defer cancelCheck()
 					root := specs.TemplatePath(name)
-					// git layer logs the check-remote start/result
-					result := app.checkRemoteFn(checkCtx, root, repo, branch)
+					var result pkggit.RemoteCheckResult
+					if local {
+						// Local templates compare against the source path on disk, not a
+						// git remote. The git layer logs the check-local start/result.
+						result = pkggit.CheckLocalSource(strings.TrimPrefix(repo, localRepoPrefix), commit, version)
+					} else {
+						checkCtx, cancelCheck := context.WithTimeout(egCtx, app.checkTimeout)
+						defer cancelCheck()
+						// git layer logs the check-remote start/result
+						result = app.checkRemoteFn(checkCtx, root, repo, branch)
+					}
 					newStatus := &pkgtemplate.TemplateStatus{
 						CheckedAt:     pkgtemplate.JSONTime{Time: time.Now().UTC()},
 						IsUpToDate:    result.IsUpToDate,
 						LatestVersion: result.LatestVersion,
 						ErrorKind:     result.ErrorKind,
+						SpecsVersion:  Version,
 					}
 					if err := pkgtemplate.SaveStatus(root, newStatus); err != nil {
 						slog.Debug("failed to save template status", "template", name, "error", err)
@@ -126,8 +162,7 @@ func newTemplateListCmd(app *App) *cobra.Command {
 						version = entry.meta.Version
 					}
 				}
-				hasRemote := entry.meta != nil && entry.meta.Repository != "" && entry.meta.Branch != ""
-				statusStr := statusLabel(entry.status, hasRemote)
+				statusStr := statusLabel(entry.status, isTrackable(entry.meta))
 				rows = append(rows, []string{entry.name, repo, version, statusStr, created, updated})
 			}
 
@@ -149,9 +184,11 @@ func newTemplateListCmd(app *App) *cobra.Command {
 	return cmd
 }
 
-// statusLabel returns the Status column string for a template.
-func statusLabel(status *pkgtemplate.TemplateStatus, hasRemote bool) string {
-	if !hasRemote {
+// statusLabel returns the Status column string for a template. tracked reports
+// whether the template has a source (remote branch or local path) whose status
+// can be checked; untracked templates always render as "-".
+func statusLabel(status *pkgtemplate.TemplateStatus, tracked bool) string {
+	if !tracked {
 		return "-"
 	}
 	if status == nil {
@@ -164,6 +201,8 @@ func statusLabel(status *pkgtemplate.TemplateStatus, hasRemote bool) string {
 		return "auth error"
 	case pkggit.CheckErrorNotFound:
 		return "not found"
+	case pkggit.CheckErrorSourceMissing:
+		return "source missing"
 	case pkggit.CheckErrorUnknown:
 		return "check failed"
 	}

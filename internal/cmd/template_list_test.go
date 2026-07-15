@@ -196,10 +196,11 @@ func TestList_StatusColumn_FreshUpToDate(t *testing.T) {
 	if err := pkgtemplate.SaveMetadata(tmplDir, "remote-tpl", "https://example.com/repo", "main", "", "", time.Now().UTC(), time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
-	// Write a fresh status so no network call is made.
+	// Write a fresh status stamped with the current CLI version so no network call is made.
 	status := &pkgtemplate.TemplateStatus{
-		CheckedAt:  pkgtemplate.JSONTime{Time: time.Now()},
-		IsUpToDate: true,
+		CheckedAt:    pkgtemplate.JSONTime{Time: time.Now()},
+		IsUpToDate:   true,
+		SpecsVersion: Version,
 	}
 	if err := pkgtemplate.SaveStatus(tmplDir, status); err != nil {
 		t.Fatal(err)
@@ -226,6 +227,7 @@ func TestStatusLabel(t *testing.T) {
 		{"network error", &pkgtemplate.TemplateStatus{ErrorKind: pkggit.CheckErrorNetwork}, true, "unknown (offline?)"},
 		{"auth error", &pkgtemplate.TemplateStatus{ErrorKind: pkggit.CheckErrorAuth}, true, "auth error"},
 		{"not found", &pkgtemplate.TemplateStatus{ErrorKind: pkggit.CheckErrorNotFound}, true, "not found"},
+		{"source missing", &pkgtemplate.TemplateStatus{ErrorKind: pkggit.CheckErrorSourceMissing}, true, "source missing"},
 		{"unknown error", &pkgtemplate.TemplateStatus{ErrorKind: pkggit.CheckErrorUnknown}, true, "check failed"},
 		{"up-to-date", &pkgtemplate.TemplateStatus{IsUpToDate: true}, true, "up-to-date"},
 		{"update with version", &pkgtemplate.TemplateStatus{LatestVersion: "v2.0.0"}, true, "update: v2.0.0"},

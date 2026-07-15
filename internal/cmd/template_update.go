@@ -47,33 +47,45 @@ func newTemplateUpdateCmd(app *App) *cobra.Command {
 				if err != nil {
 					slog.Debug("failed to parse template metadata", "template", name, "error", err)
 				}
-				if meta == nil || meta.Repository == "" || strings.HasPrefix(meta.Repository, "local:") {
+				if meta == nil || meta.Repository == "" {
 					continue
 				}
 
-				branch := meta.Branch
-				if branch == "" {
-					b, err := pkggit.CurrentBranch(root)
-					if err != nil {
-						slog.Debug("could not resolve branch from local HEAD, skipping", "template", name, "error", err)
+				var result pkggit.RemoteCheckResult
+				if isLocalRepo(meta.Repository) {
+					if meta.Commit == "" {
+						// Nothing recorded to compare the source path against.
 						continue
 					}
-					branch = b
-					// Persist the resolved branch so future runs skip this fallback.
-					if err := pkgtemplate.SaveMetadata(root, name, meta.Repository, branch, meta.Commit, meta.Version, meta.Created.Time, meta.Updated.Time); err != nil {
-						slog.Debug("failed to persist resolved branch", "template", name, "error", err)
+					checkedCount++
+					// git layer logs the check-local start/result
+					result = pkggit.CheckLocalSource(strings.TrimPrefix(meta.Repository, localRepoPrefix), meta.Commit, meta.Version)
+				} else {
+					branch := meta.Branch
+					if branch == "" {
+						b, err := pkggit.CurrentBranch(root)
+						if err != nil {
+							slog.Debug("could not resolve branch from local HEAD, skipping", "template", name, "error", err)
+							continue
+						}
+						branch = b
+						// Persist the resolved branch so future runs skip this fallback.
+						if err := pkgtemplate.SaveMetadata(root, name, meta.Repository, branch, meta.Commit, meta.Version, meta.Created.Time, meta.Updated.Time); err != nil {
+							slog.Debug("failed to persist resolved branch", "template", name, "error", err)
+						}
 					}
-				}
 
-				checkedCount++
-				// git layer logs the check-remote start/result
-				result := pkggit.CheckRemote(root, meta.Repository, branch)
+					checkedCount++
+					// git layer logs the check-remote start/result
+					result = pkggit.CheckRemote(root, meta.Repository, branch)
+				}
 
 				newStatus := &pkgtemplate.TemplateStatus{
 					CheckedAt:     pkgtemplate.JSONTime{Time: time.Now().UTC()},
 					IsUpToDate:    result.IsUpToDate,
 					LatestVersion: result.LatestVersion,
 					ErrorKind:     result.ErrorKind,
+					SpecsVersion:  Version,
 				}
 				if err := pkgtemplate.SaveStatus(root, newStatus); err != nil {
 					slog.Debug("failed to save template status", "template", name, "error", err)
@@ -86,6 +98,8 @@ func newTemplateUpdateCmd(app *App) *cobra.Command {
 					app.Output.Warn("template %q: auth error", name)
 				case pkggit.CheckErrorNotFound:
 					app.Output.Warn("template %q: repository not found", name)
+				case pkggit.CheckErrorSourceMissing:
+					app.Output.Warn("template %q: local source path is missing", name)
 				case pkggit.CheckErrorUnknown:
 					app.Output.Warn("template %q: status check failed", name)
 				default:

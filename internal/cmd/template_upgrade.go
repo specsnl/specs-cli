@@ -46,7 +46,7 @@ func newTemplateUpgradeCmd(app *App) *cobra.Command {
 				}
 				switch {
 				case res.IsLocal:
-					app.Output.Info("template %q is a local template — skipping (no remote branch)", name)
+					app.Output.Info("template %q has no trackable source (no remote branch or git history) — skipping", name)
 				case res.AlreadyUpToDate:
 					app.Output.Info("template %q is already up-to-date", name)
 				default:

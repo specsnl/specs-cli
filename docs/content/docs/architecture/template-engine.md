@@ -493,26 +493,55 @@ Exit codes are a bitmask — multiple conditions combine additively:
 
 ## Template Status Tracking
 
-`__status.json` caches the result of a remote HEAD check per template. The `list` command
-refreshes stale entries (older than 24 hours) concurrently, bounded to at most 8 parallel
-checks via `errgroup.SetLimit(8)`. Each individual check has a 10-second per-remote timeout;
+`__status.json` caches the result of a status check per template. The `list` command
+refreshes entries that need it concurrently, bounded to at most 8 parallel checks via
+`errgroup.SetLimit(8)`. Each individual remote check has a 10-second per-remote timeout;
 the entire refresh phase has a 30-second top-level timeout. Both timeouts use `context.Context`
 propagated from the command, so Ctrl-C cancels in-flight checks immediately.
 The `update` command forces an immediate refresh for one or all templates.
 
 ```go
 type TemplateStatus struct {
-    CheckedAt     JSONTime              // time of last remote check
+    CheckedAt     JSONTime              // time of last check
     IsUpToDate    bool                  // true when no newer version is available (see below)
-    LatestVersion string                // set when a newer semver tag is available
-    ErrorKind     pkggit.CheckErrorKind // "network", "auth", "not-found", "unknown", or ""
+    LatestVersion string                // set when a newer version is available
+    ErrorKind     pkggit.CheckErrorKind // "network", "auth", "not-found", "source-missing", "unknown", or ""
+    SpecsVersion  string                // specs CLI version that wrote this status
 }
 ```
 
 `specs template list` displays a `Status` column with labels: `up-to-date`,
-`update: <version>`, `update available`, `unknown (offline?)`, `auth error`, `not found`.
+`update: <version>`, `update available`, `unknown (offline?)`, `auth error`, `not found`,
+`source missing`.
 
-### How a newer version is determined
+### When a cached status is refreshed
+
+`TemplateStatus.NeedsRefresh(currentVersion)` decides whether the `list` command re-checks a
+cached status. A refresh happens when either:
+
+- the status is **stale** — older than 24 hours (`IsStale`); or
+- the status was written by a **different specs version** — `SpecsVersion` does not match the
+  running binary.
+
+The version guard ensures a status produced by an older binary with different check logic is
+never trusted after an upgrade: a status-detection fix takes effect on the first `list` after
+the upgrade instead of waiting out the 24-hour window. `SpecsVersion` is stamped on every
+status written by `list` and `update`.
+
+### Remote vs local templates
+
+The source of truth depends on how the template was registered:
+
+- **Remote templates** (`Repository` is a git URL) are checked against the remote via
+  `CheckRemoteContext`, which lists the remote refs without modifying the local checkout.
+- **Local templates** (`Repository` is `local:<path>`, from `specs template save`) are checked
+  against the **source directory on disk** via `CheckLocalSource` — never a git remote. The
+  template is behind when the source path's current `git describe` (commit + version) differs
+  from the commit/version recorded in metadata at save time. When the source path no longer
+  exists (or is no longer a git repository) the status is `source-missing`. A local template
+  saved from a non-git directory has no recorded commit and is not tracked.
+
+### How a newer version is determined (remote templates)
 
 `resolveStatus` compares the remote refs against the local checkout using two modes:
 
