@@ -24,7 +24,7 @@ GoReleaser runs only in the release workflow — not needed for local developmen
 
 ## Version Injection
 
-```
+```text
 -X github.com/specsnl/specs-cli/internal/cmd.Version=<version>
 ```
 
@@ -117,7 +117,7 @@ A separate public repository is required: `github.com/specsnl/homebrew-tap`.
 
 Structure after first release:
 
-```
+```text
 homebrew-tap/
   Casks/
     specs.rb     ← generated and committed by GoReleaser on every release
@@ -203,13 +203,16 @@ Binaries and archives land in `dist/` for inspection.
 2. Release notes are ready.
 3. `go.mod` / `go.sum` are committed and `go mod tidy` has been run.
 4. Tag and push:
+
    ```shell
    git tag v1.0.0
    git push origin v1.0.0
    ```
+
 5. Verify the GitHub Release was created.
 6. Verify the Homebrew cask was updated in `specsnl/homebrew-tap`.
 7. Test the Homebrew install on a clean machine:
+
    ```shell
    brew update && brew upgrade --cask specs
    ```

@@ -6,7 +6,7 @@ prev: /docs/commands
 
 A template is a directory with this layout:
 
-```
+```text
 my-template/
 ├── project.yml         # Variable schema, defaults, and hooks
 └── template/           # Files and directories to render
@@ -21,7 +21,7 @@ Both a project file (`project.yml`) and a `template/` directory are required.
 
 Templates use `{{ }}` by default — standard Go `text/template` syntax:
 
-```
+```text
 Hello, {{ .projectName }}!
 ```
 
@@ -29,7 +29,7 @@ All standard Go template syntax works inside `{{ }}`, including `if`, `range`, `
 
 Directory and file names are also templated:
 
-```
+```text
 {{ .projectName }}/
   {{ if .useDocker }}Dockerfile{{ end }}
   main.go
@@ -74,7 +74,7 @@ will remain executable in every scaffolded project.
 
 Create a `.specsverbatim` file in the template root to list glob patterns for files that should be copied as-is without template rendering:
 
-```
+```text
 *.png
 *.jpg
 *.gif

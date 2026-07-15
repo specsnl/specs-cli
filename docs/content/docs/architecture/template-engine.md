@@ -7,7 +7,7 @@ weight: 2
 
 Every specs template is a directory with this structure:
 
-```
+```text
 <template-root>/
 ├── project.yml          # variable schema with defaults
 ├── .specsverbatim        # verbatim-copy glob patterns (opt-out from rendering)
@@ -165,7 +165,7 @@ ever added in the future.
 A `.specsverbatim` file at the template root lists glob patterns for files that should be
 copied byte-for-byte without any template rendering:
 
-```
+```text
 # .specsverbatim
 composer.lock
 package-lock.json
@@ -182,7 +182,7 @@ Use the filename itself as a template expression. After rendering:
 - Empty or whitespace result → skip the file/directory
 - Any **path segment** empty → skip the file (enables conditional directory trees)
 
-```
+```text
 template/
 └── {{ if .UseSonarQube }}sonar-project.properties{{ end }}
 └── {{ if .UseSonarQube }}docs/images{{ end }}/
@@ -260,7 +260,7 @@ are copied byte-for-byte; no template rendering is attempted.
 Binary detection is best-effort. Any file that must be copied verbatim should be listed
 explicitly in `.specsverbatim` rather than relying on auto-detection:
 
-```
+```text
 # .specsverbatim — recommended patterns for common binary assets
 *.png
 *.jpg
@@ -380,6 +380,7 @@ Hooks run shell commands before and after `specs template use`. Two trigger poin
 Two mutually exclusive definition forms:
 
 **Form A — inline in `project.yml`:**
+
 ```yaml
 hooks:
   pre-use:
@@ -394,7 +395,8 @@ hooks:
 ```
 
 **Form B — script files:**
-```
+
+```text
 template-root/
 ├── project.yml
 ├── hooks/

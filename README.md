@@ -1,8 +1,10 @@
+<!-- markdownlint-disable MD033 -->
 <p align="center">
   <img src="docs/static/logo.svg" width="200" alt="Specs CLI">
   <h1 align="center">Specs CLI</h1>
   <p align="center"><strong>Documentation:</strong> <a href="https://cli.specs.dev">cli.specs.dev</a></p>
 </p>
+<!-- markdownlint-enable MD033 -->
 
 A general-purpose developer CLI for scaffolding projects from templates. Define variables, write template files, run hooks — `specs` handles the rest.
 

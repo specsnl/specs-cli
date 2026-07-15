@@ -3,6 +3,8 @@ title: Specs CLI
 layout: hextra-home
 ---
 
+<!-- markdownlint-disable MD033 -->
+
 <div class="hx-mt-6 hx-mb-6">
 {{< hextra/hero-headline >}}
   Scaffold projects from templates

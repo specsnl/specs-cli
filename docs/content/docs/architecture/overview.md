@@ -19,7 +19,7 @@ weight: 1
 
 ## Package Structure
 
-```
+```text
 specs-cli/
 ├── main.go                       # main() — XDG init, cmd.Execute()
 ├── go.mod
@@ -72,7 +72,7 @@ specs-cli/
 
 ## CLI Command Tree
 
-```
+```text
 specs [--version|-v]
       [--debug]                             enable debug output
       [--safe-mode]                         disable env/filesystem template functions + hooks
@@ -134,7 +134,7 @@ SSH clones are authenticated automatically via SSH agent or standard key files
 
 ## Template Structure
 
-```
+```text
 <template-root>/
 ├── project.yml              # variable schema, defaults, optional inline hooks
 ├── .specsverbatim            # verbatim-copy glob patterns (opt-out from rendering)
@@ -156,7 +156,7 @@ SSH clones are authenticated automatically via SSH agent or standard key files
 
 ## Configuration
 
-```
+```text
 $XDG_CONFIG_HOME/specs/          (default: ~/.config/specs/)
 └── templates/
     └── <name>/

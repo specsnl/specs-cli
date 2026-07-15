@@ -8,6 +8,7 @@ weight: 4
 **Decision:** Keep `github.com/spf13/cobra`.
 
 **Rationale:**
+
 - The command tree (`specs template download|save|use|list|…`) is nested and will grow.
 - Cobra handles arbitrary subcommand depth cleanly via `AddCommand()`; flags can appear before or after arguments.
 - Best-in-class shell completion for bash, zsh, fish, and PowerShell.
@@ -20,6 +21,7 @@ weight: 4
 **Decision:** `charm.land/huh/v2` — full replacement for the old `internal/prompt`.
 
 **Rationale:**
+
 - Usable in standalone mode (`form.Run()` blocks like a normal function call).
 - Covers every original prompt type, plus more:
 
@@ -40,11 +42,13 @@ weight: 4
 **Decision:** `charm.land/lipgloss/v2` — replaces `fatih/color` and `tablewriter`.
 
 **Rationale:**
+
 - CSS-like chainable API for colour, bold/italic/underline, padding, margins, borders, and alignment.
 - Handles colour downsampling automatically (24-bit → 8-bit → 4-bit based on terminal capability).
 - `internal/util/output` provides the logger and table renderer on top of lipgloss.
 
 **Libraries replaced:**
+
 - `github.com/fatih/color`
 - `github.com/olekukonko/tablewriter`
 
@@ -75,6 +79,7 @@ Full Bubbletea event loop adoption is deferred — huh already covers the intera
 Backwards compatibility layer is **not** used.
 
 **Rationale:**
+
 - Sprig is effectively unmaintained; sprout is its active successor.
 - Functions are grouped into opt-in registries — only pull in what is needed.
 - `env` and `expandenv` are not included by default — templates cannot read host environment
@@ -88,6 +93,7 @@ Backwards compatibility layer is **not** used.
 **Decision:** `log/slog` (standard library, Go ≥ 1.21).
 
 **Rationale:**
+
 - Zero additional dependency.
 - Structured key-value fields give context to debug messages.
 - Silent by default; activated by `--debug` on the root command.
@@ -99,6 +105,7 @@ Backwards compatibility layer is **not** used.
 **Decision:** `gopkg.in/yaml.v3` — replaces `encoding/json` for reading `project.yml`.
 
 **Rationale:**
+
 - YAML supports comments, making template config files self-documenting.
 - `gopkg.in/yaml.v3` unmarshals into `map[string]any` identically to `encoding/json`.
 - Also used for `--values` files: `.yaml`/`.yml` extensions are parsed as YAML,
@@ -128,6 +135,7 @@ configDir := filepath.Join(xdg.ConfigHome, "specs")
 **Decision:** `github.com/Masterminds/semver/v3` for semver-aware version comparison.
 
 **Rationale:**
+
 - `specs template update`/`upgrade` compare local and remote tag versions to find the highest
   available semver tag greater than the currently installed version. This applies both to
   tag-tracked templates and to branch-tracked templates whose checkout sits on a semver tag, so
@@ -141,6 +149,7 @@ configDir := filepath.Join(xdg.ConfigHome, "specs")
 **Decision:** `golang.org/x/crypto` for SSH host key verification via `knownhosts.New`.
 
 **Rationale:**
+
 - go-git requires an explicit `HostKeyCallback` for SSH connections.
 - `golang.org/x/crypto/ssh/knownhosts` reads `~/.ssh/known_hosts` and builds a callback
   that prevents MITM attacks.

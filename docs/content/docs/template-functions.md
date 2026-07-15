@@ -15,7 +15,7 @@ Templates have access to 200+ functions provided by [Sprout](https://github.com/
 | `formatFilesize` | `formatFilesize <bytes>` → `string`                                       | Human-readable file size (e.g. `"1.0 MB"`) |
 | `password`       | `password <length> <digits> <symbols> <noUpper> <allowRepeat>` → `string` | Generate a secure random password          |
 
-```
+```text
 Default registry: {{ hostname }}.azurecr.io
 Author: {{ username }}
 Secret key: {{ password 32 4 4 false false }}

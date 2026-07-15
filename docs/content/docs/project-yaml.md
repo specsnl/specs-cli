@@ -88,7 +88,7 @@ Hook commands may use `{{ }}` template expressions. To skip hooks for a single r
 
 You can also define hooks as scripts in a `hooks/` directory at the template root:
 
-```
+```text
 my-template/
 ├── project.yml
 ├── template/

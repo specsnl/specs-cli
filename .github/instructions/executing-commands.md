@@ -11,11 +11,11 @@ applyTo: "**"
 Use the Taskfile tasks for building and testing. Other commands (e.g. `git`, file manipulation,
 installing host tools) may run locally on the host.
 
-| Operation | How to run |
-|-----------|-----------|
-| Run tests | `task test` |
-| Build the binary | `task build` |
-| Anything else | Run locally on the host |
+| Operation         | How to run              |
+| ----------------- | ----------------------- |
+| Run tests         | `task test`             |
+| Build the binary  | `task build`            |
+| Anything else     | Run locally on the host |
 
 Never call `docker` or `docker compose` directly — use the Taskfile tasks above.
 

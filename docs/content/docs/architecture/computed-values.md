@@ -6,6 +6,7 @@ weight: 3
 ## Problem
 
 There is no way to define a value that is:
+
 - Always derived from other inputs (never prompted)
 - Available in template files under a clean name
 - Composed of hardcoded strings, Sprout functions, and references to user-provided inputs
@@ -19,6 +20,7 @@ are purely derived.
 ## Decision
 
 Add a top-level `computed:` section to `project.yml`. Keys in `computed:` are:
+
 - Evaluated **after** all user inputs are finalised (post-prompt)
 - **Never** shown as prompts
 - **Not** overridable via `--values` or `--arg`
@@ -50,6 +52,7 @@ hooks:
 ```
 
 Rules:
+
 - Values are Go template expressions using the configured delimiters (default `{{ }}`) and the full Sprout FuncMap.
 - A computed key **must not** duplicate a user input key — error at load time.
 - A computed key **cannot** be overridden by `--values` or `--arg`.
@@ -137,7 +140,7 @@ computed:
 
 Computed values are available in template files and hook commands exactly like user inputs:
 
-```
+```text
 # Template file content
 DB_DATABASE={{ .DbName }}
 DB_TEST_DATABASE={{ .DbTestName }}
