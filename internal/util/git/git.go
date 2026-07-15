@@ -279,11 +279,12 @@ func CurrentBranch(dir string) (string, error) {
 type CheckErrorKind string
 
 const (
-	CheckErrorNone     CheckErrorKind = ""
-	CheckErrorNetwork  CheckErrorKind = "network"
-	CheckErrorAuth     CheckErrorKind = "auth"
-	CheckErrorNotFound CheckErrorKind = "not-found"
-	CheckErrorUnknown  CheckErrorKind = "unknown"
+	CheckErrorNone          CheckErrorKind = ""
+	CheckErrorNetwork       CheckErrorKind = "network"
+	CheckErrorAuth          CheckErrorKind = "auth"
+	CheckErrorNotFound      CheckErrorKind = "not-found"
+	CheckErrorUnknown       CheckErrorKind = "unknown"
+	CheckErrorSourceMissing CheckErrorKind = "source-missing"
 )
 
 var (
@@ -295,6 +296,9 @@ var (
 	ErrCheckNotFound = errors.New("repository not found at remote")
 	// ErrCheckUnknown is returned when a remote status check fails for an unknown reason.
 	ErrCheckUnknown = errors.New("unknown error checking remote")
+	// ErrCheckSourceMissing is returned when a local template's source path no longer
+	// exists (or is no longer a git repository) so its status cannot be determined.
+	ErrCheckSourceMissing = errors.New("local source path is missing")
 )
 
 // RemoteCheckResult is the outcome of CheckRemote.
@@ -316,6 +320,8 @@ func (r RemoteCheckResult) Err() error {
 		return ErrCheckNotFound
 	case CheckErrorUnknown:
 		return ErrCheckUnknown
+	case CheckErrorSourceMissing:
+		return ErrCheckSourceMissing
 	default:
 		return nil
 	}
@@ -415,6 +421,44 @@ func semverTagAtCommit(repo *gogit.Repository, hash plumbing.Hash) string {
 // CheckRemote is a context-free convenience wrapper around CheckRemoteContext.
 func CheckRemote(dir, url, branch string) RemoteCheckResult {
 	return CheckRemoteContext(context.Background(), dir, url, branch)
+}
+
+// CheckLocalSource determines whether a template registered from a local path
+// (a "local:<path>" repository) is behind the current state of that path. Unlike
+// CheckRemoteContext, it never touches the network or the template's git origin —
+// the "source of truth" for a local template is the directory it was saved from.
+//
+// sourcePath is the on-disk path the template was saved from (the "local:" prefix
+// already stripped). savedCommit/savedVersion are the metadata recorded at save
+// time. The path's current git-describe output is compared against them:
+//
+//   - path missing or not a git repository → ErrorKind CheckErrorSourceMissing.
+//   - describe matches the saved commit and version → up-to-date.
+//   - otherwise → not up-to-date, with LatestVersion set to the path's current version.
+func CheckLocalSource(sourcePath, savedCommit, savedVersion string) (result RemoteCheckResult) {
+	slog.Debug("git check-local start", "source", sourcePath, "saved_commit", savedCommit, "saved_version", savedVersion)
+	defer func() {
+		slog.Debug("git check-local result",
+			"source", sourcePath,
+			"up_to_date", result.IsUpToDate,
+			"latest_version", result.LatestVersion,
+			"error_kind", string(result.ErrorKind),
+		)
+	}()
+
+	if info, err := os.Stat(sourcePath); err != nil || !info.IsDir() {
+		return RemoteCheckResult{ErrorKind: CheckErrorSourceMissing}
+	}
+
+	desc, err := Describe(sourcePath)
+	if err != nil {
+		return RemoteCheckResult{ErrorKind: CheckErrorSourceMissing}
+	}
+
+	if desc.Commit == savedCommit && desc.Version == savedVersion {
+		return RemoteCheckResult{IsUpToDate: true}
+	}
+	return RemoteCheckResult{IsUpToDate: false, LatestVersion: desc.Version}
 }
 
 // classifyRemoteError maps a remote.List error to a CheckErrorKind.
