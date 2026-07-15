@@ -33,6 +33,10 @@ var (
 	// remote URL (e.g. specs template download).
 	ErrLocalSource = errors.New("source is a local path — use 'specs template save' to register a local template")
 
+	// ErrLocalSourceMissing is returned when a local template's source path (the directory
+	// it was saved from) no longer exists, so its status cannot be checked or upgraded.
+	ErrLocalSourceMissing = errors.New("local source path no longer exists")
+
 	// ErrInvalidComputedDef is returned when a "computed" entry in project.yaml is malformed:
 	// wrong type, value type mismatch, or conflict with a user input key.
 	ErrInvalidComputedDef = errors.New("invalid computed definition")
@@ -78,6 +82,8 @@ func KindOf(err error) string {
 		return "project_file_missing"
 	case errors.Is(err, ErrLocalSource):
 		return "local_source"
+	case errors.Is(err, ErrLocalSourceMissing):
+		return "local_source_missing"
 	case errors.Is(err, ErrInvalidComputedDef):
 		return "invalid_computed_def"
 	case errors.Is(err, ErrCyclicDependency):

@@ -10,6 +10,7 @@ import (
 	"github.com/specsnl/specs-cli/internal/specs"
 	pkgtemplate "github.com/specsnl/specs-cli/internal/template"
 	pkggit "github.com/specsnl/specs-cli/internal/util/git"
+	"github.com/specsnl/specs-cli/internal/util/osutil"
 )
 
 // Entry represents a registered template with its metadata and cached remote status.
@@ -72,8 +73,11 @@ func Upgrade(name string) (UpgradeResult, error) {
 	if err != nil {
 		slog.Debug("failed to parse template metadata", "template", name, "error", err)
 	}
-	if meta == nil || meta.Repository == "" || strings.HasPrefix(meta.Repository, "local:") {
+	if meta == nil || meta.Repository == "" {
 		return UpgradeResult{IsLocal: true}, nil
+	}
+	if strings.HasPrefix(meta.Repository, "local:") {
+		return upgradeLocal(name, root, meta)
 	}
 
 	branch := meta.Branch
@@ -128,4 +132,49 @@ func Upgrade(name string) (UpgradeResult, error) {
 
 	slog.Debug("upgrade complete", "template", name, "target_ref", targetRef)
 	return UpgradeResult{Repository: meta.Repository, TargetRef: targetRef}, nil
+}
+
+// upgradeLocal re-copies a local template (Repository "local:<path>") from its
+// source directory on disk. A local template with no recorded commit cannot be
+// tracked for changes and is reported as IsLocal (skipped). When the source path
+// no longer exists, ErrLocalSourceMissing is returned. When the source is unchanged
+// the result reports AlreadyUpToDate; otherwise the registry copy is replaced with
+// the current source contents and its metadata refreshed.
+func upgradeLocal(name, root string, meta *pkgtemplate.Metadata) (UpgradeResult, error) {
+	if meta.Commit == "" {
+		// Saved from a non-git directory — no commit to compare, so updates
+		// cannot be detected automatically.
+		return UpgradeResult{IsLocal: true}, nil
+	}
+
+	src := strings.TrimPrefix(meta.Repository, "local:")
+	check := pkggit.CheckLocalSource(src, meta.Commit, meta.Version)
+	if check.ErrorKind == pkggit.CheckErrorSourceMissing {
+		return UpgradeResult{}, fmt.Errorf("%w: %s", specs.ErrLocalSourceMissing, src)
+	}
+	if check.IsUpToDate {
+		return UpgradeResult{AlreadyUpToDate: true}, nil
+	}
+
+	slog.Debug("upgrade local target", "template", name, "source", src, "latest_version", check.LatestVersion)
+
+	if err := os.RemoveAll(root); err != nil {
+		return UpgradeResult{}, err
+	}
+	if err := osutil.CopyDir(src, root); err != nil {
+		return UpgradeResult{}, err
+	}
+
+	desc, _ := pkggit.Describe(root) // errors are logged by the git layer
+	if err := pkgtemplate.SaveMetadata(root, name, meta.Repository, meta.Branch, desc.Commit, desc.Version, meta.Created.Time, time.Now().UTC()); err != nil {
+		return UpgradeResult{}, err
+	}
+
+	// Remove stale status; regenerated on next template list or update.
+	if err := os.Remove(root + "/" + specs.StatusFile); err != nil && !os.IsNotExist(err) {
+		slog.Debug("removing stale status file failed", "template", name, "error", err)
+	}
+
+	slog.Debug("upgrade local complete", "template", name, "source", src)
+	return UpgradeResult{Repository: meta.Repository, TargetRef: src}, nil
 }
