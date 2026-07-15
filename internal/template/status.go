@@ -17,11 +17,25 @@ type TemplateStatus struct {
 	IsUpToDate    bool                  `json:"IsUpToDate"`
 	LatestVersion string                `json:"LatestVersion,omitempty"`
 	ErrorKind     pkggit.CheckErrorKind `json:"ErrorKind,omitempty"`
+	// SpecsVersion is the specs CLI version that wrote this status. It lets the
+	// list command detect a status produced by a different (usually older) binary
+	// and force a refresh, so status-check logic fixes take effect immediately after
+	// an upgrade instead of waiting out the 24-hour staleness window.
+	SpecsVersion string `json:"SpecsVersion,omitempty"`
 }
 
 // IsStale returns true when the cached status is older than 24 hours.
 func (s *TemplateStatus) IsStale() bool {
 	return time.Since(s.CheckedAt.Time) > 24*time.Hour
+}
+
+// NeedsRefresh reports whether the cached status should be re-checked. A refresh
+// is needed when the status is stale (see IsStale) or when it was written by a
+// different specs CLI version than currentVersion — the latter ensures a status
+// produced by an older binary with different check logic is not trusted after an
+// upgrade.
+func (s *TemplateStatus) NeedsRefresh(currentVersion string) bool {
+	return s.IsStale() || s.SpecsVersion != currentVersion
 }
 
 // LoadStatus reads __status.json from templateRoot.

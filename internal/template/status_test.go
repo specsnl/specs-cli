@@ -24,6 +24,52 @@ func TestIsStale_Old(t *testing.T) {
 	}
 }
 
+func TestNeedsRefresh(t *testing.T) {
+	fresh := JSONTime{Time: time.Now().Add(-1 * time.Hour)}
+	stale := JSONTime{Time: time.Now().Add(-25 * time.Hour)}
+
+	tests := []struct {
+		name       string
+		checkedAt  JSONTime
+		version    string
+		current    string
+		wantResult bool
+	}{
+		{"fresh same version", fresh, "1.0.0", "1.0.0", false},
+		{"fresh different version", fresh, "0.9.0", "1.0.0", true},
+		{"fresh empty stored version", fresh, "", "1.0.0", true},
+		{"stale same version", stale, "1.0.0", "1.0.0", true},
+		{"stale different version", stale, "0.9.0", "1.0.0", true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			s := &TemplateStatus{CheckedAt: tc.checkedAt, SpecsVersion: tc.version}
+			if got := s.NeedsRefresh(tc.current); got != tc.wantResult {
+				t.Errorf("NeedsRefresh(%q) with stored %q = %v, want %v", tc.current, tc.version, got, tc.wantResult)
+			}
+		})
+	}
+}
+
+func TestStatus_SpecsVersionRoundtrip(t *testing.T) {
+	dir := t.TempDir()
+	original := &TemplateStatus{
+		CheckedAt:    JSONTime{Time: time.Now().UTC().Truncate(time.Second)},
+		IsUpToDate:   true,
+		SpecsVersion: "1.2.3",
+	}
+	if err := SaveStatus(dir, original); err != nil {
+		t.Fatalf("SaveStatus: %v", err)
+	}
+	loaded, err := LoadStatus(dir)
+	if err != nil {
+		t.Fatalf("LoadStatus: %v", err)
+	}
+	if loaded.SpecsVersion != "1.2.3" {
+		t.Errorf("SpecsVersion: got %q, want %q", loaded.SpecsVersion, "1.2.3")
+	}
+}
+
 func TestLoadStatus_Missing(t *testing.T) {
 	dir := t.TempDir()
 	s, err := LoadStatus(dir)
