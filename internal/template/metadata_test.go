@@ -197,7 +197,9 @@ func TestSaveMetadata_RoundTrip(t *testing.T) {
 	dir := t.TempDir()
 	created := time.Now().Add(-7 * 24 * time.Hour).UTC().Truncate(time.Second)
 
-	if err := pkgtemplate.SaveMetadata(dir, "my-tpl", "https://example.com/repo", "main", "abc123", "v1.2.3", created); err != nil {
+	updated := time.Now().Add(-2 * 24 * time.Hour).UTC().Truncate(time.Second)
+
+	if err := pkgtemplate.SaveMetadata(dir, "my-tpl", "https://example.com/repo", "main", "abc123", "v1.2.3", created, updated); err != nil {
 		t.Fatalf("SaveMetadata: %v", err)
 	}
 
@@ -226,13 +228,16 @@ func TestSaveMetadata_RoundTrip(t *testing.T) {
 	if !m.Created.Time.Equal(created) {
 		t.Errorf("Created = %v, want %v", m.Created.Time, created)
 	}
+	if !m.Updated.Time.Equal(updated) {
+		t.Errorf("Updated = %v, want %v", m.Updated.Time, updated)
+	}
 }
 
 func TestSaveMetadata_PreservesCreatedOnUpgrade(t *testing.T) {
 	dir := t.TempDir()
 	original := time.Now().Add(-90 * 24 * time.Hour).UTC().Truncate(time.Second)
 
-	if err := pkgtemplate.SaveMetadata(dir, "tpl", "https://example.com/repo", "main", "old-sha", "v1.0.0", original); err != nil {
+	if err := pkgtemplate.SaveMetadata(dir, "tpl", "https://example.com/repo", "main", "old-sha", "v1.0.0", original, original); err != nil {
 		t.Fatalf("SaveMetadata (install): %v", err)
 	}
 
@@ -241,8 +246,10 @@ func TestSaveMetadata_PreservesCreatedOnUpgrade(t *testing.T) {
 		t.Fatal("LoadMetadata returned nil")
 	}
 
-	// Simulate upgrade: re-write with new sha/version but pass original created.
-	if err := pkgtemplate.SaveMetadata(dir, "tpl", "https://example.com/repo", "main", "new-sha", "v1.1.0", m.Created.Time); err != nil {
+	// Simulate upgrade: re-write with new sha/version, original created preserved
+	// but a fresh updated timestamp.
+	upgradedAt := time.Now().UTC().Truncate(time.Second)
+	if err := pkgtemplate.SaveMetadata(dir, "tpl", "https://example.com/repo", "main", "new-sha", "v1.1.0", m.Created.Time, upgradedAt); err != nil {
 		t.Fatalf("SaveMetadata (upgrade): %v", err)
 	}
 
@@ -253,7 +260,41 @@ func TestSaveMetadata_PreservesCreatedOnUpgrade(t *testing.T) {
 	if !upgraded.Created.Time.Equal(original) {
 		t.Errorf("Created after upgrade = %v, want %v", upgraded.Created.Time, original)
 	}
+	if !upgraded.Updated.Time.Equal(upgradedAt) {
+		t.Errorf("Updated after upgrade = %v, want %v", upgraded.Updated.Time, upgradedAt)
+	}
 	if upgraded.Commit != "new-sha" {
 		t.Errorf("Commit = %q, want %q", upgraded.Commit, "new-sha")
+	}
+}
+
+// Metadata written before the Updated field existed has no Updated key; LoadMetadata
+// must fall back to Created so such templates still display a sensible timestamp.
+func TestLoadMetadata_MissingUpdated_FallsBackToCreated(t *testing.T) {
+	dir := t.TempDir()
+	created := time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC)
+
+	// Hand-write legacy metadata without an Updated field.
+	legacy := `{
+  "Name": "legacy-tpl",
+  "Repository": "https://example.com/repo",
+  "Branch": "main",
+  "Created": "` + created.Format(time.RFC1123Z) + `",
+  "Commit": "abc123",
+  "Version": "v1.0.0"
+}`
+	if err := os.WriteFile(filepath.Join(dir, specs.MetadataFile), []byte(legacy), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	m, err := pkgtemplate.LoadMetadata(dir)
+	if err != nil {
+		t.Fatalf("LoadMetadata: %v", err)
+	}
+	if m == nil {
+		t.Fatal("LoadMetadata returned nil")
+	}
+	if !m.Updated.Time.Equal(created) {
+		t.Errorf("Updated = %v, want fallback to Created %v", m.Updated.Time, created)
 	}
 }

@@ -409,6 +409,7 @@ type Metadata struct {
     Repository string   `json:"Repository"`
     Branch     string   `json:"Branch,omitempty"`
     Created    JSONTime `json:"Created"`            // set on first install; preserved across upgrades
+    Updated    JSONTime `json:"Updated"`            // set on first install; refreshed on each upgrade
     Commit     string   `json:"Commit,omitempty"`   // full SHA-1 of HEAD at download/upgrade
     Version    string   `json:"Version,omitempty"`  // git-describe-style version string
 }
@@ -417,8 +418,17 @@ type Metadata struct {
 `Created` records when the template was first added to the registry (via
 `template download` or `template save`) and is intentionally preserved across
 `template upgrade` so the `list` command's `Created` column reflects the
-original install time, not the most recent upgrade. `Commit` and `Version` are
-the only fields that change on upgrade.
+original install time, not the most recent upgrade.
+
+`Updated` records the last time the template was upgraded (via `template
+upgrade`). On first install it is set to the same timestamp as `Created`, and it
+is refreshed to the current time on each successful upgrade. The `list` command's
+`Updated` column reflects this value. Metadata written before the `Updated` field
+existed has no `Updated` key; `LoadMetadata` falls back to `Created` in that case
+so pre-existing templates still display a sensible value.
+
+`Commit` and `Version` change on upgrade (alongside `Updated`); `Created` never
+does.
 
 `JSONTime` wraps `time.Time` with RFC1123Z serialisation and a human-readable `"X time ago"`
 display format for the `list` command.

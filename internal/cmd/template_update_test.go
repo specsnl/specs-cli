@@ -26,7 +26,7 @@ func TestUpdate_NamedLocalTemplate_Skipped(t *testing.T) {
 	if err := os.MkdirAll(tmplDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := pkgtemplate.SaveMetadata(tmplDir, "local-tpl", "local:/some/local/path", "", "", "", time.Now().UTC()); err != nil {
+	if err := pkgtemplate.SaveMetadata(tmplDir, "local-tpl", "local:/some/local/path", "", "", "", time.Now().UTC(), time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -54,7 +54,7 @@ func TestUpdate_NamedLocalTemplate_ProducesNoOutput(t *testing.T) {
 	if err := os.MkdirAll(tmplDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := pkgtemplate.SaveMetadata(tmplDir, "local-tpl", "local:/some/local/path", "", "", "", time.Now().UTC()); err != nil {
+	if err := pkgtemplate.SaveMetadata(tmplDir, "local-tpl", "local:/some/local/path", "", "", "", time.Now().UTC(), time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -81,7 +81,7 @@ func TestUpdate_LocalTemplate_WithGitHistory_ProducesNoOutput(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(tmplDir, ".git"), 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := pkgtemplate.SaveMetadata(tmplDir, "local-git-tpl", "local:/Users/user/my-template", "", "", "", time.Now().UTC()); err != nil {
+	if err := pkgtemplate.SaveMetadata(tmplDir, "local-git-tpl", "local:/Users/user/my-template", "", "", "", time.Now().UTC(), time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
 

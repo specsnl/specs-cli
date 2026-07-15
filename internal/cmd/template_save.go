@@ -47,7 +47,8 @@ func newTemplateSaveCmd(app *App) *cobra.Command {
 				return err
 			}
 			desc, _ := pkggit.Describe(srcPath)
-			if err := pkgtemplate.SaveMetadata(dest, name, "local:"+absPath, "", desc.Commit, desc.Version, time.Now().UTC()); err != nil {
+			now := time.Now().UTC()
+			if err := pkgtemplate.SaveMetadata(dest, name, "local:"+absPath, "", desc.Commit, desc.Version, now, now); err != nil {
 				return err
 			}
 
