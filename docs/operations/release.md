@@ -24,7 +24,7 @@ GoReleaser runs only in the release workflow — not needed for local developmen
 
 ## Version Injection
 
-```
+```text
 -X github.com/specsnl/specs-cli/internal/cmd.Version=<version>
 ```
 
@@ -34,12 +34,12 @@ GoReleaser sets `Version` to the Git tag (e.g. `1.2.3`) automatically through `-
 
 ## Target Platforms
 
-| OS | Architecture |
-|----|-------------|
-| `linux` | `amd64` |
-| `linux` | `arm64` |
-| `darwin` | `amd64` |
-| `darwin` | `arm64` |
+| OS       | Architecture |
+|----------|--------------|
+| `linux`  | `amd64`      |
+| `linux`  | `arm64`      |
+| `darwin` | `amd64`      |
+| `darwin` | `arm64`      |
 
 ---
 
@@ -117,7 +117,7 @@ A separate public repository is required: `github.com/specsnl/homebrew-tap`.
 
 Structure after first release:
 
-```
+```text
 homebrew-tap/
   Casks/
     specs.rb     ← generated and committed by GoReleaser on every release
@@ -155,32 +155,32 @@ brew install --cask specs
 
 **Trigger:** push and pull_request on any branch.
 
-| Step | Command |
-|------|---------|
-| Checkout | `actions/checkout` with `fetch-depth: 0` |
-| Setup Go | `actions/setup-go` pinned to `go.mod` version |
+| Step          | Command                                       |
+|---------------|-----------------------------------------------|
+| Checkout      | `actions/checkout` with `fetch-depth: 0`      |
+| Setup Go      | `actions/setup-go` pinned to `go.mod` version |
 | Cache modules | `actions/cache` on Go module and build caches |
-| Vet | `go vet ./...` |
-| Test | `go test -race -count=1 ./...` |
-| Build (smoke) | `go build -o /dev/null .` |
+| Vet           | `go vet ./...`                                |
+| Test          | `go test -race -count=1 ./...`                |
+| Build (smoke) | `go build -o /dev/null .`                     |
 
 ### Release workflow — `release.yml`
 
 **Trigger:** push of a tag matching `v*`.
 
-| Step | Detail |
-|------|--------|
-| Checkout | `fetch-depth: 0` — GoReleaser needs all tags and commits |
-| Setup Go | same version as `go.mod` |
-| Cache modules | same as CI |
-| Run GoReleaser | `goreleaser/goreleaser-action` |
+| Step           | Detail                                                   |
+|----------------|----------------------------------------------------------|
+| Checkout       | `fetch-depth: 0` — GoReleaser needs all tags and commits |
+| Setup Go       | same version as `go.mod`                                 |
+| Cache modules  | same as CI                                               |
+| Run GoReleaser | `goreleaser/goreleaser-action`                           |
 
 Required secrets:
 
-| Secret | Purpose |
-|--------|---------|
-| `GITHUB_TOKEN` | Built-in; used by GoReleaser to create GitHub Release |
-| `HOMEBREW_TAP_GITHUB_TOKEN` | PAT with `contents: write` on `specsnl/homebrew-tap` |
+| Secret                      | Purpose                                               |
+|-----------------------------|-------------------------------------------------------|
+| `GITHUB_TOKEN`              | Built-in; used by GoReleaser to create GitHub Release |
+| `HOMEBREW_TAP_GITHUB_TOKEN` | PAT with `contents: write` on `specsnl/homebrew-tap`  |
 
 The release workflow needs `permissions: contents: write`.
 
@@ -203,13 +203,16 @@ Binaries and archives land in `dist/` for inspection.
 2. Release notes are ready.
 3. `go.mod` / `go.sum` are committed and `go mod tidy` has been run.
 4. Tag and push:
+
    ```shell
    git tag v1.0.0
    git push origin v1.0.0
    ```
+
 5. Verify the GitHub Release was created.
 6. Verify the Homebrew cask was updated in `specsnl/homebrew-tap`.
 7. Test the Homebrew install on a clean machine:
+
    ```shell
    brew update && brew upgrade --cask specs
    ```

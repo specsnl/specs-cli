@@ -6,6 +6,7 @@ weight: 3
 ## Problem
 
 There is no way to define a value that is:
+
 - Always derived from other inputs (never prompted)
 - Available in template files under a clean name
 - Composed of hardcoded strings, Sprout functions, and references to user-provided inputs
@@ -19,6 +20,7 @@ are purely derived.
 ## Decision
 
 Add a top-level `computed:` section to `project.yml`. Keys in `computed:` are:
+
 - Evaluated **after** all user inputs are finalised (post-prompt)
 - **Never** shown as prompts
 - **Not** overridable via `--values` or `--arg`
@@ -50,6 +52,7 @@ hooks:
 ```
 
 Rules:
+
 - Values are Go template expressions using the configured delimiters (default `{{ }}`) and the full Sprout FuncMap.
 - A computed key **must not** duplicate a user input key — error at load time.
 - A computed key **cannot** be overridden by `--values` or `--arg`.
@@ -59,13 +62,13 @@ Rules:
 
 ## Difference from Referenced Defaults
 
-| | Referenced default | Computed value |
-|---|---|---|
-| Defined as | String with `{{` in the user input section | Key under `computed:` |
-| User prompted? | Yes — shown with computed result as pre-fill | **No** |
-| User can override? | Yes | **No** |
-| Resolved when? | Before prompting (pre-fill calculation) | After all inputs are finalised |
-| Can reference other computed values? | No | Yes (topological sort) |
+|                                      | Referenced default                           | Computed value                 |
+|--------------------------------------|----------------------------------------------|--------------------------------|
+| Defined as                           | String with `{{` in the user input section   | Key under `computed:`          |
+| User prompted?                       | Yes — shown with computed result as pre-fill | **No**                         |
+| User can override?                   | Yes                                          | **No**                         |
+| Resolved when?                       | Before prompting (pre-fill calculation)      | After all inputs are finalised |
+| Can reference other computed values? | No                                           | Yes (topological sort)         |
 
 ---
 
@@ -123,13 +126,13 @@ computed:
 
 ## Error Handling
 
-| Situation | Behaviour |
-|---|---|
-| Computed key duplicates a user input key | Error at load time |
-| `--values` or `--arg` targets a computed key | Error before prompting |
-| Template syntax error in a computed value | Fatal error — names the key |
-| Reference to non-existent key | Fatal error — names the computed key |
-| Cycle between computed values | Fatal error — lists the keys involved |
+| Situation                                    | Behaviour                             |
+|----------------------------------------------|---------------------------------------|
+| Computed key duplicates a user input key     | Error at load time                    |
+| `--values` or `--arg` targets a computed key | Error before prompting                |
+| Template syntax error in a computed value    | Fatal error — names the key           |
+| Reference to non-existent key                | Fatal error — names the computed key  |
+| Cycle between computed values                | Fatal error — lists the keys involved |
 
 ---
 
@@ -137,7 +140,7 @@ computed:
 
 Computed values are available in template files and hook commands exactly like user inputs:
 
-```
+```text
 # Template file content
 DB_DATABASE={{ .DbName }}
 DB_TEST_DATABASE={{ .DbTestName }}

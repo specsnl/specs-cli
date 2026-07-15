@@ -6,7 +6,7 @@ prev: /docs/commands
 
 A template is a directory with this layout:
 
-```
+```text
 my-template/
 ├── project.yml         # Variable schema, defaults, and hooks
 └── template/           # Files and directories to render
@@ -21,7 +21,7 @@ Both a project file (`project.yml`) and a `template/` directory are required.
 
 Templates use `{{ }}` by default — standard Go `text/template` syntax:
 
-```
+```text
 Hello, {{ .projectName }}!
 ```
 
@@ -29,7 +29,7 @@ All standard Go template syntax works inside `{{ }}`, including `if`, `range`, `
 
 Directory and file names are also templated:
 
-```
+```text
 {{ .projectName }}/
   {{ if .useDocker }}Dockerfile{{ end }}
   main.go
@@ -49,9 +49,9 @@ With `[[ ]]` configured, `{{ }}` in your template files passes through unchanged
 
 Keys prefixed with `__` in the project file are reserved by `specs` and are never exposed as template variables:
 
-| Key | Purpose |
-|-----|---------|
-| `__delimiters` | Override the default `{{ }}` delimiters (see above). |
+| Key                | Purpose                                                                                                                                                                                                                                                                                                                                    |
+|--------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `__delimiters`     | Override the default `{{ }}` delimiters (see above).                                                                                                                                                                                                                                                                                       |
 | `__specs__version` | Declare a semver constraint on the `specs` CLI version required to use the template, e.g. `__specs__version: ^0.1.0`. `specs use` and `specs template use` refuse to run the template when the running binary does not satisfy the constraint (development builds are exempt). See _The project file_ page for accepted constraint shapes. |
 
 The whole `__` namespace is reserved. You cannot define a variable or computed value whose name
@@ -74,7 +74,7 @@ will remain executable in every scaffolded project.
 
 Create a `.specsverbatim` file in the template root to list glob patterns for files that should be copied as-is without template rendering:
 
-```
+```text
 *.png
 *.jpg
 *.gif
@@ -86,15 +86,15 @@ dist/**
 
 The `<source>` argument in `specs use` and `specs template download` accepts:
 
-| Format | Example |
-|--------|---------|
-| GitHub shorthand | `github:user/repo` |
-| GitHub + branch | `github:user/repo:main` |
-| HTTPS URL | `https://github.com/user/repo` |
-| SSH (SCP-style) | `git@github.com:user/repo` |
-| SSH URL | `ssh://git@github.com/user/repo` |
-| Local path | `./path/to/template` |
-| Local (explicit) | `file:./path/to/template` |
+| Format           | Example                          |
+|------------------|----------------------------------|
+| GitHub shorthand | `github:user/repo`               |
+| GitHub + branch  | `github:user/repo:main`          |
+| HTTPS URL        | `https://github.com/user/repo`   |
+| SSH (SCP-style)  | `git@github.com:user/repo`       |
+| SSH URL          | `ssh://git@github.com/user/repo` |
+| Local path       | `./path/to/template`             |
+| Local (explicit) | `file:./path/to/template`        |
 
 Local paths are only accepted by `specs use`. To register a local directory as a named template, use `specs template save` instead.
 

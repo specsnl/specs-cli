@@ -9,11 +9,11 @@ It defines the variables your template accepts and their defaults, plus optional
 
 Each variable is a top-level key whose value is the default. The prompt type is inferred from the YAML value type:
 
-| YAML value | Prompt |
-|------------|--------|
-| `"my-app"` (string) | Text input |
-| `false` / `true` (bool) | Yes/No confirm |
-| `["MIT", "Apache-2.0"]` (array) | Select list |
+| YAML value                      | Prompt         |
+|---------------------------------|----------------|
+| `"my-app"` (string)             | Text input     |
+| `false` / `true` (bool)         | Yes/No confirm |
+| `["MIT", "Apache-2.0"]` (array) | Select list    |
 
 For select lists, the first option is the default — it is pre-selected when prompting interactively and chosen automatically when using `--use-defaults`.
 
@@ -53,14 +53,14 @@ __specs__version: ^0.1.0
 
 The value is any valid [Masterminds/semver](https://github.com/Masterminds/semver) constraint string — both lower and upper bounds are supported:
 
-| Value | Meaning |
-|-------|---------|
-| `0.1.0` | exactly `0.1.0` |
-| `^0.1.0` | `>= 0.1.0, < 0.2.0` |
-| `^1.1.1` | `>= 1.1.1, < 2.0.0` |
-| `~0.1.0` | `>= 0.1.0, < 0.2.0` |
-| `>= 0.1.0` | `>= 0.1.0` |
-| `>= 0.1.0, < 2.0` | explicit range |
+| Value             | Meaning             |
+|-------------------|---------------------|
+| `0.1.0`           | exactly `0.1.0`     |
+| `^0.1.0`          | `>= 0.1.0, < 0.2.0` |
+| `^1.1.1`          | `>= 1.1.1, < 2.0.0` |
+| `~0.1.0`          | `>= 0.1.0, < 0.2.0` |
+| `>= 0.1.0`        | `>= 0.1.0`          |
+| `>= 0.1.0, < 2.0` | explicit range      |
 
 A development build (version `dev`, the default when building from source) skips the check so contributors are never locked out. The key is reserved and never exposed as a template variable. `specs template save` intentionally does **not** run the check — you can save a newer template on an older CLI for later use.
 
@@ -88,7 +88,7 @@ Hook commands may use `{{ }}` template expressions. To skip hooks for a single r
 
 You can also define hooks as scripts in a `hooks/` directory at the template root:
 
-```
+```text
 my-template/
 ├── project.yml
 ├── template/

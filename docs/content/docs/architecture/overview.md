@@ -19,7 +19,7 @@ weight: 1
 
 ## Package Structure
 
-```
+```text
 specs-cli/
 ├── main.go                       # main() — XDG init, cmd.Execute()
 ├── go.mod
@@ -72,7 +72,7 @@ specs-cli/
 
 ## CLI Command Tree
 
-```
+```text
 specs [--version|-v]
       [--debug]                             enable debug output
       [--safe-mode]                         disable env/filesystem template functions + hooks
@@ -108,15 +108,15 @@ specs [--version|-v]
 
 One-step command — downloads, executes, discards. No registry entry created.
 
-| Format | Example |
-|--------|---------|
-| GitHub shorthand | `github:Ilyes512/boilr-laravel-project` |
-| GitHub with branch | `github:Ilyes512/boilr-laravel-project:main` |
-| Full HTTPS URL | `https://github.com/Ilyes512/boilr-laravel-project` |
-| SCP-style SSH | `git@github.com:Ilyes512/boilr-laravel-project` |
-| SSH URL | `ssh://git@github.com/Ilyes512/boilr-laravel-project` |
-| Local path (explicit) | `file:./my-template` |
-| Local path (implicit) | `./my-template` or `/absolute/path` |
+| Format                | Example                                               |
+|-----------------------|-------------------------------------------------------|
+| GitHub shorthand      | `github:Ilyes512/boilr-laravel-project`               |
+| GitHub with branch    | `github:Ilyes512/boilr-laravel-project:main`          |
+| Full HTTPS URL        | `https://github.com/Ilyes512/boilr-laravel-project`   |
+| SCP-style SSH         | `git@github.com:Ilyes512/boilr-laravel-project`       |
+| SSH URL               | `ssh://git@github.com/Ilyes512/boilr-laravel-project` |
+| Local path (explicit) | `file:./my-template`                                  |
+| Local path (implicit) | `./my-template` or `/absolute/path`                   |
 
 **Source validation rules** (enforced at parse time, before any network call):
 
@@ -134,7 +134,7 @@ SSH clones are authenticated automatically via SSH agent or standard key files
 
 ## Template Structure
 
-```
+```text
 <template-root>/
 ├── project.yml              # variable schema, defaults, optional inline hooks
 ├── .specsverbatim            # verbatim-copy glob patterns (opt-out from rendering)
@@ -156,7 +156,7 @@ SSH clones are authenticated automatically via SSH agent or standard key files
 
 ## Configuration
 
-```
+```text
 $XDG_CONFIG_HOME/specs/          (default: ~/.config/specs/)
 └── templates/
     └── <name>/
@@ -249,21 +249,21 @@ flowchart TD
 Sentinel errors are declared in `internal/specs/errors.go` and should always be wrapped with `%w`
 so that callers can use `errors.Is` to distinguish them:
 
-| Sentinel | Kind string | Raised when |
-|----------|-------------|-------------|
-| `ErrTemplateNotFound` | `template_not_found` | Named template does not exist in the registry |
-| `ErrTemplateAlreadyExists` | `template_already_exists` | Template name is already in use (save/download/rename without `--force`) |
-| `ErrTemplateDirMissing` | `template_dir_missing` | Template root exists but has no `template/` subdirectory |
-| `ErrBothHookSources` | `both_hook_sources` | Both inline hooks and a `hooks/` directory are present |
-| `ErrAmbiguousProjectFile` | `ambiguous_project_file` | Both `project.yaml` and `project.yml` exist in the template root |
-| `ErrInvalidDelimiters` | `invalid_delimiters` | `__delimiters` in `project.yaml` is malformed |
-| `ErrProjectFileMissing` | `project_file_missing` | No `project.yaml`, `project.yml`, or `project.json` found |
-| `ErrLocalSource` | `local_source` | Local path given to a command that requires a remote URL |
-| `ErrInvalidComputedDef` | `invalid_computed_def` | `computed:` entry in `project.yaml` has wrong type, value type mismatch, or key conflict |
-| `ErrCyclicDependency` | `cyclic_dependency` | Cycle detected among computed or referenced-default keys |
-| `ErrInvalidSpecsVersion` | `invalid_specs_version` | `__specs__version` in `project.yaml` is not a string or not a parseable semver constraint |
-| `ErrSpecsVersionUnsatisfied` | `specs_version_unsatisfied` | Running CLI version does not satisfy the template's `__specs__version` constraint |
-| `ErrReservedVariableName` | `reserved_variable_name` | A variable or computed name uses the reserved `__` prefix without being a recognised configuration key |
+| Sentinel                     | Kind string                 | Raised when                                                                                            |
+|------------------------------|-----------------------------|--------------------------------------------------------------------------------------------------------|
+| `ErrTemplateNotFound`        | `template_not_found`        | Named template does not exist in the registry                                                          |
+| `ErrTemplateAlreadyExists`   | `template_already_exists`   | Template name is already in use (save/download/rename without `--force`)                               |
+| `ErrTemplateDirMissing`      | `template_dir_missing`      | Template root exists but has no `template/` subdirectory                                               |
+| `ErrBothHookSources`         | `both_hook_sources`         | Both inline hooks and a `hooks/` directory are present                                                 |
+| `ErrAmbiguousProjectFile`    | `ambiguous_project_file`    | Both `project.yaml` and `project.yml` exist in the template root                                       |
+| `ErrInvalidDelimiters`       | `invalid_delimiters`        | `__delimiters` in `project.yaml` is malformed                                                          |
+| `ErrProjectFileMissing`      | `project_file_missing`      | No `project.yaml`, `project.yml`, or `project.json` found                                              |
+| `ErrLocalSource`             | `local_source`              | Local path given to a command that requires a remote URL                                               |
+| `ErrInvalidComputedDef`      | `invalid_computed_def`      | `computed:` entry in `project.yaml` has wrong type, value type mismatch, or key conflict               |
+| `ErrCyclicDependency`        | `cyclic_dependency`         | Cycle detected among computed or referenced-default keys                                               |
+| `ErrInvalidSpecsVersion`     | `invalid_specs_version`     | `__specs__version` in `project.yaml` is not a string or not a parseable semver constraint              |
+| `ErrSpecsVersionUnsatisfied` | `specs_version_unsatisfied` | Running CLI version does not satisfy the template's `__specs__version` constraint                      |
+| `ErrReservedVariableName`    | `reserved_variable_name`    | A variable or computed name uses the reserved `__` prefix without being a recognised configuration key |
 
 `specs.KindOf(err error) string` returns the stable kind string for any error in the chain,
 or `""` when no known sentinel is wrapped.
@@ -287,10 +287,10 @@ type Writer interface {
 
 Two implementations are selected at startup via `--output`:
 
-| Flag value | Writer | Behaviour |
-|---|---|---|
-| `pretty` (default) | `HumanWriter` | Lipgloss-styled text; `Info` → stdout, `Warn`/`Error`/`WriteErr` → stderr |
-| `json` | `JSONWriter` | NDJSON lines; `Table` → JSON array to stdout; `WriteErr` adds `"error_kind"` for known sentinels |
+| Flag value         | Writer        | Behaviour                                                                                        |
+|--------------------|---------------|--------------------------------------------------------------------------------------------------|
+| `pretty` (default) | `HumanWriter` | Lipgloss-styled text; `Info` → stdout, `Warn`/`Error`/`WriteErr` → stderr                        |
+| `json`             | `JSONWriter`  | NDJSON lines; `Table` → JSON array to stdout; `WriteErr` adds `"error_kind"` for known sentinels |
 
 `JSONWriter.WriteErr` example for a known sentinel:
 
@@ -317,42 +317,42 @@ log point is `Debug`, suppressed at the default `Info` level) and is distinct fr
 
 ### Flags
 
-| Flag | Effect |
-|------|--------|
-| `--debug` | Raises the slog level from `Info` to `Debug`; all debug logs become visible |
+| Flag                        | Effect                                                                                                                        |
+|-----------------------------|-------------------------------------------------------------------------------------------------------------------------------|
+| `--debug`                   | Raises the slog level from `Info` to `Debug`; all debug logs become visible                                                   |
 | `--output=json` + `--debug` | Swaps the slog handler to `slog.NewJSONHandler` writing to stderr; debug logs are emitted as NDJSON distinct from stdout data |
 
 ### Log points
 
-| Package | Function | Level | Attributes |
-|---------|----------|-------|------------|
-| `internal/template` | `Get` | Debug | `template`, `keys`, `computed` |
-| `internal/template` | `Execute` | Debug | `path`, `dest`, `action` (render/verbatim/skip) |
-| `internal/template` | `Execute` | Debug | `template`, `dest`, `rendered`, `verbatim`, `skipped` (summary) |
-| `internal/template` | `ApplyComputed` | Debug | `key`, `source`="computed" |
-| `internal/hooks` | `Hooks.Run` | Debug | `trigger`, `commands`, `command` |
-| `internal/cmd` | `executeTemplate` | Debug | `key`, `source` (values_file/arg_flag/default/prompt) — one log per key, final source only |
-| `internal/registry` | `Upgrade` | Debug | `template`, `repo`, `branch`, `target_ref`, `latest_version` |
-| `internal/util/git` | `Clone` | Debug | `repo`, `dest`, `branch` (start and complete) |
-| `internal/util/git` | `Describe` | Debug | `dest`, `commit`, `version` (or `error` on failure) |
-| `internal/util/git` | `CheckRemoteContext` | Debug | `repo`, `branch`, `dest`, `up_to_date`, `latest_version`, `error_kind` |
+| Package             | Function             | Level | Attributes                                                                                 |
+|---------------------|----------------------|-------|--------------------------------------------------------------------------------------------|
+| `internal/template` | `Get`                | Debug | `template`, `keys`, `computed`                                                             |
+| `internal/template` | `Execute`            | Debug | `path`, `dest`, `action` (render/verbatim/skip)                                            |
+| `internal/template` | `Execute`            | Debug | `template`, `dest`, `rendered`, `verbatim`, `skipped` (summary)                            |
+| `internal/template` | `ApplyComputed`      | Debug | `key`, `source`="computed"                                                                 |
+| `internal/hooks`    | `Hooks.Run`          | Debug | `trigger`, `commands`, `command`                                                           |
+| `internal/cmd`      | `executeTemplate`    | Debug | `key`, `source` (values_file/arg_flag/default/prompt) — one log per key, final source only |
+| `internal/registry` | `Upgrade`            | Debug | `template`, `repo`, `branch`, `target_ref`, `latest_version`                               |
+| `internal/util/git` | `Clone`              | Debug | `repo`, `dest`, `branch` (start and complete)                                              |
+| `internal/util/git` | `Describe`           | Debug | `dest`, `commit`, `version` (or `error` on failure)                                        |
+| `internal/util/git` | `CheckRemoteContext` | Debug | `repo`, `branch`, `dest`, `up_to_date`, `latest_version`, `error_kind`                     |
 
 ### Consistent attribute keys
 
-| Key | Meaning |
-|-----|---------|
-| `template` | Registered template name (e.g. `"minimal"`) — primary user identifier |
-| `path` | Template-relative source path of a file (e.g. `"src/foo.go"`) |
-| `dest` | Absolute destination path on the filesystem |
-| `repo` | Remote repository URL |
-| `branch` | Git branch or tag ref |
-| `commit` | Full git commit SHA |
-| `version` | git-describe-style version string |
-| `trigger` | Hook trigger name (`pre-use`, `post-use`) |
-| `key` | Context variable name |
-| `source` | How a context value was provided (`default`/`prompt`/`values_file`/`arg_flag`/`computed`) |
-| `action` | File decision (`render`/`verbatim`/`skip`) |
-| `error` | Underlying error (formatted as `%v`) |
+| Key        | Meaning                                                                                   |
+|------------|-------------------------------------------------------------------------------------------|
+| `template` | Registered template name (e.g. `"minimal"`) — primary user identifier                     |
+| `path`     | Template-relative source path of a file (e.g. `"src/foo.go"`)                             |
+| `dest`     | Absolute destination path on the filesystem                                               |
+| `repo`     | Remote repository URL                                                                     |
+| `branch`   | Git branch or tag ref                                                                     |
+| `commit`   | Full git commit SHA                                                                       |
+| `version`  | git-describe-style version string                                                         |
+| `trigger`  | Hook trigger name (`pre-use`, `post-use`)                                                 |
+| `key`      | Context variable name                                                                     |
+| `source`   | How a context value was provided (`default`/`prompt`/`values_file`/`arg_flag`/`computed`) |
+| `action`   | File decision (`render`/`verbatim`/`skip`)                                                |
+| `error`    | Underlying error (formatted as `%v`)                                                      |
 
 ### Example: structured debug output
 
@@ -398,21 +398,21 @@ func (h *Hooks) Run(trigger, cwd string, ctx map[string]any, funcMap template.Fu
 
 ## Packages Added / Changed vs boilr v1
 
-| Package | Status | Change |
-|---------|--------|--------|
-| `internal/specs` | **new** | XDG paths, file name constants, sentinel errors, `KindOf()` (replaces `pkg/boilr`) |
-| `internal/registry` | **new** | on-disk template store: `Entry`, `Load()`, `Upgrade()` |
-| `internal/cmd` | updated | new `use.go`, `template_update.go`, `template_upgrade.go`, iterative conditional prompting; no longer reads project files or `__metadata.json` directly |
-| `internal/template` | updated | configurable delimiters (default `{{ }}`), `context.go`, `verbatim.go`, conditional skip, AST analysis, status; exports `LoadProjectFile()`, `LoadMetadata()`, `SaveMetadata()` |
-| `internal/hooks` | **new** | hook loading and execution |
-| `internal/util/output` | updated | lipgloss-based logger + table renderer; `WriteErr` with JSON `error_kind` for known sentinels (replaces tlog + tabular) |
-| `internal/util/values` | **new** | `--values` file (JSON/YAML) and `--arg` flag parsing |
-| `internal/host` | updated | source format parsing (github:, HTTPS, SSH, local path) |
-| `pkg/prompt` | **removed** | replaced by `huh` |
-| `pkg/util/tlog` | **removed** | replaced by `internal/util/output` |
-| `pkg/util/tabular` | **removed** | replaced by `internal/util/output` |
-| `pkg/util/exec` | **removed** | no longer needed (hooks use `os/exec` directly) |
-| `internal/util/exit` | unchanged | |
-| `internal/util/git` | updated | SSH auth, `CheckRemoteContext()` (context-aware), `Describe()` for status tracking; `RemoteCheckResult.Err()` returns typed sentinel errors |
-| `internal/util/osutil` | updated | `CopyDir()` recursive copy |
-| `internal/util/validate` | updated | `Name()` validator (alphanumeric + hyphens + underscores) |
+| Package                  | Status      | Change                                                                                                                                                                          |
+|--------------------------|-------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `internal/specs`         | **new**     | XDG paths, file name constants, sentinel errors, `KindOf()` (replaces `pkg/boilr`)                                                                                              |
+| `internal/registry`      | **new**     | on-disk template store: `Entry`, `Load()`, `Upgrade()`                                                                                                                          |
+| `internal/cmd`           | updated     | new `use.go`, `template_update.go`, `template_upgrade.go`, iterative conditional prompting; no longer reads project files or `__metadata.json` directly                         |
+| `internal/template`      | updated     | configurable delimiters (default `{{ }}`), `context.go`, `verbatim.go`, conditional skip, AST analysis, status; exports `LoadProjectFile()`, `LoadMetadata()`, `SaveMetadata()` |
+| `internal/hooks`         | **new**     | hook loading and execution                                                                                                                                                      |
+| `internal/util/output`   | updated     | lipgloss-based logger + table renderer; `WriteErr` with JSON `error_kind` for known sentinels (replaces tlog + tabular)                                                         |
+| `internal/util/values`   | **new**     | `--values` file (JSON/YAML) and `--arg` flag parsing                                                                                                                            |
+| `internal/host`          | updated     | source format parsing (github:, HTTPS, SSH, local path)                                                                                                                         |
+| `pkg/prompt`             | **removed** | replaced by `huh`                                                                                                                                                               |
+| `pkg/util/tlog`          | **removed** | replaced by `internal/util/output`                                                                                                                                              |
+| `pkg/util/tabular`       | **removed** | replaced by `internal/util/output`                                                                                                                                              |
+| `pkg/util/exec`          | **removed** | no longer needed (hooks use `os/exec` directly)                                                                                                                                 |
+| `internal/util/exit`     | unchanged   |                                                                                                                                                                                 |
+| `internal/util/git`      | updated     | SSH auth, `CheckRemoteContext()` (context-aware), `Describe()` for status tracking; `RemoteCheckResult.Err()` returns typed sentinel errors                                     |
+| `internal/util/osutil`   | updated     | `CopyDir()` recursive copy                                                                                                                                                      |
+| `internal/util/validate` | updated     | `Name()` validator (alphanumeric + hyphens + underscores)                                                                                                                       |

@@ -41,6 +41,7 @@ level changes from `--debug` still need to mutate the live handler.
 ### 1. Logger plumbing collapse
 
 **`pkg/cmd/app.go`** (`pkg/cmd/app.go:49-99`)
+
 - Remove the `Logger *slog.Logger` field from `App`.
 - `NewApp()` no longer stores a logger pointer; it builds the default handler and
   calls `slog.SetDefault(slog.New(handler))` directly. The `LevelVar` stays on `App`
@@ -50,30 +51,36 @@ level changes from `--debug` still need to mutate the live handler.
 - Drop the `templateGet` helper — call `pkgtemplate.Get(root, cfg)` directly.
 
 **`pkg/cmd/root.go`** (`pkg/cmd/root.go:33-66`)
+
 - In `PersistentPreRunE`, when `--debug --output=json` switches the handler,
   call `slog.SetDefault(slog.New(slog.NewJSONHandler(cmd.ErrOrStderr(), ...)))`
   instead of mutating `app.Logger`. Drop the trailing standalone `slog.SetDefault`
   (it becomes redundant).
 
 **`pkg/template/template.go`** (`pkg/template/template.go:65-145, 165-237`)
+
 - `Get(templateRoot, cfg)` — drop the `logger *slog.Logger` parameter.
 - Remove the `logger` field from `Template` struct.
 - Replace every `logger.X(...)` / `t.logger.X(...)` with `slog.X(...)`.
 
 **`pkg/template/context.go`** (`pkg/template/context.go:58-102`)
+
 - `ApplyComputed(ctx, defs, funcMap, delims)` — drop the logger parameter.
 - Use `slog.Debug(...)` directly.
 
 **`pkg/template/functions.go`** (the sprout `WithLogger` call site)
+
 - Pass `slog.Default()` to `sprout.WithLogger()` (sprout's API expects a `*slog.Logger`).
 
 **`pkg/hooks/hooks.go`** (`pkg/hooks/hooks.go:18-115`)
+
 - `Load(templateRoot, projectConfig, envPrefix)` — drop the logger parameter.
 - Remove the `logger *slog.Logger` field from `Hooks`.
 - Remove the `if logger == nil { logger = slog.Default() }` fallback in `Run`.
 - All `logger.Debug(...)` → `slog.Debug(...)`.
 
 **`pkg/cmd/template_use.go`** (`pkg/cmd/template_use.go:71-141, 200-340`)
+
 - Remove `a.Logger` arguments from `pkgtemplate.Get`, `hooks.Load`,
   `pkgtemplate.ApplyComputed`, `promptContext`, `runPromptPass`.
 - `promptContext` and `runPromptPass` lose their `logger *slog.Logger` parameters;
@@ -81,9 +88,11 @@ level changes from `--debug` still need to mutate the live handler.
 
 **`pkg/cmd/template_list.go`**, **`template_update.go`**, **`template_download.go`**,
 **`use.go`**
+
 - `app.Logger.X(...)` → `slog.X(...)`.
 
 **`pkg/registry/registry.go`** (`pkg/registry/registry.go:40-104`)
+
 - Already uses `slog.Default().X(...)`. Replace with package-level `slog.X(...)`
   for consistency with the rest of the codebase.
 
@@ -96,6 +105,7 @@ level changes from `--debug` still need to mutate the live handler.
 - `CheckRemoteContext` (`pkg/util/git/git.go:290`): debug log on entry with `repo`, `branch`, `dest`; debug log on exit with `up_to_date`, `latest_version`, `error_kind`.
 
 Once instrumented, **remove the duplicated logs** at the call sites:
+
 - `pkg/cmd/template_download.go:53-63` (clone + describe)
 - `pkg/cmd/use.go` (clone)
 - `pkg/cmd/template_list.go:78-86` (`checking remote status` + `remote status result`)
@@ -117,6 +127,7 @@ signature so `result, _ := ...` patterns disappear and the contract matches real
 ### 4. Add logging in `registry.Upgrade()` (review #4)
 
 `pkg/registry/registry.go:65-104`:
+
 - Log entry: `slog.Debug("upgrade start", "template", name)`.
 - Log the resolved `targetRef` after `CheckRemote`: `slog.Debug("upgrade target", "template", name, "repo", meta.Repository, "branch", meta.Branch, "target_ref", targetRef, "latest_version", result.LatestVersion)`.
 - Log the status file removal: `if err := os.Remove(...); err != nil && !os.IsNotExist(err) { slog.Debug("removing stale status file failed", "template", name, "error", err) }`.
@@ -128,22 +139,23 @@ signature so `result, _ := ...` patterns disappear and the contract matches real
 
 Standardize on this final key set:
 
-| Key       | Meaning                                                                |
-|-----------|------------------------------------------------------------------------|
-| `template`| Registered template name (e.g. `"minimal"`) — primary user identifier  |
-| `path`    | Template-relative source path of a file (e.g. `"src/foo.go"`)          |
-| `dest`    | Absolute destination path on the filesystem                            |
-| `repo`    | Remote repository URL                                                  |
-| `branch`  | Git branch or tag ref                                                  |
-| `commit`  | Full git commit SHA                                                    |
-| `version` | git-describe-style version string                                      |
-| `trigger` | Hook trigger name (`pre-use`, `post-use`)                              |
-| `key`     | Context variable name                                                  |
-| `source`  | How a context value was provided (`default`/`prompt`/`values_file`/`arg_flag`/`computed`) |
-| `action`  | File decision (`render`/`verbatim`/`skip`)                             |
-| `error`   | Underlying error (formatted as `%v`)                                   |
+| Key        | Meaning                                                                                   |
+|------------|-------------------------------------------------------------------------------------------|
+| `template` | Registered template name (e.g. `"minimal"`) — primary user identifier                     |
+| `path`     | Template-relative source path of a file (e.g. `"src/foo.go"`)                             |
+| `dest`     | Absolute destination path on the filesystem                                               |
+| `repo`     | Remote repository URL                                                                     |
+| `branch`   | Git branch or tag ref                                                                     |
+| `commit`   | Full git commit SHA                                                                       |
+| `version`  | git-describe-style version string                                                         |
+| `trigger`  | Hook trigger name (`pre-use`, `post-use`)                                                 |
+| `key`      | Context variable name                                                                     |
+| `source`   | How a context value was provided (`default`/`prompt`/`values_file`/`arg_flag`/`computed`) |
+| `action`   | File decision (`render`/`verbatim`/`skip`)                                                |
+| `error`    | Underlying error (formatted as `%v`)                                                      |
 
 Replace mismatched uses:
+
 - `pkg/template/template.go:92, 117, 130, 163` — `"root", templateRoot` → `"template", templateRoot`.
 - `pkg/cmd/template_list.go:48, 53, 77, 80-86, 94, 101` — `"name"` → `"template"`.
 - `pkg/cmd/template_update.go:43, 51, 53-58, 96` — `"name"` → `"template"`.
@@ -152,6 +164,7 @@ Replace mismatched uses:
 ### 6. Prompt-source semantics — log final winner only (review #6)
 
 Current behavior in `template_use.go`:
+
 - Line 96 logs `source="values_file"` for every key in the values file.
 - Line 108 logs `source="arg_flag"` for `--arg` keys.
 - Line 119 logs `source="default"` for non-provided keys (when `--use-defaults`).
@@ -175,6 +188,7 @@ each key.
 
 Audit every `LoadMetadata`/`LoadStatus` caller and ensure every error path logs at
 debug:
+
 - `pkg/cmd/template_list.go:45, 50` ✓ already logs
 - `pkg/cmd/template_update.go:43, 95` ✓ already logs
 - `pkg/registry/registry.go:43, 50, 73` ✓ already logs
@@ -182,12 +196,14 @@ debug:
 - Verify no other callers exist via `Grep "LoadStatus\|LoadMetadata"`.
 
 Also instrument the two currently-swallowed file mutations:
+
 - `pkg/cmd/template_list.go:101`: `_ = pkgtemplate.SaveStatus(...)` → log on error.
 - `pkg/cmd/template_update.go:64`: same.
 
 ### 8. Repo-wide audit of `, _ :=` and `_ = err` (review #9)
 
 After the targeted fixes above, run a sweep:
+
 - `Grep -n ", _ :=" pkg` and `Grep -n "_ = " pkg` (Go files).
 - For each hit, decide: (a) intentional discard, leave alone; (b) diagnostic value,
   add `slog.Debug(...)`; (c) actual bug, propagate the error.
@@ -251,7 +267,7 @@ flag semantics are unchanged; no update expected, but spot-check to confirm.
 
 ## Critical files (final list)
 
-```
+```text
 pkg/cmd/app.go
 pkg/cmd/root.go
 pkg/cmd/template_use.go
