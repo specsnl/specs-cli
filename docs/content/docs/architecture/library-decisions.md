@@ -23,11 +23,11 @@ weight: 4
 - Usable in standalone mode (`form.Run()` blocks like a normal function call).
 - Covers every original prompt type, plus more:
 
-  | huh field | Replaces |
-  |-----------|---------|
-  | `Input` | `strPrompt` |
-  | `Confirm` | `boolPrompt` (yes/no) |
-  | `Select` | `multipleChoicePrompt` |
+  | huh field     | Replaces                |
+  |---------------|-------------------------|
+  | `Input`       | `strPrompt`             |
+  | `Confirm`     | `boolPrompt` (yes/no)   |
+  | `Select`      | `multipleChoicePrompt`  |
   | `MultiSelect` | *(not supported in v1)* |
 
 - Built-in theming (Charm, Dracula, Catppuccin, Base16, Default).
@@ -60,10 +60,10 @@ lipgloss styles. No bubbles table component is used.
 
 Future candidates if a full TUI is ever adopted:
 
-| Component | Potential use case |
-|-----------|---------|
-| `spinner` | Activity indicator during git clone / template execution |
-| `progress` | File copy progress for large templates |
+| Component  | Potential use case                                       |
+|------------|----------------------------------------------------------|
+| `spinner`  | Activity indicator during git clone / template execution |
+| `progress` | File copy progress for large templates                   |
 
 Full Bubbletea event loop adoption is deferred — huh already covers the interactive prompt UX.
 
@@ -150,18 +150,18 @@ configDir := filepath.Join(xdg.ConfigHome, "specs")
 
 ## Full Dependency Picture
 
-| Package | Purpose |
-|---------|---------|
-| `github.com/spf13/cobra` | CLI command tree |
-| `charm.land/huh/v2` | Interactive forms & prompts |
-| `charm.land/lipgloss/v2` | Output styling (logger + table renderer) |
-| `gopkg.in/yaml.v3` | `project.yml` parsing and `--values` YAML files |
-| `github.com/go-sprout/sprout` | Extended template functions |
-| `github.com/go-git/go-git/v5` | Git clone for template download/upgrade |
-| `github.com/adrg/xdg` | Config/data directory resolution |
-| `github.com/danwakefield/fnmatch` | Glob matching for `.specsverbatim` |
-| `github.com/Masterminds/semver/v3` | Semver comparison for `template upgrade` |
-| `github.com/sethvargo/go-password` | `password()` template function |
-| `github.com/docker/go-units` | `formatFilesize()` template function |
-| `golang.org/x/crypto` | SSH host key verification via `~/.ssh/known_hosts` |
-| `log/slog` | Internal debug logging (stdlib) |
+| Package                            | Purpose                                            |
+|------------------------------------|----------------------------------------------------|
+| `github.com/spf13/cobra`           | CLI command tree                                   |
+| `charm.land/huh/v2`                | Interactive forms & prompts                        |
+| `charm.land/lipgloss/v2`           | Output styling (logger + table renderer)           |
+| `gopkg.in/yaml.v3`                 | `project.yml` parsing and `--values` YAML files    |
+| `github.com/go-sprout/sprout`      | Extended template functions                        |
+| `github.com/go-git/go-git/v5`      | Git clone for template download/upgrade            |
+| `github.com/adrg/xdg`              | Config/data directory resolution                   |
+| `github.com/danwakefield/fnmatch`  | Glob matching for `.specsverbatim`                 |
+| `github.com/Masterminds/semver/v3` | Semver comparison for `template upgrade`           |
+| `github.com/sethvargo/go-password` | `password()` template function                     |
+| `github.com/docker/go-units`       | `formatFilesize()` template function               |
+| `golang.org/x/crypto`              | SSH host key verification via `~/.ssh/known_hosts` |
+| `log/slog`                         | Internal debug logging (stdlib)                    |

@@ -59,13 +59,13 @@ Rules:
 
 ## Difference from Referenced Defaults
 
-| | Referenced default | Computed value |
-|---|---|---|
-| Defined as | String with `{{` in the user input section | Key under `computed:` |
-| User prompted? | Yes — shown with computed result as pre-fill | **No** |
-| User can override? | Yes | **No** |
-| Resolved when? | Before prompting (pre-fill calculation) | After all inputs are finalised |
-| Can reference other computed values? | No | Yes (topological sort) |
+|                                      | Referenced default                           | Computed value                 |
+|--------------------------------------|----------------------------------------------|--------------------------------|
+| Defined as                           | String with `{{` in the user input section   | Key under `computed:`          |
+| User prompted?                       | Yes — shown with computed result as pre-fill | **No**                         |
+| User can override?                   | Yes                                          | **No**                         |
+| Resolved when?                       | Before prompting (pre-fill calculation)      | After all inputs are finalised |
+| Can reference other computed values? | No                                           | Yes (topological sort)         |
 
 ---
 
@@ -123,13 +123,13 @@ computed:
 
 ## Error Handling
 
-| Situation | Behaviour |
-|---|---|
-| Computed key duplicates a user input key | Error at load time |
-| `--values` or `--arg` targets a computed key | Error before prompting |
-| Template syntax error in a computed value | Fatal error — names the key |
-| Reference to non-existent key | Fatal error — names the computed key |
-| Cycle between computed values | Fatal error — lists the keys involved |
+| Situation                                    | Behaviour                             |
+|----------------------------------------------|---------------------------------------|
+| Computed key duplicates a user input key     | Error at load time                    |
+| `--values` or `--arg` targets a computed key | Error before prompting                |
+| Template syntax error in a computed value    | Fatal error — names the key           |
+| Reference to non-existent key                | Fatal error — names the computed key  |
+| Cycle between computed values                | Fatal error — lists the keys involved |
 
 ---
 

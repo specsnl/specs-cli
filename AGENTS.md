@@ -31,10 +31,10 @@
 
 Architecture documentation lives in the `docs/` directory.
 
-| File | Description |
-|------|-------------|
-| [docs/content/docs/architecture/overview.md](./docs/content/docs/architecture/overview.md) | Package structure, CLI tree, data flows |
-| [docs/content/docs/architecture/template-engine.md](./docs/content/docs/architecture/template-engine.md) | Template engine: delimiters, verbatim copy, conditional files, file permissions, hooks |
-| [docs/content/docs/architecture/computed-values.md](./docs/content/docs/architecture/computed-values.md) | Computed values: post-prompt derived context keys |
-| [docs/content/docs/architecture/library-decisions.md](./docs/content/docs/architecture/library-decisions.md) | Library choices and rationale |
-| [docs/operations/release.md](./docs/operations/release.md) | Release pipeline: GoReleaser, GitHub Releases, Homebrew, CI/CD |
+| File                                                                                                         | Description                                                                            |
+|--------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------|
+| [docs/content/docs/architecture/overview.md](./docs/content/docs/architecture/overview.md)                   | Package structure, CLI tree, data flows                                                |
+| [docs/content/docs/architecture/template-engine.md](./docs/content/docs/architecture/template-engine.md)     | Template engine: delimiters, verbatim copy, conditional files, file permissions, hooks |
+| [docs/content/docs/architecture/computed-values.md](./docs/content/docs/architecture/computed-values.md)     | Computed values: post-prompt derived context keys                                      |
+| [docs/content/docs/architecture/library-decisions.md](./docs/content/docs/architecture/library-decisions.md) | Library choices and rationale                                                          |
+| [docs/operations/release.md](./docs/operations/release.md)                                                   | Release pipeline: GoReleaser, GitHub Releases, Homebrew, CI/CD                         |

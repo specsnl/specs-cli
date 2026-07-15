@@ -128,20 +128,20 @@ signature so `result, _ := ...` patterns disappear and the contract matches real
 
 Standardize on this final key set:
 
-| Key       | Meaning                                                                |
-|-----------|------------------------------------------------------------------------|
-| `template`| Registered template name (e.g. `"minimal"`) — primary user identifier  |
-| `path`    | Template-relative source path of a file (e.g. `"src/foo.go"`)          |
-| `dest`    | Absolute destination path on the filesystem                            |
-| `repo`    | Remote repository URL                                                  |
-| `branch`  | Git branch or tag ref                                                  |
-| `commit`  | Full git commit SHA                                                    |
-| `version` | git-describe-style version string                                      |
-| `trigger` | Hook trigger name (`pre-use`, `post-use`)                              |
-| `key`     | Context variable name                                                  |
-| `source`  | How a context value was provided (`default`/`prompt`/`values_file`/`arg_flag`/`computed`) |
-| `action`  | File decision (`render`/`verbatim`/`skip`)                             |
-| `error`   | Underlying error (formatted as `%v`)                                   |
+| Key        | Meaning                                                                                   |
+|------------|-------------------------------------------------------------------------------------------|
+| `template` | Registered template name (e.g. `"minimal"`) — primary user identifier                     |
+| `path`     | Template-relative source path of a file (e.g. `"src/foo.go"`)                             |
+| `dest`     | Absolute destination path on the filesystem                                               |
+| `repo`     | Remote repository URL                                                                     |
+| `branch`   | Git branch or tag ref                                                                     |
+| `commit`   | Full git commit SHA                                                                       |
+| `version`  | git-describe-style version string                                                         |
+| `trigger`  | Hook trigger name (`pre-use`, `post-use`)                                                 |
+| `key`      | Context variable name                                                                     |
+| `source`   | How a context value was provided (`default`/`prompt`/`values_file`/`arg_flag`/`computed`) |
+| `action`   | File decision (`render`/`verbatim`/`skip`)                                                |
+| `error`    | Underlying error (formatted as `%v`)                                                      |
 
 Replace mismatched uses:
 - `pkg/template/template.go:92, 117, 130, 163` — `"root", templateRoot` → `"template", templateRoot`.

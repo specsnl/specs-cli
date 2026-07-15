@@ -50,13 +50,13 @@ computed:
   Year:   "{{ now | date \"2006\" }}"
 ```
 
-| Value type | Prompt behaviour |
-|------------|-----------------|
-| `string`   | Free-text input with default shown |
-| `bool`     | Yes/No confirm prompt |
-| `[]string` | Select list; first item is default |
-| `string` containing `{{` | Referenced default — pre-fill computed, user can override |
-| `computed:` section | Never prompted — derived after all user inputs are finalised |
+| Value type               | Prompt behaviour                                             |
+|--------------------------|--------------------------------------------------------------|
+| `string`                 | Free-text input with default shown                           |
+| `bool`                   | Yes/No confirm prompt                                        |
+| `[]string`               | Select list; first item is default                           |
+| `string` containing `{{` | Referenced default — pre-fill computed, user can override    |
+| `computed:` section      | Never prompted — derived after all user inputs are finalised |
 
 ---
 
@@ -130,13 +130,13 @@ be expressed. `template.ExtractSpecsVersion` parses it with `semver.NewConstrain
 `checkSpecsVersion` helper then evaluates it against the running CLI version (injected via
 `Config.Version` from the cmd layer, so `pkg/template` never imports `pkg/cmd`):
 
-| Condition | Outcome |
-|-----------|---------|
-| Key absent | No check — proceed |
-| Present but not a string, or not a parseable constraint | `ErrInvalidSpecsVersion` — refuse to load |
+| Condition                                                  | Outcome                                                               |
+|------------------------------------------------------------|-----------------------------------------------------------------------|
+| Key absent                                                 | No check — proceed                                                    |
+| Present but not a string, or not a parseable constraint    | `ErrInvalidSpecsVersion` — refuse to load                             |
 | `Config.Version` is empty, `dev`, or otherwise unparseable | Check skipped with a `slog.Debug` line — never lock out source builds |
-| Parsed CLI version does not satisfy the constraint | `ErrSpecsVersionUnsatisfied` (wrapped with `%w`) |
-| Parsed CLI version satisfies the constraint | Proceed |
+| Parsed CLI version does not satisfy the constraint         | `ErrSpecsVersionUnsatisfied` (wrapped with `%w`)                      |
+| Parsed CLI version satisfies the constraint                | Proceed                                                               |
 
 The gate fires for both `specs use` and `specs template use` (which share `executeTemplate`).
 `specs template save` never calls `Get()`, so a newer template can still be saved on an older
@@ -149,9 +149,9 @@ CLI. The reserved key is consumed during load and never exposed as a template va
 The following files are silently skipped during rendering, regardless of any other
 configuration. They are OS/editor metadata that should never appear in scaffolded output:
 
-| Filename | Origin |
-|----------|--------|
-| `.DS_Store` | macOS Finder |
+| Filename    | Origin           |
+|-------------|------------------|
+| `.DS_Store` | macOS Finder     |
 | `Thumbs.db` | Windows Explorer |
 
 These files are skipped at the walk stage — they are never copied, rendered, or passed to
@@ -189,11 +189,11 @@ template/
     └── badge.png
 ```
 
-| `UseSonarQube` | Rendered path | Result |
-|---|---|---|
-| `true` | `sonar-project.properties` | created |
-| `false` | *(empty)* | skipped |
-| `false` (badge.png) | `/badge.png` | skipped — empty segment |
+| `UseSonarQube`      | Rendered path              | Result                  |
+|---------------------|----------------------------|-------------------------|
+| `true`              | `sonar-project.properties` | created                 |
+| `false`             | *(empty)*                  | skipped                 |
+| `false` (badge.png) | `/badge.png`               | skipped — empty segment |
 
 ---
 
@@ -227,10 +227,10 @@ flowchart TD
 
 ### Render error modes
 
-| Mode | Behaviour | How to enable |
-|------|-----------|---------------|
-| **Fail-fast** (default) | Parse or execution errors abort `Execute` immediately; no destination file is written for the affected path. The tmp dir is cleaned up by the deferred `os.RemoveAll` in `template use`. | Default — no flag needed |
-| **Continue-on-error** | Parse or execution errors are recorded as `RenderWarning` entries and the file is copied verbatim. Restores the pre-v0.x behaviour. Use only when `.specsverbatim` is not an option. | `--continue-on-error` flag |
+| Mode                    | Behaviour                                                                                                                                                                                | How to enable              |
+|-------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------|
+| **Fail-fast** (default) | Parse or execution errors abort `Execute` immediately; no destination file is written for the affected path. The tmp dir is cleaned up by the deferred `os.RemoveAll` in `template use`. | Default — no flag needed   |
+| **Continue-on-error**   | Parse or execution errors are recorded as `RenderWarning` entries and the file is copied verbatim. Restores the pre-v0.x behaviour. Use only when `.specsverbatim` is not an option.     | `--continue-on-error` flag |
 
 If any `RenderWarning` entries are present after `Execute` returns (only possible with `--continue-on-error`):
 
@@ -297,13 +297,13 @@ All of Go's standard `text/template` built-ins are available, plus:
 
 ### Custom Functions (`internal/template/specsregistry.go`)
 
-| Function | Signature | Description |
-|----------|-----------|-------------|
-| `hostname` | `() string` | System hostname |
-| `username` | `() string` | Current OS username |
-| `toBinary` | `(n int) string` | Format integer as binary string |
-| `formatFilesize` | `(bytes float64) string` | Human-readable size (KB/MB/GB…) |
-| `password` | `(length, digits, symbols int, noUpper, allowRepeat bool) string` | Secure random password |
+| Function         | Signature                                                         | Description                     |
+|------------------|-------------------------------------------------------------------|---------------------------------|
+| `hostname`       | `() string`                                                       | System hostname                 |
+| `username`       | `() string`                                                       | Current OS username             |
+| `toBinary`       | `(n int) string`                                                  | Format integer as binary string |
+| `formatFilesize` | `(bytes float64) string`                                          | Human-readable size (KB/MB/GB…) |
+| `password`       | `(length, digits, symbols int, noUpper, allowRepeat bool) string` | Secure random password          |
 
 ### Sprout Functions
 
@@ -312,14 +312,14 @@ All functions from [`go-sprout/sprout`](https://github.com/go-sprout/sprout) are
 
 Key renamed functions vs the old sprig library:
 
-| Old (sprig) | New (sprout) |
-|---|---|
-| `kebabcase` | `toKebabCase` |
-| `snakecase` | `toSnakeCase` |
-| `camelcase` | `toPascalCase` |
-| `upper` | `toUpper` |
-| `lower` | `toLower` |
-| `title` | `toTitleCase` |
+| Old (sprig)         | New (sprout)                    |
+|---------------------|---------------------------------|
+| `kebabcase`         | `toKebabCase`                   |
+| `snakecase`         | `toSnakeCase`                   |
+| `camelcase`         | `toPascalCase`                  |
+| `upper`             | `toUpper`                       |
+| `lower`             | `toLower`                       |
+| `title`             | `toTitleCase`                   |
 | `b64enc` / `b64dec` | `base64Encode` / `base64Decode` |
 
 ### Template Options
@@ -354,14 +354,14 @@ entirely — they are never prompted regardless of their presence in `project.ym
 
 The condition types recognised by the AST analyser are:
 
-| Template expression | Condition type |
-|---|---|
-| `{{ if .Var }}` | `condField` — truthy check |
-| `{{ if not .Var }}` | `condNot` — negation |
-| `{{ if eq .Var "value" }}` | `condEq` — equality |
-| `{{ if ne .Var "value" }}` | `condNe` — inequality |
-| `{{ if and .A .B }}` | `condAnd` — conjunction |
-| `{{ if or .A .B }}` | `condOr` — disjunction |
+| Template expression        | Condition type             |
+|----------------------------|----------------------------|
+| `{{ if .Var }}`            | `condField` — truthy check |
+| `{{ if not .Var }}`        | `condNot` — negation       |
+| `{{ if eq .Var "value" }}` | `condEq` — equality        |
+| `{{ if ne .Var "value" }}` | `condNe` — inequality      |
+| `{{ if and .A .B }}`       | `condAnd` — conjunction    |
+| `{{ if or .A .B }}`        | `condOr` — disjunction     |
 
 Unrecognised condition forms fall back to treating the variable as always-needed
 (conservative: over-prompt rather than under-prompt).
@@ -372,9 +372,9 @@ Unrecognised condition forms fall back to treating the variable as always-needed
 
 Hooks run shell commands before and after `specs template use`. Two trigger points:
 
-| Hook | Working directory | Runs |
-|------|------------------|-------|
-| `pre-use` | template source directory | Before any files are rendered. Non-zero exit aborts. |
+| Hook       | Working directory         | Runs                                                                                  |
+|------------|---------------------------|---------------------------------------------------------------------------------------|
+| `pre-use`  | template source directory | Before any files are rendered. Non-zero exit aborts.                                  |
 | `post-use` | target (output) directory | After all files are written. Receives resolved context as `SPECS_`-prefixed env vars. |
 
 Two mutually exclusive definition forms:
@@ -411,14 +411,14 @@ The prefix can be disabled with the root `--no-env-prefix` flag.
 
 Hooks run arbitrary shell commands on the host. Before running any template with hooks:
 
-| Scenario | Behaviour |
-|---|---|
-| `--safe-mode` (no `--allow-hooks`) | Hooks are **skipped entirely** — no bash invocation |
-| `--safe-mode --allow-hooks` | Function-level restrictions apply; hooks **run** (remote confirmation still required) |
-| `specs use <remote>` with hooks | Rendered hook commands are **printed** and **interactive confirmation** is required |
-| `specs use <remote> --yes` | Confirmation prompt is skipped; hooks run (CI use) |
-| `specs use <remote> --no-hooks` | Hooks are **skipped** |
-| Local template or registry template | No confirmation prompt; hooks run as normal |
+| Scenario                            | Behaviour                                                                             |
+|-------------------------------------|---------------------------------------------------------------------------------------|
+| `--safe-mode` (no `--allow-hooks`)  | Hooks are **skipped entirely** — no bash invocation                                   |
+| `--safe-mode --allow-hooks`         | Function-level restrictions apply; hooks **run** (remote confirmation still required) |
+| `specs use <remote>` with hooks     | Rendered hook commands are **printed** and **interactive confirmation** is required   |
+| `specs use <remote> --yes`          | Confirmation prompt is skipped; hooks run (CI use)                                    |
+| `specs use <remote> --no-hooks`     | Hooks are **skipped**                                                                 |
+| Local template or registry template | No confirmation prompt; hooks run as normal                                           |
 
 **`--safe-mode` implies `--no-hooks`** in the command layer. Pass `--allow-hooks` alongside `--safe-mode` to disable only the env/filesystem template functions while still allowing hooks to execute.
 
@@ -470,20 +470,20 @@ It calls `Execute` on a temporary directory first to catch render errors, then c
 
 Three categories of issues are reported:
 
-| Issue kind | Source | Meaning |
-|---|---|---|
-| `render_error` | `Execute()` | A file could not be rendered (parse or execution error) and was copied verbatim. |
-| `unknown_variable` | `Validate()` | A name used in a template file or path is **not defined** in `project.yaml`. |
-| `unused_variable` | `Validate()` | A variable **defined** in the user input section is never referenced anywhere. |
-| `unused_computed` | `Validate()` | A computed value **defined** under `computed:` is never referenced anywhere. |
+| Issue kind         | Source       | Meaning                                                                          |
+|--------------------|--------------|----------------------------------------------------------------------------------|
+| `render_error`     | `Execute()`  | A file could not be rendered (parse or execution error) and was copied verbatim. |
+| `unknown_variable` | `Validate()` | A name used in a template file or path is **not defined** in `project.yaml`.     |
+| `unused_variable`  | `Validate()` | A variable **defined** in the user input section is never referenced anywhere.   |
+| `unused_computed`  | `Validate()` | A computed value **defined** under `computed:` is never referenced anywhere.     |
 
 Exit codes are a bitmask — multiple conditions combine additively:
 
-| Bit | Constant | Value | Condition |
-|-----|----------|-------|-----------|
-| 2 | `ValidateRender` | 4 | Any `render_error` — file copied verbatim due to parse or execution error |
-| 1 | `ValidateUnknown` | 2 | Any `unknown_variable` |
-| 0 | `ValidateUnused` | 1 | Any `unused_*` (only with `--strict`) |
+| Bit | Constant          | Value | Condition                                                                 |
+|-----|-------------------|-------|---------------------------------------------------------------------------|
+| 2   | `ValidateRender`  | 4     | Any `render_error` — file copied verbatim due to parse or execution error |
+| 1   | `ValidateUnknown` | 2     | Any `unknown_variable`                                                    |
+| 0   | `ValidateUnused`  | 1     | Any `unused_*` (only with `--strict`)                                     |
 
 `specs template validate` exits 0 only when there are no render errors and no unknown variables.
 

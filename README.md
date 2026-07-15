@@ -47,9 +47,9 @@ specs template use my-template ./my-project
 
 A template's `project.yml` declares its variables, defaults, computed values, and hooks. A few `__`-prefixed keys are reserved by `specs` and never exposed as template variables:
 
-| Key | Purpose |
-|-----|---------|
-| `__delimiters` | Override the default `{{ }}` template delimiters with a custom pair (e.g. `[[ ]]`). |
+| Key                | Purpose                                                                                                                                                                                                                                                                                                                                                   |
+|--------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `__delimiters`     | Override the default `{{ }}` template delimiters with a custom pair (e.g. `[[ ]]`).                                                                                                                                                                                                                                                                       |
 | `__specs__version` | Declare a [semver](https://github.com/Masterminds/semver) constraint on the `specs` CLI version required to use the template, e.g. `__specs__version: ^0.1.0`. `specs use` and `specs template use` refuse to run the template unless the running binary satisfies the constraint (development builds are exempt; `specs template save` skips the check). |
 
 See the [documentation](https://cli.specs.dev) for the full project-file reference.
@@ -62,10 +62,10 @@ See the [documentation](https://cli.specs.dev) for the full project-file referen
 
 The repo ships a `Dockerfile` and a `compose.yml` that together define a self-contained build and test environment. Contributors don't need a local Go installation — all builds and tests run inside a Docker container that pins the exact Go version and tooling.
 
-| File | Role |
-|------|------|
-| `Dockerfile` | Defines the build image — Go 1.26 + tooling, used by `task build` and `task test` |
-| `compose.yml` | Wires the Dockerfile stages into named services consumed by the Taskfile |
+| File                | Role                                                                                     |
+|---------------------|------------------------------------------------------------------------------------------|
+| `Dockerfile`        | Defines the build image — Go 1.26 + tooling, used by `task build` and `task test`        |
+| `compose.yml`       | Wires the Dockerfile stages into named services consumed by the Taskfile                 |
 | `Taskfile.dist.yml` | Orchestrates all developer workflows; wraps Docker Compose so you never call it directly |
 
 **Requirements:** [Task](https://taskfile.dev) and Docker.

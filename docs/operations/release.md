@@ -34,12 +34,12 @@ GoReleaser sets `Version` to the Git tag (e.g. `1.2.3`) automatically through `-
 
 ## Target Platforms
 
-| OS | Architecture |
-|----|-------------|
-| `linux` | `amd64` |
-| `linux` | `arm64` |
-| `darwin` | `amd64` |
-| `darwin` | `arm64` |
+| OS       | Architecture |
+|----------|--------------|
+| `linux`  | `amd64`      |
+| `linux`  | `arm64`      |
+| `darwin` | `amd64`      |
+| `darwin` | `arm64`      |
 
 ---
 
@@ -155,32 +155,32 @@ brew install --cask specs
 
 **Trigger:** push and pull_request on any branch.
 
-| Step | Command |
-|------|---------|
-| Checkout | `actions/checkout` with `fetch-depth: 0` |
-| Setup Go | `actions/setup-go` pinned to `go.mod` version |
+| Step          | Command                                       |
+|---------------|-----------------------------------------------|
+| Checkout      | `actions/checkout` with `fetch-depth: 0`      |
+| Setup Go      | `actions/setup-go` pinned to `go.mod` version |
 | Cache modules | `actions/cache` on Go module and build caches |
-| Vet | `go vet ./...` |
-| Test | `go test -race -count=1 ./...` |
-| Build (smoke) | `go build -o /dev/null .` |
+| Vet           | `go vet ./...`                                |
+| Test          | `go test -race -count=1 ./...`                |
+| Build (smoke) | `go build -o /dev/null .`                     |
 
 ### Release workflow — `release.yml`
 
 **Trigger:** push of a tag matching `v*`.
 
-| Step | Detail |
-|------|--------|
-| Checkout | `fetch-depth: 0` — GoReleaser needs all tags and commits |
-| Setup Go | same version as `go.mod` |
-| Cache modules | same as CI |
-| Run GoReleaser | `goreleaser/goreleaser-action` |
+| Step           | Detail                                                   |
+|----------------|----------------------------------------------------------|
+| Checkout       | `fetch-depth: 0` — GoReleaser needs all tags and commits |
+| Setup Go       | same version as `go.mod`                                 |
+| Cache modules  | same as CI                                               |
+| Run GoReleaser | `goreleaser/goreleaser-action`                           |
 
 Required secrets:
 
-| Secret | Purpose |
-|--------|---------|
-| `GITHUB_TOKEN` | Built-in; used by GoReleaser to create GitHub Release |
-| `HOMEBREW_TAP_GITHUB_TOKEN` | PAT with `contents: write` on `specsnl/homebrew-tap` |
+| Secret                      | Purpose                                               |
+|-----------------------------|-------------------------------------------------------|
+| `GITHUB_TOKEN`              | Built-in; used by GoReleaser to create GitHub Release |
+| `HOMEBREW_TAP_GITHUB_TOKEN` | PAT with `contents: write` on `specsnl/homebrew-tap`  |
 
 The release workflow needs `permissions: contents: write`.
 
