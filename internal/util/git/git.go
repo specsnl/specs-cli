@@ -434,6 +434,10 @@ func CheckRemote(dir, url, branch string) RemoteCheckResult {
 //
 //   - path missing or not a git repository → ErrorKind CheckErrorSourceMissing.
 //   - describe matches the saved commit and version → up-to-date.
+//   - source still on the saved commit, differing only by the "-dirty" marker →
+//     up-to-date. A dirty working tree flips the "-dirty" suffix on git-describe
+//     output even though HEAD has not moved, so comparing it verbatim would report
+//     a phantom update to the very same commit (issue #97).
 //   - otherwise → not up-to-date, with LatestVersion set to the path's current version.
 func CheckLocalSource(sourcePath, savedCommit, savedVersion string) (result RemoteCheckResult) {
 	slog.Debug("git check-local start", "source", sourcePath, "saved_commit", savedCommit, "saved_version", savedVersion)
@@ -455,10 +459,20 @@ func CheckLocalSource(sourcePath, savedCommit, savedVersion string) (result Remo
 		return RemoteCheckResult{ErrorKind: CheckErrorSourceMissing}
 	}
 
-	if desc.Commit == savedCommit && desc.Version == savedVersion {
+	// When the source still sits on the saved commit, any version-string difference
+	// can only be the "-dirty" marker (same commit ⇒ same tag, distance and short
+	// hash). Uncommitted changes are transient working-tree state, not a new commit
+	// to update to, so treat this as up-to-date rather than a phantom update.
+	if desc.Commit == savedCommit && stripDirty(desc.Version) == stripDirty(savedVersion) {
 		return RemoteCheckResult{IsUpToDate: true}
 	}
 	return RemoteCheckResult{IsUpToDate: false, LatestVersion: desc.Version}
+}
+
+// stripDirty removes the trailing "-dirty" marker that Describe appends for a
+// working tree with uncommitted changes.
+func stripDirty(version string) string {
+	return strings.TrimSuffix(version, "-dirty")
 }
 
 // classifyRemoteError maps a remote.List error to a CheckErrorKind.

@@ -537,9 +537,12 @@ The source of truth depends on how the template was registered:
 - **Local templates** (`Repository` is `local:<path>`, from `specs template save`) are checked
   against the **source directory on disk** via `CheckLocalSource` — never a git remote. The
   template is behind when the source path's current `git describe` (commit + version) differs
-  from the commit/version recorded in metadata at save time. When the source path no longer
-  exists (or is no longer a git repository) the status is `source-missing`. A local template
-  saved from a non-git directory has no recorded commit and is not tracked.
+  from the commit/version recorded in metadata at save time. The trailing `-dirty` marker is
+  ignored while the source stays on the saved commit: an uncommitted (dirty) working tree flips
+  that suffix on the git-describe version even though `HEAD` has not moved, so comparing it
+  verbatim would report a phantom update to the same commit (issue #97). When the source path no
+  longer exists (or is no longer a git repository) the status is `source-missing`. A local
+  template saved from a non-git directory has no recorded commit and is not tracked.
 
 ### How a newer version is determined (remote templates)
 
