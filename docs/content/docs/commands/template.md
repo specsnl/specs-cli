@@ -36,7 +36,10 @@ The `Status` column reflects where each template's "source of truth" lives:
   sitting on a released tag the same semver rule applies, otherwise the branch tip is compared.
 - **Local templates** (registered with `save`) are compared against the **source directory on
   disk**, not a git remote. `update available` means the source path has moved ahead of the
-  commit/version recorded when the template was saved. If the source path no longer exists the
+  commit/version recorded when the template was saved. Uncommitted changes in the source (a
+  "dirty" working tree) do **not** count as an update on their own: while the source stays on the
+  saved commit, the transient `-dirty` marker on its git-describe version is ignored so the
+  template is not perpetually reported as out of date. If the source path no longer exists the
   status is `source missing`.
 
 Possible `Status` values: `up-to-date`, `update: <version>`, `update available`,

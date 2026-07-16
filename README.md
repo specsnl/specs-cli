@@ -56,7 +56,8 @@ specs template save ./my-template my-template
 - **Remote templates** (from `download`) are checked against their git remote.
 - **Local templates** (from `save`) are checked against their **source directory on disk** —
   `update available` means the source path has moved ahead of what was saved (`source missing`
-  if that path is gone).
+  if that path is gone). Uncommitted changes on the saved commit (a "dirty" working tree) are not
+  treated as an update, so a dirty source is not reported as perpetually out of date.
 
 `specs template upgrade [name]` applies available updates: remote templates are re-cloned, local
 templates are re-copied from their source path. Cached statuses refresh automatically once older
