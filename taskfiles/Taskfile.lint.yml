@@ -1,0 +1,24 @@
+# https://taskfile.dev
+version: "3"
+
+tasks:
+  vet:
+    desc: Run go vet
+    cmds:
+      - task: dc:run:go-builder
+        vars:
+          SUB_CMD: go vet
+
+  fix:
+    desc: Run go fix
+    cmds:
+      - task: dc:run:go-builder
+        vars:
+          SUB_CMD: "go fix ./..."
+
+  fix:diff:
+    desc: Run go fix in diff mode
+    cmds:
+      - task: dc:run:go-builder
+        vars:
+          SUB_CMD: "go fix -diff ./..."
