@@ -12,6 +12,7 @@ import (
 
 func writeProjectYAML(t *testing.T, dir, content string) {
 	t.Helper()
+
 	if err := os.WriteFile(filepath.Join(dir, "project.yaml"), []byte(content), 0644); err != nil {
 		t.Fatalf("writeProjectYAML: %v", err)
 	}
@@ -19,6 +20,7 @@ func writeProjectYAML(t *testing.T, dir, content string) {
 
 func writeProjectYML(t *testing.T, dir, content string) {
 	t.Helper()
+
 	if err := os.WriteFile(filepath.Join(dir, "project.yml"), []byte(content), 0644); err != nil {
 		t.Fatalf("writeProjectYML: %v", err)
 	}
@@ -26,6 +28,7 @@ func writeProjectYML(t *testing.T, dir, content string) {
 
 func writeProjectJSON(t *testing.T, dir, content string) {
 	t.Helper()
+
 	if err := os.WriteFile(filepath.Join(dir, "project.json"), []byte(content), 0644); err != nil {
 		t.Fatalf("writeProjectJSON: %v", err)
 	}
@@ -39,6 +42,7 @@ func TestLoadUserContext_String(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if ctx["Name"] != "my-project" {
 		t.Errorf("ctx[Name] = %q, want %q", ctx["Name"], "my-project")
 	}
@@ -52,6 +56,7 @@ func TestLoadUserContext_Bool(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if ctx["UseSonar"] != false {
 		t.Errorf("ctx[UseSonar] = %v, want false", ctx["UseSonar"])
 	}
@@ -69,10 +74,12 @@ License:
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	list, ok := ctx["License"].([]any)
 	if !ok {
 		t.Fatalf("ctx[License] is %T, want []any", ctx["License"])
 	}
+
 	if len(list) != 2 || list[0] != "MIT" || list[1] != "GPL" {
 		t.Errorf("ctx[License] = %v, want [MIT GPL]", list)
 	}
@@ -86,6 +93,7 @@ func TestLoadUserContext_JSONFallback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if ctx["Name"] != "from-json" {
 		t.Errorf("ctx[Name] = %q, want %q", ctx["Name"], "from-json")
 	}
@@ -102,6 +110,7 @@ Slug: "{{toKebabCase .Name}}"
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if ctx["Slug"] != "my-app" {
 		t.Errorf("ctx[Slug] = %q, want %q", ctx["Slug"], "my-app")
 	}
@@ -133,6 +142,7 @@ hooks:
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if _, ok := ctx["hooks"]; ok {
 		t.Error("hooks key should be stripped from user context")
 	}
@@ -150,12 +160,15 @@ computed:
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if _, ok := ctx["computed"]; ok {
 		t.Error("computed key should be stripped from user context")
 	}
+
 	if _, ok := ctx["Env"]; ok {
 		t.Error("Env computed key should not be in user context")
 	}
+
 	if computedDefs["Env"] != "prod" {
 		t.Errorf("computedDefs[Env] = %q, want %q", computedDefs["Env"], "prod")
 	}
@@ -192,6 +205,7 @@ computed:
 	if err != nil {
 		t.Fatalf("ApplyComputed: %v", err)
 	}
+
 	if result["Env"] != "ACME" {
 		t.Errorf("result[Env] = %q, want %q", result["Env"], "ACME")
 	}
@@ -218,9 +232,11 @@ computed:
 	if err != nil {
 		t.Fatalf("ApplyComputed: %v", err)
 	}
+
 	if result["Slug"] != "acme" {
 		t.Errorf("result[Slug] = %q, want %q", result["Slug"], "acme")
 	}
+
 	if result["DbName"] != "acme_production" {
 		t.Errorf("result[DbName] = %q, want %q", result["DbName"], "acme_production")
 	}
@@ -264,9 +280,11 @@ func TestApplyComputed_ChainWithCustomDelimitersAndBuiltins(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ApplyComputed: %v", err)
 	}
+
 	if result["PhpDockerTag"] != "0.5.3" {
 		t.Errorf("PhpDockerTag = %q, want %q", result["PhpDockerTag"], "0.5.3")
 	}
+
 	if result["Php84DockerTag"] != "1.5.3" {
 		t.Errorf("Php84DockerTag = %q, want %q", result["Php84DockerTag"], "1.5.3")
 	}
@@ -274,10 +292,12 @@ func TestApplyComputed_ChainWithCustomDelimitersAndBuiltins(t *testing.T) {
 
 func TestApplyComputed_NoDefs(t *testing.T) {
 	ctx := map[string]any{"Name": "test"}
+
 	result, err := pkgtemplate.ApplyComputed(ctx, nil, pkgtemplate.FuncMap(pkgtemplate.Config{}), specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if result["Name"] != "test" {
 		t.Errorf("result[Name] = %q, want %q", result["Name"], "test")
 	}
@@ -291,6 +311,7 @@ func TestLoadUserContext_YMLExtension(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if ctx["Name"] != "from-yml" {
 		t.Errorf("ctx[Name] = %q, want %q", ctx["Name"], "from-yml")
 	}
@@ -304,9 +325,11 @@ func TestLoadUserContext_DelimitersKeyStripped(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if _, ok := ctx["__delimiters"]; ok {
 		t.Error("__delimiters should be stripped from user context")
 	}
+
 	if ctx["Name"] != "test" {
 		t.Errorf("ctx[Name] = %q, want %q", ctx["Name"], "test")
 	}
@@ -320,9 +343,11 @@ func TestExtractSpecsVersion_Missing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if constraint != nil {
 		t.Errorf("constraint = %v, want nil when key absent", constraint)
 	}
+
 	if raw != "" {
 		t.Errorf("raw = %q, want empty when key absent", raw)
 	}
@@ -336,9 +361,11 @@ func TestExtractSpecsVersion_Valid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if constraint == nil {
 		t.Fatal("constraint = nil, want a parsed constraint")
 	}
+
 	if raw != "^0.1.0" {
 		t.Errorf("raw = %q, want %q", raw, "^0.1.0")
 	}
@@ -372,9 +399,11 @@ func TestLoadUserContext_SpecsVersionKeyStripped(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if _, ok := ctx["__specs__version"]; ok {
 		t.Error("__specs__version should be stripped from user context")
 	}
+
 	if ctx["Name"] != "test" {
 		t.Errorf("ctx[Name] = %q, want %q", ctx["Name"], "test")
 	}
@@ -417,12 +446,15 @@ func TestReservedValues(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if reserved["__specs__version"] != ">=0.0.1" {
 		t.Errorf("reserved[__specs__version] = %v, want %q", reserved["__specs__version"], ">=0.0.1")
 	}
+
 	if _, ok := reserved["__delimiters"]; !ok {
 		t.Error("reserved should contain __delimiters")
 	}
+
 	if _, ok := reserved["Name"]; ok {
 		t.Error("reserved must not contain non-reserved user keys")
 	}
@@ -436,6 +468,7 @@ func TestReservedValues_None(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if len(reserved) != 0 {
 		t.Errorf("reserved = %v, want empty", reserved)
 	}
@@ -461,6 +494,7 @@ func TestCheckReservedNames(t *testing.T) {
 			if tc.wantErr && !errors.Is(err, specs.ErrReservedVariableName) {
 				t.Fatalf("expected ErrReservedVariableName, got %v", err)
 			}
+
 			if !tc.wantErr && err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -489,6 +523,7 @@ func TestLoadProjectFile_ReturnsRawMap(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if raw["Name"] != "raw" {
 		t.Errorf("raw[Name] = %v, want %q", raw["Name"], "raw")
 	}
@@ -506,6 +541,7 @@ func TestLoadProjectFile_JSONFallback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if raw["Name"] != "json-raw" {
 		t.Errorf("raw[Name] = %v, want %q", raw["Name"], "json-raw")
 	}

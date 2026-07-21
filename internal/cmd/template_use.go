@@ -72,6 +72,7 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 	// Inject the running CLI version so Get() can enforce a template's __specs__version
 	// constraint. Covers both `specs use` and `specs template use`, which share this path.
 	cfg.Version = Version
+
 	tmpl, err := pkgtemplate.Get(templateRoot, cfg)
 	if err != nil {
 		return err
@@ -81,6 +82,7 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 	if err != nil {
 		return err
 	}
+
 	h, err := hooks.Load(templateRoot, rawConfig, a.HookEnvPrefix)
 	if err != nil {
 		return err
@@ -98,13 +100,16 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 		if err != nil {
 			return err
 		}
+
 		for k := range fileVals {
 			if specs.IsReservedName(k) {
 				return fmt.Errorf("%w: %q (from --values)", specs.ErrReservedVariableName, k)
 			}
+
 			provided[k] = true
 			finalSource[k] = "values_file"
 		}
+
 		ctx = values.Merge(ctx, fileVals)
 	}
 
@@ -113,9 +118,11 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 		if err != nil {
 			return err
 		}
+
 		if specs.IsReservedName(k) {
 			return fmt.Errorf("%w: %q (from --arg)", specs.ErrReservedVariableName, k)
 		}
+
 		ctx[k] = v
 		provided[k] = true
 		finalSource[k] = "arg_flag"
@@ -127,6 +134,7 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 		}
 	} else {
 		resolveSelectDefaults(ctx)
+
 		for k := range tmpl.Referenced {
 			if !provided[k] {
 				finalSource[k] = "default"
@@ -151,6 +159,7 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 		if err != nil {
 			return err
 		}
+
 		if !confirmed {
 			skipHooks = true
 		}
@@ -158,6 +167,7 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 
 	if !skipHooks && h.HasPreUse() {
 		a.Output.Info("running pre-use hook…")
+
 		if err := h.Run("pre-use", templateRoot, ctx, tmpl.FuncMap(), tmpl.Delims()); err != nil {
 			return err
 		}
@@ -177,28 +187,33 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 	if len(tmpl.Warnings) > 0 {
 		for _, w := range tmpl.Warnings {
 			a.Output.Warn("%s: copied verbatim due to render error: %v", w.Path, w.Err)
+
 			if w.Preview != "" {
 				a.Output.Warn("  %s: first 80 chars: %s", filepath.Join(targetDir, w.Path), w.Preview)
 			}
 		}
+
 		a.Output.Warn("run 'specs template validate %s' to see all issues", filepath.Base(templateRoot))
 	}
 
 	if err := os.MkdirAll(targetDir, 0755); err != nil {
 		return err
 	}
+
 	if err := osutil.CopyDir(tmp, targetDir); err != nil {
 		return err
 	}
 
 	if !skipHooks && h.HasPostUse() {
 		a.Output.Info("running post-use hook…")
+
 		if err := h.Run("post-use", targetDir, ctx, tmpl.FuncMap(), tmpl.Delims()); err != nil {
 			return err
 		}
 	}
 
 	a.Output.Info("done — files written to %s", targetDir)
+
 	return nil
 }
 
@@ -214,6 +229,7 @@ func (a *App) confirmRemoteHooks(h *hooks.Hooks, ctx map[string]any, tmpl *pkgte
 		if err != nil {
 			return false, fmt.Errorf("rendering %s hooks for preview: %w", trigger, err)
 		}
+
 		for _, cmd := range rendered {
 			a.Output.Warn("  %s: %s", trigger, strings.TrimSpace(cmd))
 		}
@@ -229,6 +245,7 @@ func (a *App) confirmRemoteHooks(h *hooks.Hooks, ctx map[string]any, tmpl *pkgte
 	)).Run(); err != nil {
 		return false, fmt.Errorf("hook confirmation: %w", err)
 	}
+
 	return proceed, nil
 }
 
@@ -256,12 +273,14 @@ func promptContext(
 	}
 
 	var alwaysKeys []string
+
 	remaining := make(map[string]bool) // conditional keys not yet resolved
 
 	for _, k := range sortedKeys(schema) {
 		if !referenced[k] {
 			continue // never used in templates or computed expressions
 		}
+
 		if _, conditional := conds[k]; conditional {
 			remaining[k] = true
 		} else {
@@ -279,6 +298,7 @@ func promptContext(
 	for _, k := range alwaysKeys {
 		resolved[k] = true
 	}
+
 	for k := range provided {
 		resolved[k] = true
 	}
@@ -287,14 +307,17 @@ func promptContext(
 	for len(remaining) > 0 {
 		// Find keys whose gate variables are all resolved (or not in schema).
 		var ready []string
+
 		for k := range remaining {
 			allResolved := true
+
 			for _, gk := range conds[k].Keys() {
 				if schemaKeys[gk] && !resolved[gk] {
 					allResolved = false
 					break
 				}
 			}
+
 			if allResolved {
 				ready = append(ready, k)
 			}
@@ -307,6 +330,7 @@ func promptContext(
 		sort.Strings(ready)
 
 		var toPrompt []string
+
 		for _, k := range ready {
 			if conds[k].Eval(ctx) {
 				toPrompt = append(toPrompt, k)
@@ -319,6 +343,7 @@ func promptContext(
 
 		for _, k := range ready {
 			resolved[k] = true
+
 			delete(remaining, k)
 		}
 	}
@@ -336,6 +361,7 @@ func runPromptPass(
 	finalSource map[string]string,
 ) error {
 	var fields []huh.Field
+
 	stringResults := make(map[string]*string)
 	boolResults := make(map[string]*bool)
 
@@ -343,6 +369,7 @@ func runPromptPass(
 		if provided[key] {
 			continue
 		}
+
 		defaultVal := schema[key]
 
 		switch v := defaultVal.(type) {
@@ -351,6 +378,7 @@ func runPromptPass(
 			if s, ok := ctx[key].(string); ok {
 				current = s
 			}
+
 			ptr := new(string)
 			*ptr = current
 			stringResults[key] = ptr
@@ -365,6 +393,7 @@ func runPromptPass(
 			if b, ok := ctx[key].(bool); ok {
 				current = b
 			}
+
 			ptr := new(bool)
 			*ptr = current
 			boolResults[key] = ptr
@@ -378,10 +407,12 @@ func runPromptPass(
 			if len(opts) == 0 {
 				continue
 			}
+
 			selected := opts[0]
 			if s, ok := ctx[key].(string); ok {
 				selected = s
 			}
+
 			ptr := new(string)
 			*ptr = selected
 			stringResults[key] = ptr
@@ -405,10 +436,12 @@ func runPromptPass(
 		ctx[k] = *p
 		finalSource[k] = "prompt"
 	}
+
 	for k, p := range boolResults {
 		ctx[k] = *p
 		finalSource[k] = "prompt"
 	}
+
 	return nil
 }
 
@@ -418,7 +451,9 @@ func sortedKeys[V any](m map[string]V) []string {
 	for k := range m {
 		keys = append(keys, k)
 	}
+
 	sort.Strings(keys)
+
 	return keys
 }
 
@@ -437,10 +472,12 @@ func resolveSelectDefaults(ctx map[string]any) {
 // toStringOptions coerces a []any (from YAML) to a []string, skipping non-strings.
 func toStringOptions(v []any) []string {
 	opts := make([]string, 0, len(v))
+
 	for _, item := range v {
 		if s, ok := item.(string); ok {
 			opts = append(opts, s)
 		}
 	}
+
 	return opts
 }

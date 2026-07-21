@@ -109,6 +109,7 @@ func TestCondOr_AllFalse(t *testing.T) {
 
 func TestCondField_Keys(t *testing.T) {
 	c := condField{"X"}
+
 	keys := c.Keys()
 	if len(keys) != 1 || keys[0] != "X" {
 		t.Errorf("Keys() = %v, want [X]", keys)
@@ -117,6 +118,7 @@ func TestCondField_Keys(t *testing.T) {
 
 func TestCondNot_Keys(t *testing.T) {
 	c := condNot{condField{"X"}}
+
 	keys := c.Keys()
 	if len(keys) != 1 || keys[0] != "X" {
 		t.Errorf("Keys() = %v, want [X]", keys)
@@ -125,6 +127,7 @@ func TestCondNot_Keys(t *testing.T) {
 
 func TestCondAnd_Keys(t *testing.T) {
 	c := condAnd{[]Cond{condField{"A"}, condField{"B"}}}
+
 	keys := c.Keys()
 	if len(keys) != 2 {
 		t.Errorf("Keys() = %v, want 2 keys", keys)
@@ -133,6 +136,7 @@ func TestCondAnd_Keys(t *testing.T) {
 
 func TestCondOr_Keys(t *testing.T) {
 	c := condOr{[]Cond{condField{"A"}, condField{"B"}}}
+
 	keys := c.Keys()
 	if len(keys) != 2 {
 		t.Errorf("Keys() = %v, want 2 keys", keys)

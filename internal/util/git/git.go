@@ -37,6 +37,7 @@ func CloneInto(parent, name, url string, opts CloneOptions) (string, error) {
 	if err := Clone(url, dir, opts); err != nil {
 		return "", err
 	}
+
 	return dir, nil
 }
 
@@ -62,6 +63,7 @@ func Clone(url, dir string, opts CloneOptions) error {
 		if err != nil {
 			return err
 		}
+
 		cloneOpts.Auth = auth
 	}
 
@@ -78,6 +80,7 @@ func Clone(url, dir string, opts CloneOptions) error {
 	}
 
 	slog.Debug("git clone complete", "repo", url, "dest", dir, "branch", opts.Branch)
+
 	return nil
 }
 
@@ -86,21 +89,26 @@ func Clone(url, dir string, opts CloneOptions) error {
 // ("main") without needing to know which kind of ref it is.
 func cloneWithRef(url, dir string, cloneOpts *gogit.CloneOptions, ref string) error {
 	cloneOpts.ReferenceName = plumbing.NewTagReferenceName(ref)
+
 	_, err := gogit.PlainClone(dir, false, cloneOpts)
 	if err == nil {
 		return nil
 	}
+
 	if !strings.Contains(err.Error(), "couldn't find remote ref") {
 		return fmt.Errorf("cloning %s: %w", url, err)
 	}
 
 	// Tag ref not found — retry as a branch.
 	os.RemoveAll(dir)
+
 	cloneOpts.ReferenceName = plumbing.NewBranchReferenceName(ref)
+
 	_, err = gogit.PlainClone(dir, false, cloneOpts)
 	if err != nil {
 		return fmt.Errorf("cloning %s: %w", url, err)
 	}
+
 	return nil
 }
 
@@ -134,6 +142,7 @@ func Describe(dir string) (DescribeResult, error) {
 	shortHash := commit[:7]
 
 	dirty := false
+
 	if wt, err := repo.Worktree(); err == nil {
 		if st, err := wt.Status(); err == nil {
 			for _, s := range st {
@@ -141,7 +150,9 @@ func Describe(dir string) (DescribeResult, error) {
 				if s.Staging == gogit.Untracked && s.Worktree == gogit.Untracked {
 					continue
 				}
+
 				dirty = true
+
 				break
 			}
 		}
@@ -152,6 +163,7 @@ func Describe(dir string) (DescribeResult, error) {
 		Version: buildVersion(repo, head.Hash(), shortHash, dirty),
 	}
 	slog.Debug("git describe", "dest", dir, "commit", result.Commit, "version", result.Version)
+
 	return result, nil
 }
 
@@ -159,31 +171,38 @@ func Describe(dir string) (DescribeResult, error) {
 func buildVersion(repo *gogit.Repository, headHash plumbing.Hash, shortHash string, dirty bool) string {
 	// Map each tagged commit hash to its tag name (dereference annotated tags).
 	tagMap := make(map[plumbing.Hash]string)
+
 	if tags, err := repo.Tags(); err == nil {
 		_ = tags.ForEach(func(ref *plumbing.Reference) error {
 			h := ref.Hash()
 			if obj, err := repo.TagObject(h); err == nil {
 				h = obj.Target
 			}
+
 			tagMap[h] = ref.Name().Short()
+
 			return nil
 		})
 	}
 
 	// Walk commits from HEAD to find the nearest tagged ancestor.
 	foundTag, distance := "", 0
+
 	if iter, err := repo.Log(&gogit.LogOptions{From: headHash}); err == nil {
 		_ = iter.ForEach(func(c *object.Commit) error {
 			if tag, ok := tagMap[c.Hash]; ok {
 				foundTag = tag
 				return storer.ErrStop
 			}
+
 			distance++
+
 			return nil
 		})
 	}
 
 	var v string
+
 	switch {
 	case foundTag == "":
 		v = shortHash
@@ -192,9 +211,11 @@ func buildVersion(repo *gogit.Repository, headHash plumbing.Hash, shortHash stri
 	default:
 		v = fmt.Sprintf("%s-%d-g%s", foundTag, distance, shortHash)
 	}
+
 	if dirty {
 		v += "-dirty"
 	}
+
 	return v
 }
 
@@ -215,6 +236,7 @@ func sshUser(url string) string {
 			return url[:at]
 		}
 	}
+
 	return "git"
 }
 
@@ -230,6 +252,7 @@ func sshAuth(url string) (transport.AuthMethod, error) {
 	}
 
 	khPath := filepath.Join(home, ".ssh", "known_hosts")
+
 	hostKeyCallback, err := knownhosts.New(khPath)
 	if err != nil {
 		return nil, fmt.Errorf("reading ~/.ssh/known_hosts: %w", err)
@@ -246,11 +269,14 @@ func sshAuth(url string) (transport.AuthMethod, error) {
 	// 2. Standard key files
 	for _, name := range []string{"id_ed25519", "id_rsa", "id_ecdsa"} {
 		keyPath := filepath.Join(home, ".ssh", name)
+
 		auth, err := gogitssh.NewPublicKeysFromFile(user, keyPath, "")
 		if err != nil {
 			continue
 		}
+
 		auth.HostKeyCallback = hostKeyCallback
+
 		return auth, nil
 	}
 
@@ -265,13 +291,16 @@ func CurrentBranch(dir string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("opening repository at %s: %w", dir, err)
 	}
+
 	head, err := repo.Head()
 	if err != nil {
 		return "", fmt.Errorf("reading HEAD: %w", err)
 	}
+
 	if !head.Name().IsBranch() {
 		return "", fmt.Errorf("HEAD is not on a branch (detached HEAD or tag checkout)")
 	}
+
 	return head.Name().Short(), nil
 }
 
@@ -335,6 +364,7 @@ func (r RemoteCheckResult) Err() error {
 // On failure, ErrorKind is set in the result; errors are never returned.
 func CheckRemoteContext(ctx context.Context, dir, url, branch string) (result RemoteCheckResult) {
 	slog.Debug("git check-remote start", "repo", url, "branch", branch, "dest", dir)
+
 	defer func() {
 		slog.Debug("git check-remote result",
 			"repo", url, "branch", branch, "dest", dir,
@@ -355,11 +385,13 @@ func CheckRemoteContext(ctx context.Context, dir, url, branch string) (result Re
 	}
 
 	listOpts := &gogit.ListOptions{}
+
 	if isSSHURL(url) {
 		auth, err := sshAuth(url)
 		if err != nil {
 			return RemoteCheckResult{ErrorKind: CheckErrorAuth}
 		}
+
 		listOpts.Auth = auth
 	}
 
@@ -368,6 +400,7 @@ func CheckRemoteContext(ctx context.Context, dir, url, branch string) (result Re
 		if ctx.Err() != nil {
 			return RemoteCheckResult{ErrorKind: CheckErrorNetwork}
 		}
+
 		return RemoteCheckResult{ErrorKind: classifyRemoteError(err)}
 	}
 
@@ -395,26 +428,34 @@ func semverTagAtCommit(repo *gogit.Repository, hash plumbing.Hash) string {
 	if err != nil {
 		return ""
 	}
+
 	var best *semver.Version
+
 	var bestOrig string
+
 	_ = tags.ForEach(func(ref *plumbing.Reference) error {
 		h := ref.Hash()
 		if obj, err := repo.TagObject(h); err == nil {
 			h = obj.Target // annotated tag: resolve to the commit it points at
 		}
+
 		if h != hash {
 			return nil
 		}
+
 		v, err := semver.NewVersion(ref.Name().Short())
 		if err != nil {
 			return nil
 		}
+
 		if best == nil || v.GreaterThan(best) {
 			best = v
 			bestOrig = v.Original()
 		}
+
 		return nil
 	})
+
 	return bestOrig
 }
 
@@ -441,6 +482,7 @@ func CheckRemote(dir, url, branch string) RemoteCheckResult {
 //   - otherwise → not up-to-date, with LatestVersion set to the path's current version.
 func CheckLocalSource(sourcePath, savedCommit, savedVersion string) (result RemoteCheckResult) {
 	slog.Debug("git check-local start", "source", sourcePath, "saved_commit", savedCommit, "saved_version", savedVersion)
+
 	defer func() {
 		slog.Debug("git check-local result",
 			"source", sourcePath,
@@ -466,6 +508,7 @@ func CheckLocalSource(sourcePath, savedCommit, savedVersion string) (result Remo
 	if desc.Commit == savedCommit && stripDirty(desc.Version) == stripDirty(savedVersion) {
 		return RemoteCheckResult{IsUpToDate: true}
 	}
+
 	return RemoteCheckResult{IsUpToDate: false, LatestVersion: desc.Version}
 }
 
@@ -481,6 +524,7 @@ func classifyRemoteError(err error) CheckErrorKind {
 	if errors.As(err, &netErr) {
 		return CheckErrorNetwork
 	}
+
 	switch {
 	case errors.Is(err, transport.ErrAuthenticationRequired),
 		errors.Is(err, transport.ErrAuthorizationFailed):
@@ -488,6 +532,7 @@ func classifyRemoteError(err error) CheckErrorKind {
 	case errors.Is(err, transport.ErrRepositoryNotFound):
 		return CheckErrorNotFound
 	}
+
 	return CheckErrorUnknown
 }
 
@@ -502,6 +547,7 @@ func resolveStatus(refs []*plumbing.Reference, localHead plumbing.Hash, ref, cur
 	branchRef := plumbing.NewBranchReferenceName(ref)
 
 	remoteTags := map[string]struct{}{}
+
 	for _, r := range refs {
 		if r.Name().IsTag() {
 			remoteTags[r.Name().Short()] = struct{}{}
@@ -515,6 +561,7 @@ func resolveStatus(refs []*plumbing.Reference, localHead plumbing.Hash, ref, cur
 			if latest == "" || latest == ref {
 				return RemoteCheckResult{IsUpToDate: true}
 			}
+
 			return RemoteCheckResult{IsUpToDate: false, LatestVersion: latest}
 		}
 	}
@@ -532,8 +579,10 @@ func resolveStatus(refs []*plumbing.Reference, localHead plumbing.Hash, ref, cur
 				if latest == "" || latest == currentVersion {
 					return RemoteCheckResult{IsUpToDate: true}
 				}
+
 				return RemoteCheckResult{IsUpToDate: false, LatestVersion: latest}
 			}
+
 			return RemoteCheckResult{IsUpToDate: r.Hash() == localHead}
 		}
 	}
@@ -548,18 +597,23 @@ func latestSemverTag(tags map[string]struct{}, current string) string {
 	if err != nil {
 		return ""
 	}
+
 	var latest *semver.Version
+
 	for tag := range tags {
 		v, err := semver.NewVersion(tag)
 		if err != nil {
 			continue
 		}
+
 		if v.GreaterThan(cur) && (latest == nil || v.GreaterThan(latest)) {
 			latest = v
 		}
 	}
+
 	if latest == nil {
 		return ""
 	}
+
 	return latest.Original()
 }

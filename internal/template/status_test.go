@@ -58,13 +58,16 @@ func TestStatus_SpecsVersionRoundtrip(t *testing.T) {
 		IsUpToDate:   true,
 		SpecsVersion: "1.2.3",
 	}
+
 	if err := SaveStatus(dir, original); err != nil {
 		t.Fatalf("SaveStatus: %v", err)
 	}
+
 	loaded, err := LoadStatus(dir)
 	if err != nil {
 		t.Fatalf("LoadStatus: %v", err)
 	}
+
 	if loaded.SpecsVersion != "1.2.3" {
 		t.Errorf("SpecsVersion: got %q, want %q", loaded.SpecsVersion, "1.2.3")
 	}
@@ -72,10 +75,12 @@ func TestStatus_SpecsVersionRoundtrip(t *testing.T) {
 
 func TestLoadStatus_Missing(t *testing.T) {
 	dir := t.TempDir()
+
 	s, err := LoadStatus(dir)
 	if err != nil {
 		t.Fatalf("LoadStatus: expected nil error, got %v", err)
 	}
+
 	if s != nil {
 		t.Errorf("LoadStatus: expected nil status for missing file, got %+v", s)
 	}
@@ -99,18 +104,23 @@ func TestStatusRoundtrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadStatus: %v", err)
 	}
+
 	if loaded == nil {
 		t.Fatal("LoadStatus: expected non-nil status")
 	}
+
 	if loaded.IsUpToDate != original.IsUpToDate {
 		t.Errorf("IsUpToDate: got %v, want %v", loaded.IsUpToDate, original.IsUpToDate)
 	}
+
 	if loaded.LatestVersion != original.LatestVersion {
 		t.Errorf("LatestVersion: got %q, want %q", loaded.LatestVersion, original.LatestVersion)
 	}
+
 	if loaded.ErrorKind != original.ErrorKind {
 		t.Errorf("ErrorKind: got %q, want %q", loaded.ErrorKind, original.ErrorKind)
 	}
+
 	if !loaded.CheckedAt.Equal(original.CheckedAt.Time) {
 		t.Errorf("CheckedAt: got %v, want %v", loaded.CheckedAt.Time, original.CheckedAt.Time)
 	}

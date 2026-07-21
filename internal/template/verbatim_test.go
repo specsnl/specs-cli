@@ -10,10 +10,12 @@ import (
 
 func TestLoadVerbatim_MissingFile(t *testing.T) {
 	dir := t.TempDir()
+
 	rules, err := pkgtemplate.LoadVerbatim(dir)
 	if err != nil {
 		t.Fatalf("unexpected error for missing .specsverbatim: %v", err)
 	}
+
 	if rules.Matches("anything.txt") {
 		t.Error("empty rules should not match anything")
 	}
@@ -21,6 +23,7 @@ func TestLoadVerbatim_MissingFile(t *testing.T) {
 
 func writeVerbatimFile(t *testing.T, dir, content string) {
 	t.Helper()
+
 	if err := os.WriteFile(filepath.Join(dir, ".specsverbatim"), []byte(content), 0644); err != nil {
 		t.Fatalf("writeVerbatimFile: %v", err)
 	}
@@ -47,10 +50,12 @@ func TestVerbatimMatches(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			dir := t.TempDir()
 			writeVerbatimFile(t, dir, tt.pattern+"\n")
+
 			rules, err := pkgtemplate.LoadVerbatim(dir)
 			if err != nil {
 				t.Fatalf("LoadVerbatim: %v", err)
 			}
+
 			got := rules.Matches(tt.path)
 			if got != tt.want {
 				t.Errorf("Matches(%q) with pattern %q = %v, want %v", tt.path, tt.pattern, got, tt.want)
@@ -111,6 +116,7 @@ config/secrets/credentials.json
 			t.Errorf("expected %q to be matched, but it was not", path)
 		}
 	}
+
 	for _, path := range shouldNotMatch {
 		if rules.Matches(path) {
 			t.Errorf("expected %q not to be matched, but it was", path)
@@ -121,16 +127,20 @@ config/secrets/credentials.json
 func TestLoadVerbatim_MultiplePatterns(t *testing.T) {
 	dir := t.TempDir()
 	writeVerbatimFile(t, dir, "composer.lock\npackage-lock.json\n")
+
 	rules, err := pkgtemplate.LoadVerbatim(dir)
 	if err != nil {
 		t.Fatalf("LoadVerbatim: %v", err)
 	}
+
 	if !rules.Matches("composer.lock") {
 		t.Error("should match composer.lock")
 	}
+
 	if !rules.Matches("package-lock.json") {
 		t.Error("should match package-lock.json")
 	}
+
 	if rules.Matches("composer.json") {
 		t.Error("should not match composer.json")
 	}

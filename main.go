@@ -21,6 +21,7 @@ func main() {
 		if errors.As(err, &exitErr) {
 			os.Exit(exitErr.Code)
 		}
+
 		app.Output.WriteErr(err)
 		os.Exit(exit.Error)
 	}

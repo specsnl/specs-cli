@@ -16,9 +16,11 @@ func TestCopyDir_PreservesStructure(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(src, "a", "b"), 0755); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := os.WriteFile(filepath.Join(src, "a", "b", "file.txt"), []byte("hello"), 0644); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := os.WriteFile(filepath.Join(src, "root.txt"), []byte("root"), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -51,6 +53,7 @@ func TestCopyDir_PreservesContent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading dst file: %v", err)
 	}
+
 	if string(got) != string(content) {
 		t.Errorf("content = %q, want %q", got, content)
 	}
@@ -64,6 +67,7 @@ func TestCopyDir_PreservesPermissions(t *testing.T) {
 	if err := os.WriteFile(path, []byte("#!/bin/sh\n"), 0755); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := os.Chmod(path, 0755); err != nil {
 		t.Fatal(err)
 	}
@@ -76,6 +80,7 @@ func TestCopyDir_PreservesPermissions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat: %v", err)
 	}
+
 	if got := info.Mode().Perm(); got != 0755 {
 		t.Errorf("permissions = %04o, want 0755", got)
 	}
@@ -88,6 +93,7 @@ func TestCopyDir_OverwritesExisting(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(src, "file.txt"), []byte("new"), 0644); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := os.WriteFile(filepath.Join(dst, "file.txt"), []byte("old"), 0644); err != nil {
 		t.Fatal(err)
 	}

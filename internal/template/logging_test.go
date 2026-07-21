@@ -20,8 +20,11 @@ func TestExecute_SummaryLogIsDebugLevel(t *testing.T) {
 
 	runExecute := func(t *testing.T, level slog.Level) string {
 		t.Helper()
+
 		var buf bytes.Buffer
+
 		prev := slog.Default()
+
 		slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: level})))
 		t.Cleanup(func() { slog.SetDefault(prev) })
 
@@ -29,9 +32,11 @@ func TestExecute_SummaryLogIsDebugLevel(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Get: %v", err)
 		}
+
 		if err := tmpl.Execute(t.TempDir()); err != nil {
 			t.Fatalf("Execute: %v", err)
 		}
+
 		return buf.String()
 	}
 
@@ -45,6 +50,7 @@ func TestExecute_SummaryLogIsDebugLevel(t *testing.T) {
 	if !strings.Contains(out, "template execution complete") {
 		t.Fatalf("summary log missing at Debug level:\n%s", out)
 	}
+
 	for _, attr := range []string{"rendered=", "verbatim=", "skipped="} {
 		if !strings.Contains(out, attr) {
 			t.Errorf("summary log missing attribute %q at Debug level:\n%s", attr, out)

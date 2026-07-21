@@ -3,9 +3,9 @@ package cmd
 import (
 	"os"
 
-	"github.com/spf13/cobra"
 	"github.com/specsnl/specs-cli/internal/registry"
 	"github.com/specsnl/specs-cli/internal/specs"
+	"github.com/spf13/cobra"
 )
 
 func newTemplateUpgradeCmd(app *App) *cobra.Command {
@@ -21,11 +21,13 @@ func newTemplateUpgradeCmd(app *App) *cobra.Command {
 			upgradeAll := len(args) == 0
 
 			var names []string
+
 			if upgradeAll {
 				entries, err := os.ReadDir(specs.TemplateDir())
 				if err != nil {
 					return err
 				}
+
 				for _, e := range entries {
 					if e.IsDir() {
 						names = append(names, e.Name())
@@ -42,8 +44,10 @@ func newTemplateUpgradeCmd(app *App) *cobra.Command {
 						app.Output.Warn("template %q: %v", name, err)
 						continue
 					}
+
 					return err
 				}
+
 				switch {
 				case res.IsLocal:
 					app.Output.Info("template %q has no trackable source (no remote branch or git history) — skipping", name)

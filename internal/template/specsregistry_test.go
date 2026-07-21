@@ -72,6 +72,7 @@ func TestSpecsRegistry_ToBinary(t *testing.T) {
 		{-1, "-1"},
 	}
 	r := newRegistry()
+
 	for _, tt := range tests {
 		if got := r.ToBinary(tt.input); got != tt.want {
 			t.Errorf("ToBinary(%d) = %q, want %q", tt.input, got, tt.want)
@@ -92,6 +93,7 @@ func TestSpecsRegistry_FormatFilesize(t *testing.T) {
 		{1000 * 1000 * 1000, "1GB"},
 	}
 	r := newRegistry()
+
 	for _, tt := range tests {
 		if got := r.FormatFilesize(tt.input); got != tt.want {
 			t.Errorf("FormatFilesize(%v) = %q, want %q", tt.input, got, tt.want)

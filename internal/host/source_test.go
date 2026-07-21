@@ -187,17 +187,22 @@ func TestParse(t *testing.T) {
 				if err == nil {
 					t.Fatalf("Parse(%q) = nil error, want error", tt.input)
 				}
+
 				return
 			}
+
 			if err != nil {
 				t.Fatalf("Parse(%q) error: %v", tt.input, err)
 			}
+
 			if src.CloneURL != tt.wantURL {
 				t.Errorf("CloneURL = %q, want %q", src.CloneURL, tt.wantURL)
 			}
+
 			if src.Branch != tt.wantBranch {
 				t.Errorf("Branch = %q, want %q", src.Branch, tt.wantBranch)
 			}
+
 			if src.LocalPath != tt.wantLocal {
 				t.Errorf("LocalPath = %q, want %q", src.LocalPath, tt.wantLocal)
 			}

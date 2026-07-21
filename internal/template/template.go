@@ -51,6 +51,7 @@ func (c Config) delims() specs.Delimiters {
 	if c.Delims.Left == "" {
 		return specs.DefaultDelimiters
 	}
+
 	return c.Delims
 }
 
@@ -110,6 +111,7 @@ func Get(templateRoot string, cfg Config) (*Template, error) {
 	if err != nil {
 		return nil, fmt.Errorf("reading delimiters from project file: %w", err)
 	}
+
 	cfg.Delims = delims
 
 	// Enforce a template-declared __specs__version constraint against the running CLI.
@@ -181,6 +183,7 @@ func checkSpecsVersion(templateRoot, cliVersion string) error {
 	if err != nil {
 		return err
 	}
+
 	if constraint == nil {
 		return nil // no constraint declared — nothing to enforce
 	}
@@ -189,6 +192,7 @@ func checkSpecsVersion(templateRoot, cliVersion string) error {
 	if err != nil {
 		slog.Debug("skipping specs version check: CLI version is not a parseable semver",
 			"version", cliVersion, "constraint", raw)
+
 		return nil
 	}
 
@@ -196,6 +200,7 @@ func checkSpecsVersion(templateRoot, cliVersion string) error {
 		return fmt.Errorf("%w: template requires specs %s, but this binary is %s",
 			specs.ErrSpecsVersionUnsatisfied, raw, cliVersion)
 	}
+
 	return nil
 }
 
@@ -236,6 +241,7 @@ func (t *Template) Execute(targetDir string) error {
 			if d.IsDir() {
 				return filepath.SkipDir
 			}
+
 			return nil
 		}
 
@@ -243,12 +249,15 @@ func (t *Template) Execute(targetDir string) error {
 		destRel, err := t.renderName(rel, ctx)
 		if err != nil || strings.TrimSpace(destRel) == "" {
 			slog.Debug("skipping path", "path", rel, "error", err)
+
 			if !d.IsDir() {
 				skipped++
 			}
+
 			if d.IsDir() {
 				return filepath.SkipDir
 			}
+
 			return nil
 		}
 
@@ -257,9 +266,11 @@ func (t *Template) Execute(targetDir string) error {
 			if !d.IsDir() {
 				skipped++
 			}
+
 			if d.IsDir() {
 				return filepath.SkipDir
 			}
+
 			return nil
 		}
 
@@ -274,14 +285,18 @@ func (t *Template) Execute(targetDir string) error {
 		relForward := filepath.ToSlash(rel)
 		if t.verbatim.Matches(relForward) || isBinary(srcPath) {
 			slog.Debug("file decision", "path", rel, "dest", destPath, "action", "verbatim")
+
 			verbatim++
+
 			return copyFile(srcPath, destPath)
 		}
+
 		slog.Debug("file decision", "path", rel, "dest", destPath, "action", "render")
+
 		rendered++
+
 		return t.renderFile(srcPath, destPath, relForward, ctx)
 	})
-
 	if walkErr != nil {
 		return walkErr
 	}
@@ -293,20 +308,24 @@ func (t *Template) Execute(targetDir string) error {
 		"verbatim", verbatim,
 		"skipped", skipped,
 	)
+
 	return nil
 }
 
 // renderName renders a file/directory path template using the configured delimiters.
 func (t *Template) renderName(name string, ctx map[string]any) (string, error) {
 	d := t.cfg.delims()
+
 	tmpl, err := texttemplate.New("").Delims(d.Left, d.Right).Funcs(t.funcMap).Parse(name)
 	if err != nil {
 		return "", err
 	}
+
 	var buf strings.Builder
 	if err := tmpl.Execute(&buf, ctx); err != nil {
 		return "", err
 	}
+
 	return buf.String(), nil
 }
 
@@ -327,6 +346,7 @@ func (t *Template) renderFile(srcPath, destPath, rel string, ctx map[string]any)
 	}
 
 	d := t.cfg.delims()
+
 	tmpl, err := texttemplate.New("").
 		Delims(d.Left, d.Right).
 		Funcs(t.funcMap).
@@ -337,6 +357,7 @@ func (t *Template) renderFile(srcPath, destPath, rel string, ctx map[string]any)
 			t.Warnings = append(t.Warnings, RenderWarning{Path: rel, Err: err, Preview: contentPreview(data)})
 			return copyFile(srcPath, destPath)
 		}
+
 		return fmt.Errorf("parsing template %s: %w", rel, err)
 	}
 
@@ -346,6 +367,7 @@ func (t *Template) renderFile(srcPath, destPath, rel string, ctx map[string]any)
 			t.Warnings = append(t.Warnings, RenderWarning{Path: rel, Err: err, Preview: contentPreview(data)})
 			return copyFile(srcPath, destPath)
 		}
+
 		return fmt.Errorf("rendering template %s: %w", rel, err)
 	}
 
@@ -360,10 +382,12 @@ func (t *Template) renderFile(srcPath, destPath, rel string, ctx map[string]any)
 // contentPreview returns the first ~80 characters of data for display in warnings.
 func contentPreview(data []byte) string {
 	const max = 80
+
 	s := string(data)
 	if len(s) > max {
 		return s[:max]
 	}
+
 	return s
 }
 
@@ -392,6 +416,7 @@ func isBinary(path string) bool {
 	if slices.Contains(buf, 0) {
 		return true
 	}
+
 	return !utf8.Valid(buf)
 }
 
@@ -402,6 +427,7 @@ func hasEmptySegment(path string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -409,23 +435,30 @@ func copyFile(src, dst string) error {
 	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
 		return err
 	}
+
 	info, err := os.Stat(src)
 	if err != nil {
 		return err
 	}
+
 	in, err := os.Open(src)
 	if err != nil {
 		return err
 	}
+
 	defer in.Close()
+
 	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, info.Mode())
 	if err != nil {
 		return err
 	}
+
 	defer out.Close()
+
 	if _, err = io.Copy(out, in); err != nil {
 		return err
 	}
+
 	return os.Chmod(dst, info.Mode())
 }
 
@@ -433,8 +466,10 @@ func writeFile(path string, data []byte, mode fs.FileMode) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
 	}
+
 	if err := os.WriteFile(path, data, mode); err != nil {
 		return err
 	}
+
 	return os.Chmod(path, mode)
 }

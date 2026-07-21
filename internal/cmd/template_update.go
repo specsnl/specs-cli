@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/cobra"
 	"github.com/specsnl/specs-cli/internal/specs"
 	pkgtemplate "github.com/specsnl/specs-cli/internal/template"
 	pkggit "github.com/specsnl/specs-cli/internal/util/git"
+	"github.com/spf13/cobra"
 )
 
 func newTemplateUpdateCmd(app *App) *cobra.Command {
@@ -30,6 +30,7 @@ func newTemplateUpdateCmd(app *App) *cobra.Command {
 				if err != nil {
 					return err
 				}
+
 				for _, e := range entries {
 					if e.IsDir() {
 						names = append(names, e.Name())
@@ -43,20 +44,24 @@ func newTemplateUpdateCmd(app *App) *cobra.Command {
 
 			for _, name := range names {
 				root := specs.TemplatePath(name)
+
 				meta, err := pkgtemplate.LoadMetadata(root)
 				if err != nil {
 					slog.Debug("failed to parse template metadata", "template", name, "error", err)
 				}
+
 				if meta == nil || meta.Repository == "" {
 					continue
 				}
 
 				var result pkggit.RemoteCheckResult
+
 				if isLocalRepo(meta.Repository) {
 					if meta.Commit == "" {
 						// Nothing recorded to compare the source path against.
 						continue
 					}
+
 					checkedCount++
 					// git layer logs the check-local start/result
 					result = pkggit.CheckLocalSource(strings.TrimPrefix(meta.Repository, localRepoPrefix), meta.Commit, meta.Version)
@@ -68,6 +73,7 @@ func newTemplateUpdateCmd(app *App) *cobra.Command {
 							slog.Debug("could not resolve branch from local HEAD, skipping", "template", name, "error", err)
 							continue
 						}
+
 						branch = b
 						// Persist the resolved branch so future runs skip this fallback.
 						if err := pkgtemplate.SaveMetadata(root, name, meta.Repository, branch, meta.Commit, meta.Version, meta.Created.Time, meta.Updated.Time); err != nil {
@@ -116,10 +122,12 @@ func newTemplateUpdateCmd(app *App) *cobra.Command {
 			if len(updatesAvailable) > 0 {
 				for _, name := range updatesAvailable {
 					root := specs.TemplatePath(name)
+
 					s, err := pkgtemplate.LoadStatus(root)
 					if err != nil {
 						slog.Debug("failed to load template status", "template", name, "error", err)
 					}
+
 					if s != nil && s.LatestVersion != "" {
 						app.Output.Info("template %q has an update available: %s", name, s.LatestVersion)
 					} else {

@@ -49,6 +49,7 @@ func (c condAnd) Eval(ctx map[string]any) bool {
 			return false
 		}
 	}
+
 	return true
 }
 func (c condOr) Eval(ctx map[string]any) bool {
@@ -57,6 +58,7 @@ func (c condOr) Eval(ctx map[string]any) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -72,6 +74,7 @@ func collectKeys(subs []Cond) []string {
 	for _, s := range subs {
 		keys = append(keys, s.Keys()...)
 	}
+
 	return keys
 }
 

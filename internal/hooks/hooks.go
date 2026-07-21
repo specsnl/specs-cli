@@ -36,6 +36,7 @@ func Load(templateRoot string, projectConfig map[string]any, envPrefix string) (
 		if err := h.parseInline(raw); err != nil {
 			return nil, fmt.Errorf("parsing inline hooks: %w", err)
 		}
+
 		hasInline = true
 	}
 
@@ -62,6 +63,7 @@ func Load(templateRoot string, projectConfig map[string]any, envPrefix string) (
 // Returns immediately on the first non-zero exit.
 func (h *Hooks) Run(trigger, cwd string, ctx map[string]any, funcMap template.FuncMap, delims specs.Delimiters) error {
 	var commands []string
+
 	switch trigger {
 	case "pre-use":
 		commands = h.PreUse
@@ -93,6 +95,7 @@ func (h *Hooks) Run(trigger, cwd string, ctx map[string]any, funcMap template.Fu
 
 		cmd := exec.Command("bash", "-c", rendered)
 		cmd.Dir = cwd
+
 		cmd.Env = append(os.Environ(), env...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -105,6 +108,7 @@ func (h *Hooks) Run(trigger, cwd string, ctx map[string]any, funcMap template.Fu
 
 		slog.Debug("hook command completed", "trigger", trigger, "command", firstLine(rendered))
 	}
+
 	return nil
 }
 
@@ -112,6 +116,7 @@ func (h *Hooks) Run(trigger, cwd string, ctx map[string]any, funcMap template.Fu
 // It is used to preview hook contents before asking for user confirmation.
 func (h *Hooks) Rendered(trigger string, ctx map[string]any, funcMap template.FuncMap, delims specs.Delimiters) ([]string, error) {
 	var cmds []string
+
 	switch trigger {
 	case "pre-use":
 		cmds = h.PreUse
@@ -120,14 +125,18 @@ func (h *Hooks) Rendered(trigger string, ctx map[string]any, funcMap template.Fu
 	default:
 		return nil, fmt.Errorf("unknown hook trigger: %q", trigger)
 	}
+
 	result := make([]string, len(cmds))
+
 	for i, cmd := range cmds {
 		rendered, err := renderCommand(cmd, ctx, funcMap, delims)
 		if err != nil {
 			return nil, err
 		}
+
 		result[i] = rendered
 	}
+
 	return result, nil
 }
 
@@ -143,20 +152,25 @@ func (h *Hooks) parseInline(raw any) error {
 	if !ok {
 		return fmt.Errorf("hooks must be a mapping, got %T", raw)
 	}
+
 	if pre, ok := m["pre-use"]; ok {
 		cmds, err := toStringSlice(pre)
 		if err != nil {
 			return fmt.Errorf("pre-use: %w", err)
 		}
+
 		h.PreUse = cmds
 	}
+
 	if post, ok := m["post-use"]; ok {
 		cmds, err := toStringSlice(post)
 		if err != nil {
 			return fmt.Errorf("post-use: %w", err)
 		}
+
 		h.PostUse = cmds
 	}
+
 	return nil
 }
 
@@ -171,15 +185,19 @@ func (h *Hooks) loadFromDir(hooksDir string) error {
 		{"post-use.sh", &h.PostUse},
 	} {
 		path := filepath.Join(hooksDir, name.file)
+
 		data, err := os.ReadFile(path)
 		if os.IsNotExist(err) {
 			continue
 		}
+
 		if err != nil {
 			return err
 		}
+
 		*name.target = []string{string(data)}
 	}
+
 	return nil
 }
 
@@ -190,6 +208,7 @@ func buildEnv(ctx map[string]any, prefix string) []string {
 	for k, v := range ctx {
 		env = append(env, fmt.Sprintf("%s%s=%v", prefix, strings.ToUpper(k), v))
 	}
+
 	return env
 }
 
@@ -198,14 +217,17 @@ func renderCommand(cmdTpl string, ctx map[string]any, funcMap template.FuncMap, 
 	if !strings.Contains(cmdTpl, delims.Left) {
 		return cmdTpl, nil // fast path: no template expressions
 	}
+
 	tmpl, err := template.New("").Delims(delims.Left, delims.Right).Funcs(funcMap).Parse(cmdTpl)
 	if err != nil {
 		return "", err
 	}
+
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, ctx); err != nil {
 		return "", err
 	}
+
 	return buf.String(), nil
 }
 
@@ -215,14 +237,18 @@ func toStringSlice(v any) ([]string, error) {
 	if !ok {
 		return nil, fmt.Errorf("expected a list, got %T", v)
 	}
+
 	result := make([]string, len(list))
+
 	for i, item := range list {
 		s, ok := item.(string)
 		if !ok {
 			return nil, fmt.Errorf("item %d is not a string: %T", i, item)
 		}
+
 		result[i] = s
 	}
+
 	return result, nil
 }
 
@@ -237,5 +263,6 @@ func firstLine(s string) string {
 	if firstLine, _, found := strings.Cut(s, "\n"); found {
 		return firstLine + " …"
 	}
+
 	return s
 }

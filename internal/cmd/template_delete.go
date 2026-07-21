@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/spf13/cobra"
 	"github.com/specsnl/specs-cli/internal/specs"
 	"github.com/specsnl/specs-cli/internal/util/validate"
+	"github.com/spf13/cobra"
 )
 
 func newTemplateDeleteCmd(app *App) *cobra.Command {
@@ -24,15 +24,19 @@ func newTemplateDeleteCmd(app *App) *cobra.Command {
 				if err := validate.Name(name); err != nil {
 					return err
 				}
+
 				path := specs.TemplatePath(name)
 				if _, err := os.Stat(path); os.IsNotExist(err) {
 					return fmt.Errorf("%w: %s", specs.ErrTemplateNotFound, name)
 				}
+
 				if err := os.RemoveAll(path); err != nil {
 					return err
 				}
+
 				app.Output.Info("template %q deleted", name)
 			}
+
 			return nil
 		},
 	}

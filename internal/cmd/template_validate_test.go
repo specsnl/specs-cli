@@ -51,6 +51,7 @@ func TestValidate_MissingTemplateDir(t *testing.T) {
 	withTempRegistry(t)
 
 	src := t.TempDir()
+
 	_, err := executeCmd("template", "validate", src)
 	if err == nil {
 		t.Fatal("expected error for missing template/ subdir")
@@ -60,23 +61,28 @@ func TestValidate_MissingTemplateDir(t *testing.T) {
 // makeValidateTemplate creates a template with project.yaml and specific template files.
 func makeValidateTemplate(t *testing.T, projectYAML string, files map[string]string) string {
 	t.Helper()
+
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "project.yaml"), []byte(projectYAML), 0644); err != nil {
 		t.Fatal(err)
 	}
+
 	templateDir := filepath.Join(dir, "template")
 	if err := os.MkdirAll(templateDir, 0755); err != nil {
 		t.Fatal(err)
 	}
+
 	for name, content := range files {
 		abs := filepath.Join(templateDir, name)
 		if err := os.MkdirAll(filepath.Dir(abs), 0755); err != nil {
 			t.Fatal(err)
 		}
+
 		if err := os.WriteFile(abs, []byte(content), 0644); err != nil {
 			t.Fatal(err)
 		}
 	}
+
 	return dir
 }
 
@@ -84,10 +90,12 @@ func validateExitCode(err error) int {
 	if err == nil {
 		return 0
 	}
+
 	var exitErr *exit.ExitError
 	if errors.As(err, &exitErr) {
 		return exitErr.Code
 	}
+
 	return -1 // unexpected error type
 }
 
@@ -103,9 +111,11 @@ func TestValidate_UnusedVariable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected exit 0, got error: %v", err)
 	}
+
 	if !strings.Contains(out, "DatabasePort") {
 		t.Errorf("expected warning about DatabasePort, got: %q", out)
 	}
+
 	if !strings.Contains(out, "defined but never used") {
 		t.Errorf("expected 'defined but never used' in output, got: %q", out)
 	}
@@ -123,9 +133,11 @@ func TestValidate_UnusedComputed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected exit 0, got error: %v", err)
 	}
+
 	if !strings.Contains(out, "Slug") {
 		t.Errorf("expected warning about Slug, got: %q", out)
 	}
+
 	if !strings.Contains(out, "defined but never used") {
 		t.Errorf("expected 'defined but never used' in output, got: %q", out)
 	}
@@ -141,13 +153,17 @@ func TestValidate_UnknownVariable(t *testing.T) {
 	)
 
 	out, err := executeCmd("template", "validate", src)
+
 	const wantCode = exit.ValidateRender | exit.ValidateUnknown
+
 	if code := validateExitCode(err); code != wantCode {
 		t.Errorf("expected exit %d, got %d (err=%v)", wantCode, code, err)
 	}
+
 	if !strings.Contains(out, "AppName") {
 		t.Errorf("expected warning about AppName, got: %q", out)
 	}
+
 	if !strings.Contains(out, "not defined in project.yaml") {
 		t.Errorf("expected 'not defined in project.yaml' in output, got: %q", out)
 	}
@@ -176,7 +192,9 @@ func TestValidate_StrictUnusedAndUnknown(t *testing.T) {
 	)
 
 	_, err := executeCmd("template", "validate", "--strict", src)
+
 	const wantCode = exit.ValidateRender | exit.ValidateUnused | exit.ValidateUnknown
+
 	if code := validateExitCode(err); code != wantCode {
 		t.Errorf("expected exit %d, got %d (err=%v)", wantCode, code, err)
 	}
@@ -194,6 +212,7 @@ func TestValidate_SelectVariable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected exit 0, got error: %v", err)
 	}
+
 	if !strings.Contains(out, "template is valid") {
 		t.Errorf("expected 'template is valid', got: %q", out)
 	}
@@ -211,6 +230,7 @@ func TestValidate_NoIssues(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected exit 0, got error: %v", err)
 	}
+
 	if !strings.Contains(out, "template is valid") {
 		t.Errorf("expected 'template is valid', got: %q", out)
 	}

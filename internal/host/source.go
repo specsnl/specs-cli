@@ -69,6 +69,7 @@ func parseGitHub(input string) (*Source, error) {
 	parts := strings.SplitN(rest, ":", 2)
 
 	repoPart := parts[0]
+
 	before, after, ok := strings.Cut(repoPart, "/")
 	if !ok {
 		return nil, fmt.Errorf("invalid github source: missing owner/repo separator in %q", input)
@@ -84,6 +85,7 @@ func parseGitHub(input string) (*Source, error) {
 	if err := validateGitHubName("owner", owner, maxOwnerLen); err != nil {
 		return nil, fmt.Errorf("invalid github source: %w", err)
 	}
+
 	if err := validateGitHubName("repo", repo, maxRepoLen); err != nil {
 		return nil, fmt.Errorf("invalid github source: %w", err)
 	}
@@ -91,13 +93,16 @@ func parseGitHub(input string) (*Source, error) {
 	s := &Source{
 		CloneURL: "https://github.com/" + owner + "/" + repo,
 	}
+
 	if len(parts) == 2 {
 		branch := parts[1]
 		if err := validateBranch(branch); err != nil {
 			return nil, fmt.Errorf("invalid github source: %w", err)
 		}
+
 		s.Branch = branch
 	}
+
 	return s, nil
 }
 
@@ -106,12 +111,15 @@ func validateGitHubName(kind, name string, maxLen int) error {
 	if name == "" {
 		return fmt.Errorf("%s is empty", kind)
 	}
+
 	if len(name) > maxLen {
 		return fmt.Errorf("%s %q exceeds %d characters", kind, name, maxLen)
 	}
+
 	if !nameRe.MatchString(name) {
 		return fmt.Errorf("%s name %q is not a valid GitHub name (use letters, numbers, dots, hyphens, underscores)", kind, name)
 	}
+
 	return nil
 }
 
@@ -120,12 +128,15 @@ func validateBranch(branch string) error {
 	if branch == "" {
 		return fmt.Errorf("branch is empty")
 	}
+
 	if strings.ContainsAny(branch, " \t\n\r") {
 		return fmt.Errorf("branch %q contains whitespace", branch)
 	}
+
 	if strings.Contains(branch, "..") {
 		return fmt.Errorf("branch %q contains \"..\"", branch)
 	}
+
 	return nil
 }
 
@@ -135,12 +146,15 @@ func parseHTTPS(input string) (*Source, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid HTTPS URL %q: %w", input, err)
 	}
+
 	if u.Host == "" {
 		return nil, fmt.Errorf("invalid HTTPS URL %q: missing host", input)
 	}
+
 	if err := validateURLPath(u.Path, input); err != nil {
 		return nil, err
 	}
+
 	return &Source{CloneURL: strings.TrimSuffix(input, ".git")}, nil
 }
 
@@ -151,20 +165,24 @@ func parseSSH(input string) (*Source, error) {
 		if err != nil {
 			return nil, fmt.Errorf("invalid SSH URL %q: %w", input, err)
 		}
+
 		if u.Host == "" {
 			return nil, fmt.Errorf("invalid SSH URL %q: missing host", input)
 		}
+
 		if err := validateURLPath(u.Path, input); err != nil {
 			return nil, err
 		}
 	} else {
 		// SCP-style: user@host:path
 		colonIdx := strings.Index(input, ":")
+
 		path := input[colonIdx+1:]
 		if err := validateScpPath(path, input); err != nil {
 			return nil, err
 		}
 	}
+
 	return &Source{CloneURL: strings.TrimSuffix(input, ".git")}, nil
 }
 
@@ -172,9 +190,11 @@ func parseSSH(input string) (*Source, error) {
 func validateURLPath(path, input string) error {
 	p := strings.TrimPrefix(path, "/")
 	p = strings.TrimSuffix(p, ".git")
+
 	if countNonEmptySegments(p) < 2 {
 		return fmt.Errorf("invalid URL %q: path must have at least two non-empty segments (owner/repo)", input)
 	}
+
 	return nil
 }
 
@@ -184,16 +204,19 @@ func validateScpPath(path, input string) error {
 	if countNonEmptySegments(p) < 2 {
 		return fmt.Errorf("invalid SSH URL %q: path must have at least two non-empty segments (owner/repo)", input)
 	}
+
 	return nil
 }
 
 func countNonEmptySegments(path string) int {
 	n := 0
+
 	for seg := range strings.SplitSeq(path, "/") {
 		if seg != "" {
 			n++
 		}
 	}
+
 	return n
 }
 
@@ -201,5 +224,6 @@ func countNonEmptySegments(path string) int {
 func isScpStyle(input string) bool {
 	atIdx := strings.Index(input, "@")
 	colonIdx := strings.Index(input, ":")
+
 	return atIdx > 0 && colonIdx > atIdx && !strings.Contains(input, "://")
 }

@@ -43,6 +43,7 @@ func LoadUserContext(templateRoot string, funcMap texttemplate.FuncMap, delims s
 	delete(raw, specs.ProjectSpecsVersionKey) // consumed by Get(); must not appear as a user variable
 
 	userCtx, err = resolveReferencedDefaults(raw, funcMap, delims)
+
 	return userCtx, computedDefs, err
 }
 
@@ -54,19 +55,24 @@ func ExtractProjectDelimiters(templateRoot string, fallback specs.Delimiters) (s
 	if err != nil {
 		return fallback, err
 	}
+
 	v, ok := raw[specs.ProjectDelimitersKey]
 	if !ok {
 		return fallback, nil
 	}
+
 	m, ok := v.(map[string]any)
 	if !ok {
 		return fallback, specs.ErrInvalidDelimiters
 	}
+
 	left, leftOK := m["left"].(string)
 	right, rightOK := m["right"].(string)
+
 	if !leftOK || !rightOK || left == "" || right == "" {
 		return fallback, specs.ErrInvalidDelimiters
 	}
+
 	return specs.Delimiters{Left: left, Right: right}, nil
 }
 
@@ -79,18 +85,22 @@ func ExtractSpecsVersion(templateRoot string) (constraint *semver.Constraints, r
 	if err != nil {
 		return nil, "", err
 	}
+
 	v, ok := rawCtx[specs.ProjectSpecsVersionKey]
 	if !ok {
 		return nil, "", nil
 	}
+
 	s, ok := v.(string)
 	if !ok {
 		return nil, "", fmt.Errorf("%w: got %T", specs.ErrInvalidSpecsVersion, v)
 	}
+
 	c, err := semver.NewConstraint(s)
 	if err != nil {
 		return nil, "", fmt.Errorf("%w: %q: %v", specs.ErrInvalidSpecsVersion, s, err)
 	}
+
 	return c, s, nil
 }
 
@@ -104,12 +114,15 @@ func ReservedValues(templateRoot string) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	reserved := make(map[string]any)
+
 	for k := range specs.ReservedConfigKeys {
 		if v, ok := raw[k]; ok {
 			reserved[k] = v
 		}
 	}
+
 	return reserved, nil
 }
 
@@ -143,11 +156,14 @@ func ApplyComputed(ctx map[string]any, defs map[string]string, funcMap texttempl
 
 	for _, k := range sorted {
 		expr := defs[k]
+
 		val, err := renderExpr(expr, result, funcMap, delims)
 		if err != nil {
 			return nil, fmt.Errorf("computed %q: %w", k, err)
 		}
+
 		result[k] = val
+
 		slog.Debug("context key resolved", "key", k, "source", "computed")
 	}
 
@@ -173,30 +189,37 @@ func LoadProjectFile(templateRoot string) (map[string]any, error) {
 	if hasYAML || hasYML {
 		chosen := yamlPath
 		chosenName := specs.ProjectYAMLFile
+
 		if hasYML {
 			chosen = ymlPath
 			chosenName = specs.ProjectYMLFile
 		}
+
 		data, err := os.ReadFile(chosen)
 		if err != nil {
 			return nil, fmt.Errorf("reading %s: %w", chosenName, err)
 		}
+
 		var ctx map[string]any
 		if err := yaml.Unmarshal(data, &ctx); err != nil {
 			return nil, fmt.Errorf("parsing %s: %w", chosenName, err)
 		}
+
 		return ctx, nil
 	}
 
 	jsonPath := filepath.Join(templateRoot, specs.ProjectJSONFile)
+
 	data, err := os.ReadFile(jsonPath)
 	if err != nil {
 		return nil, fmt.Errorf("%w in %s", specs.ErrProjectFileMissing, templateRoot)
 	}
+
 	var ctx map[string]any
 	if err := json.Unmarshal(data, &ctx); err != nil {
 		return nil, fmt.Errorf("parsing %s: %w", specs.ProjectJSONFile, err)
 	}
+
 	return ctx, nil
 }
 
@@ -207,16 +230,20 @@ func LoadProjectFile(templateRoot string) (map[string]any, error) {
 // configuration keys can be added without clashing with existing template variables.
 func CheckReservedNames(raw map[string]any) error {
 	seen := make(map[string]bool)
+
 	var offending []string
+
 	collect := func(name string) {
 		if specs.IsReservedName(name) && !seen[name] {
 			seen[name] = true
+
 			offending = append(offending, name)
 		}
 	}
 
 	for k, v := range raw {
 		collect(k)
+
 		if k == "computed" {
 			if m, ok := v.(map[string]any); ok {
 				for ck := range m {
@@ -229,7 +256,9 @@ func CheckReservedNames(raw map[string]any) error {
 	if len(offending) == 0 {
 		return nil
 	}
+
 	sort.Strings(offending)
+
 	return fmt.Errorf("%w: %s", specs.ErrReservedVariableName, strings.Join(offending, ", "))
 }
 
@@ -240,6 +269,7 @@ func extractComputed(raw map[string]any) (map[string]string, error) {
 	if !ok {
 		return nil, nil
 	}
+
 	delete(raw, "computed")
 
 	m, ok := v.(map[string]any)
@@ -248,16 +278,20 @@ func extractComputed(raw map[string]any) (map[string]string, error) {
 	}
 
 	defs := make(map[string]string, len(m))
+
 	for k, val := range m {
 		if _, conflict := raw[k]; conflict {
 			return nil, fmt.Errorf("%w: key %q conflicts with a user input key", specs.ErrInvalidComputedDef, k)
 		}
+
 		s, ok := val.(string)
 		if !ok {
 			return nil, fmt.Errorf("%w: value for %q must be a string, got %T", specs.ErrInvalidComputedDef, k, val)
 		}
+
 		defs[k] = s
 	}
+
 	return defs, nil
 }
 
@@ -267,11 +301,13 @@ func extractComputed(raw map[string]any) (map[string]string, error) {
 func resolveReferencedDefaults(ctx map[string]any, funcMap texttemplate.FuncMap, delims specs.Delimiters) (map[string]any, error) {
 	// Find keys whose string value is a template expression.
 	var refKeys []string
+
 	for k, v := range ctx {
 		if s, ok := v.(string); ok && strings.Contains(s, delims.Left) {
 			refKeys = append(refKeys, k)
 		}
 	}
+
 	if len(refKeys) == 0 {
 		return ctx, nil
 	}
@@ -295,6 +331,7 @@ func resolveReferencedDefaults(ctx map[string]any, funcMap texttemplate.FuncMap,
 		if err != nil {
 			return nil, fmt.Errorf("referenced default %q: %w", k, err)
 		}
+
 		result[k] = val
 	}
 
@@ -313,9 +350,11 @@ func topoSort(keys []string, deps map[string][]string) ([]string, error) {
 
 	inDegree := make(map[string]int, len(keys))
 	dependents := make(map[string][]string, len(keys))
+
 	for _, k := range keys {
 		inDegree[k] = 0
 	}
+
 	for _, k := range keys {
 		for _, dep := range deps[k] {
 			if inSet[dep] {
@@ -326,6 +365,7 @@ func topoSort(keys []string, deps map[string][]string) ([]string, error) {
 	}
 
 	queue := make([]string, 0, len(keys))
+
 	for _, k := range keys {
 		if inDegree[k] == 0 {
 			queue = append(queue, k)
@@ -333,10 +373,13 @@ func topoSort(keys []string, deps map[string][]string) ([]string, error) {
 	}
 
 	sorted := make([]string, 0, len(keys))
+
 	for len(queue) > 0 {
 		n := queue[0]
 		queue = queue[1:]
+
 		sorted = append(sorted, n)
+
 		for _, dep := range dependents[n] {
 			inDegree[dep]--
 			if inDegree[dep] == 0 {
@@ -347,11 +390,13 @@ func topoSort(keys []string, deps map[string][]string) ([]string, error) {
 
 	if len(sorted) != len(keys) {
 		var cycle []string
+
 		for _, k := range keys {
 			if inDegree[k] > 0 {
 				cycle = append(cycle, k)
 			}
 		}
+
 		return nil, fmt.Errorf("%w: %s", specs.ErrCyclicDependency, strings.Join(cycle, ", "))
 	}
 
@@ -366,6 +411,7 @@ func extractRefs(expr string, funcMap texttemplate.FuncMap, delims specs.Delimit
 	if !strings.Contains(expr, delims.Left) {
 		return nil
 	}
+
 	tmpl, err := texttemplate.New("").
 		Delims(delims.Left, delims.Right).
 		Funcs(funcMap).
@@ -374,9 +420,13 @@ func extractRefs(expr string, funcMap texttemplate.FuncMap, delims specs.Delimit
 		slog.Debug("extractRefs: failed to parse expression; dependency detection skipped", "err", err)
 		return nil // parse errors surface during actual rendering
 	}
+
 	seen := make(map[string]bool)
+
 	var refs []string
+
 	walkForRefs(tmpl.Root, seen, &refs)
+
 	return refs
 }
 
@@ -385,6 +435,7 @@ func walkForRefs(node parse.Node, seen map[string]bool, refs *[]string) {
 	if node == nil {
 		return
 	}
+
 	switch n := node.(type) {
 	case *parse.ListNode:
 		for _, child := range n.Nodes {
@@ -405,24 +456,28 @@ func walkForRefs(node parse.Node, seen map[string]bool, refs *[]string) {
 			key := n.Ident[0]
 			if !seen[key] {
 				seen[key] = true
+
 				*refs = append(*refs, key)
 			}
 		}
 	case *parse.IfNode:
 		walkForRefs(n.Pipe, seen, refs)
 		walkForRefs(n.List, seen, refs)
+
 		if n.ElseList != nil {
 			walkForRefs(n.ElseList, seen, refs)
 		}
 	case *parse.RangeNode:
 		walkForRefs(n.Pipe, seen, refs)
 		walkForRefs(n.List, seen, refs)
+
 		if n.ElseList != nil {
 			walkForRefs(n.ElseList, seen, refs)
 		}
 	case *parse.WithNode:
 		walkForRefs(n.Pipe, seen, refs)
 		walkForRefs(n.List, seen, refs)
+
 		if n.ElseList != nil {
 			walkForRefs(n.ElseList, seen, refs)
 		}
@@ -439,9 +494,11 @@ func renderExpr(expr string, ctx map[string]any, funcMap texttemplate.FuncMap, d
 	if err != nil {
 		return "", err
 	}
+
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, ctx); err != nil {
 		return "", err
 	}
+
 	return buf.String(), nil
 }

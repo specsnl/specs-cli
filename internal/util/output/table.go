@@ -23,12 +23,14 @@ func RenderTable(headers []string, rows [][]string) string {
 	for i, h := range headers {
 		sb.WriteString(tableHeaderStyle.Width(widths[i] + 2).Render(h))
 	}
+
 	sb.WriteString("\n")
 
 	// Separator
 	for _, w := range widths {
 		sb.WriteString(tableBorderStyle.Render(strings.Repeat("─", w+2))) // +2 for padding
 	}
+
 	sb.WriteString("\n")
 
 	// Data rows
@@ -37,8 +39,10 @@ func RenderTable(headers []string, rows [][]string) string {
 			if i >= len(widths) {
 				break
 			}
+
 			sb.WriteString(tableCellStyle.Width(widths[i] + 2).Render(cell))
 		}
+
 		sb.WriteString("\n")
 	}
 
@@ -53,6 +57,7 @@ func columnWidths(headers []string, rows [][]string) []int {
 	for i, h := range headers {
 		widths[i] = len(h)
 	}
+
 	for _, row := range rows {
 		for i, cell := range row {
 			if i < len(widths) && len(cell) > widths[i] {
@@ -60,5 +65,6 @@ func columnWidths(headers []string, rows [][]string) []int {
 			}
 		}
 	}
+
 	return widths
 }

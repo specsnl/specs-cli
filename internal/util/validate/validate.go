@@ -13,8 +13,10 @@ func Name(name string) error {
 	if name == "" {
 		return fmt.Errorf("name must not be empty")
 	}
+
 	if !namePattern.MatchString(name) {
 		return fmt.Errorf("name %q contains invalid characters (allowed: a-z A-Z 0-9 _ -)", name)
 	}
+
 	return nil
 }

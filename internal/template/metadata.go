@@ -35,17 +35,21 @@ func (t *JSONTime) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &s); err != nil {
 		return err
 	}
+
 	parsed, err := time.Parse(time.RFC1123Z, s)
 	if err != nil {
 		return err
 	}
+
 	t.Time = parsed
+
 	return nil
 }
 
 // String returns a human-readable relative time string ("3 days ago").
 func (t JSONTime) String() string {
 	d := time.Since(t.Time)
+
 	switch {
 	case d < time.Minute:
 		return "just now"
@@ -63,10 +67,12 @@ func (t JSONTime) String() string {
 // A malformed file returns an error so callers can log the diagnostic.
 func LoadMetadata(templateRoot string) (*Metadata, error) {
 	path := filepath.Join(templateRoot, specs.MetadataFile)
+
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, nil //nolint:nilerr // missing or unreadable metadata is not an error
 	}
+
 	var m Metadata
 	if err := json.Unmarshal(data, &m); err != nil {
 		return nil, fmt.Errorf("parsing %s: %w", specs.MetadataFile, err)
@@ -76,6 +82,7 @@ func LoadMetadata(templateRoot string) (*Metadata, error) {
 	if m.Updated.IsZero() {
 		m.Updated = m.Created
 	}
+
 	return &m, nil
 }
 
@@ -93,9 +100,11 @@ func SaveMetadata(templateRoot, name, repository, branch, commit, version string
 		Commit:     commit,
 		Version:    version,
 	}
+
 	data, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
 		return err
 	}
+
 	return os.WriteFile(filepath.Join(templateRoot, specs.MetadataFile), data, 0644)
 }

@@ -38,6 +38,7 @@ func AnalyzeConditionals(
 		if err != nil {
 			return err
 		}
+
 		rel, _ := filepath.Rel(srcRoot, path)
 		if rel == "." {
 			return nil
@@ -52,8 +53,10 @@ func AnalyzeConditionals(
 			if err != nil {
 				return err
 			}
+
 			analyseExpr(string(data), nil, funcMap, conds, always, delims)
 		}
+
 		return nil
 	})
 	if err != nil {
@@ -65,6 +68,7 @@ func AnalyzeConditionals(
 	for k := range always {
 		referenced[k] = true
 	}
+
 	for k := range conds {
 		referenced[k] = true
 	}
@@ -73,6 +77,7 @@ func AnalyzeConditionals(
 	for k := range always {
 		delete(conds, k)
 	}
+
 	return conds, referenced, nil
 }
 
@@ -90,13 +95,16 @@ func analyseExpr(
 	if !strings.Contains(src, delims.Left) {
 		return
 	}
+
 	tmpl, err := texttemplate.New("").Delims(delims.Left, delims.Right).Funcs(funcMap).Parse(src)
 	if err != nil || tmpl == nil || tmpl.Tree == nil || tmpl.Root == nil {
 		if err != nil {
 			slog.Debug("analyseExpr: failed to parse expression; conditional analysis skipped", "err", err)
 		}
+
 		return
 	}
+
 	walkNode(tmpl.Root, outerGate, funcMap, conds, always)
 }
 
@@ -127,7 +135,9 @@ func walkNode(
 		if ok {
 			thenGate := andGates(gate, innerCond)
 			elseGate := andGates(gate, condNot{innerCond})
+
 			walkNode(n.List, thenGate, funcMap, conds, always)
+
 			if n.ElseList != nil {
 				walkNode(n.ElseList, elseGate, funcMap, conds, always)
 			}
@@ -135,6 +145,7 @@ func walkNode(
 			// Unrecognised condition — walk bodies under the current gate unchanged
 			// (conservative fallback: treat as unconditional).
 			walkNode(n.List, gate, funcMap, conds, always)
+
 			if n.ElseList != nil {
 				walkNode(n.ElseList, gate, funcMap, conds, always)
 			}
@@ -157,7 +168,9 @@ func walkNode(
 		if len(n.Ident) == 0 {
 			return
 		}
+
 		key := n.Ident[0]
+
 		if gate == nil {
 			always[key] = true
 		} else if !always[key] {
@@ -165,6 +178,7 @@ func walkNode(
 				// Seen under a different condition — treat as always needed.
 				if fmt.Sprint(existing) != fmt.Sprint(gate) {
 					always[key] = true
+
 					delete(conds, key)
 				}
 			} else {
@@ -175,6 +189,7 @@ func walkNode(
 	case *parse.RangeNode:
 		walkNode(n.Pipe, gate, funcMap, conds, always)
 		walkNode(n.List, gate, funcMap, conds, always)
+
 		if n.ElseList != nil {
 			walkNode(n.ElseList, gate, funcMap, conds, always)
 		}
@@ -182,6 +197,7 @@ func walkNode(
 	case *parse.WithNode:
 		walkNode(n.Pipe, gate, funcMap, conds, always)
 		walkNode(n.List, gate, funcMap, conds, always)
+
 		if n.ElseList != nil {
 			walkNode(n.ElseList, gate, funcMap, conds, always)
 		}
@@ -194,6 +210,7 @@ func andGates(outer Cond, inner Cond) Cond {
 	if outer == nil {
 		return inner
 	}
+
 	return condAnd{subs: []Cond{outer, inner}}
 }
 
@@ -203,6 +220,7 @@ func parsePipeCond(pipe *parse.PipeNode) (Cond, bool) {
 	if pipe == nil || len(pipe.Cmds) != 1 {
 		return nil, false
 	}
+
 	return parseCmdCond(pipe.Cmds[0])
 }
 
@@ -217,6 +235,7 @@ func parseCmdCond(cmd *parse.CommandNode) (Cond, bool) {
 		if f, ok := args[0].(*parse.FieldNode); ok && len(f.Ident) == 1 {
 			return condField{f.Ident[0]}, true
 		}
+
 		return nil, false
 	}
 
@@ -231,44 +250,55 @@ func parseCmdCond(cmd *parse.CommandNode) (Cond, bool) {
 		if len(args) != 2 {
 			return nil, false
 		}
+
 		sub, ok := parseArgCond(args[1])
 		if !ok {
 			return nil, false
 		}
+
 		return condNot{sub}, true
 
 	case "eq", "ne":
 		if len(args) != 3 {
 			return nil, false
 		}
+
 		field, ok := args[1].(*parse.FieldNode)
 		if !ok || len(field.Ident) != 1 {
 			return nil, false
 		}
+
 		lit, ok := parseLiteral(args[2])
 		if !ok {
 			return nil, false
 		}
+
 		if fn.Ident == "eq" {
 			return condEq{field.Ident[0], lit}, true
 		}
+
 		return condNe{field.Ident[0], lit}, true
 
 	case "and", "or":
 		if len(args) < 3 {
 			return nil, false
 		}
+
 		subs := make([]Cond, 0, len(args)-1)
+
 		for _, arg := range args[1:] {
 			sub, ok := parseArgCond(arg)
 			if !ok {
 				return nil, false
 			}
+
 			subs = append(subs, sub)
 		}
+
 		if fn.Ident == "and" {
 			return condAnd{subs}, true
 		}
+
 		return condOr{subs}, true
 	}
 
@@ -286,6 +316,7 @@ func parseArgCond(arg parse.Node) (Cond, bool) {
 	case *parse.PipeNode:
 		return parsePipeCond(n)
 	}
+
 	return nil, false
 }
 
@@ -300,9 +331,11 @@ func parseLiteral(node parse.Node) (any, bool) {
 		if n.IsInt {
 			return n.Int64, true
 		}
+
 		if n.IsFloat {
 			return n.Float64, true
 		}
 	}
+
 	return nil, false
 }

@@ -38,6 +38,7 @@ func (r *SpecsRegistry) RegisterFunctions(funcsMap sprout.FunctionMap) error {
 	sprout.AddFunction(funcsMap, "toBinary", r.ToBinary)
 	sprout.AddFunction(funcsMap, "formatFilesize", r.FormatFilesize)
 	sprout.AddFunction(funcsMap, "password", r.Password)
+
 	return nil
 }
 
@@ -53,6 +54,7 @@ func (r *SpecsRegistry) Username() string {
 	if u != nil {
 		return u.Username
 	}
+
 	return ""
 }
 

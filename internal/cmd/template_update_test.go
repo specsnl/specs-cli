@@ -26,6 +26,7 @@ func TestUpdate_NamedLocalTemplate_Skipped(t *testing.T) {
 	if err := os.MkdirAll(tmplDir, 0755); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := pkgtemplate.SaveMetadata(tmplDir, "local-tpl", "local:/some/local/path", "", "", "", time.Now().UTC(), time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
@@ -54,6 +55,7 @@ func TestUpdate_NamedLocalTemplate_ProducesNoOutput(t *testing.T) {
 	if err := os.MkdirAll(tmplDir, 0755); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := pkgtemplate.SaveMetadata(tmplDir, "local-tpl", "local:/some/local/path", "", "", "", time.Now().UTC(), time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
@@ -62,6 +64,7 @@ func TestUpdate_NamedLocalTemplate_ProducesNoOutput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("template update local-tpl: %v", err)
 	}
+
 	if out != "" {
 		t.Errorf("expected no output for local/skipped template, got: %q", out)
 	}
@@ -81,6 +84,7 @@ func TestUpdate_LocalTemplate_WithGitHistory_ProducesNoOutput(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(tmplDir, ".git"), 0755); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := pkgtemplate.SaveMetadata(tmplDir, "local-git-tpl", "local:/Users/user/my-template", "", "", "", time.Now().UTC(), time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
@@ -89,6 +93,7 @@ func TestUpdate_LocalTemplate_WithGitHistory_ProducesNoOutput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("template update local-git-tpl: %v", err)
 	}
+
 	if out != "" {
 		t.Errorf("expected no output — must not attempt network check of local: repository, got: %q", out)
 	}
@@ -101,6 +106,7 @@ func TestUpdate_NoArgs_EmptyRegistry_ProducesNoOutput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("template update with empty registry: %v", err)
 	}
+
 	if out != "" {
 		t.Errorf("expected no output for empty registry, got: %q", out)
 	}

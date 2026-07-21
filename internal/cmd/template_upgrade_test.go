@@ -17,6 +17,7 @@ func TestUpgrade_LocalSkipped(t *testing.T) {
 	if err := os.MkdirAll(tmplDir, 0755); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := pkgtemplate.SaveMetadata(tmplDir, "local-tpl", "local:/some/local/path", "", "", "", time.Now().UTC(), time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
@@ -42,6 +43,7 @@ func TestUpgrade_LocalTemplate_WithGitHistory(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(tmplDir, ".git"), 0755); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := pkgtemplate.SaveMetadata(tmplDir, "local-git-tpl", "local:/Users/user/my-template", "", "", "", time.Now().UTC(), time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}

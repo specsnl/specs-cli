@@ -21,12 +21,15 @@ func TestWriteMetadata_PreservesSuppliedCreated(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadMetadata: %v", err)
 	}
+
 	if got == nil {
 		t.Fatal("LoadMetadata returned nil metadata")
 	}
+
 	if !got.Created.Equal(want) {
 		t.Errorf("Created = %s, want %s", got.Created.Time, want)
 	}
+
 	if !got.Updated.Equal(want) {
 		t.Errorf("Updated = %s, want %s", got.Updated.Time, want)
 	}
@@ -48,6 +51,7 @@ func TestWriteMetadata_UpgradeRoundTripPreservesCreated(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadMetadata: %v", err)
 	}
+
 	if meta == nil {
 		t.Fatal("LoadMetadata returned nil metadata")
 	}
@@ -64,18 +68,23 @@ func TestWriteMetadata_UpgradeRoundTripPreservesCreated(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadMetadata after upgrade: %v", err)
 	}
+
 	if upgraded == nil {
 		t.Fatal("LoadMetadata returned nil metadata after upgrade")
 	}
+
 	if !upgraded.Created.Equal(original) {
 		t.Errorf("Created after upgrade = %s, want %s", upgraded.Created.Time, original)
 	}
+
 	if !upgraded.Updated.Equal(upgradedAt) {
 		t.Errorf("Updated after upgrade = %s, want %s", upgraded.Updated.Time, upgradedAt)
 	}
+
 	if upgraded.Commit != "new-sha" {
 		t.Errorf("Commit after upgrade = %q, want %q", upgraded.Commit, "new-sha")
 	}
+
 	if upgraded.Version != "v1.1.0" {
 		t.Errorf("Version after upgrade = %q, want %q", upgraded.Version, "v1.1.0")
 	}

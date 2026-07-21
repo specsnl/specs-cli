@@ -57,6 +57,7 @@ func TestKindOf_NilPanics(t *testing.T) {
 			t.Errorf("KindOf(nil) panicked: %v", r)
 		}
 	}()
+
 	if got := specs.KindOf(nil); got != "" {
 		t.Errorf("KindOf(nil) = %q, want %q", got, "")
 	}

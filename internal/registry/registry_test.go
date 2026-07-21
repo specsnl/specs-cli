@@ -21,9 +21,11 @@ func withTempRegistry(t *testing.T) string {
 	t.Setenv("XDG_CONFIG_HOME", tmp)
 	xdg.Reload()
 	t.Cleanup(func() { xdg.Reload() })
+
 	if err := specs.EnsureRegistry(); err != nil {
 		t.Fatalf("EnsureRegistry: %v", err)
 	}
+
 	return specs.TemplateDir()
 }
 
@@ -34,6 +36,7 @@ func TestLoad_NonExistent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: unexpected error: %v", err)
 	}
+
 	if entry != nil {
 		t.Errorf("expected nil entry for non-existent template, got %+v", entry)
 	}
@@ -51,15 +54,19 @@ func TestLoad_ExistsNoMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: unexpected error: %v", err)
 	}
+
 	if entry == nil {
 		t.Fatal("expected non-nil entry for existing template")
 	}
+
 	if entry.Name != "bare-tpl" {
 		t.Errorf("Name = %q, want %q", entry.Name, "bare-tpl")
 	}
+
 	if entry.Metadata != nil {
 		t.Errorf("expected nil Metadata for template without __metadata.json, got %+v", entry.Metadata)
 	}
+
 	if entry.Status != nil {
 		t.Errorf("expected nil Status for template without remote metadata, got %+v", entry.Status)
 	}
@@ -72,6 +79,7 @@ func TestLoad_WithMetadata(t *testing.T) {
 	if err := os.MkdirAll(tmplDir, 0755); err != nil {
 		t.Fatal(err)
 	}
+
 	created := time.Now().Add(-24 * time.Hour).UTC().Truncate(time.Second)
 	if err := pkgtemplate.SaveMetadata(tmplDir, "my-tpl", "https://example.com/repo", "main", "abc123", "v1.0.0", created, created); err != nil {
 		t.Fatalf("SaveMetadata: %v", err)
@@ -81,15 +89,19 @@ func TestLoad_WithMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
+
 	if entry == nil {
 		t.Fatal("expected non-nil entry")
 	}
+
 	if entry.Metadata == nil {
 		t.Fatal("expected non-nil Metadata")
 	}
+
 	if entry.Metadata.Repository != "https://example.com/repo" {
 		t.Errorf("Repository = %q, want %q", entry.Metadata.Repository, "https://example.com/repo")
 	}
+
 	if entry.Metadata.Branch != "main" {
 		t.Errorf("Branch = %q, want %q", entry.Metadata.Branch, "main")
 	}
@@ -102,6 +114,7 @@ func TestUpgrade_NonExistent(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for non-existent template")
 	}
+
 	if !errors.Is(err, specs.ErrTemplateNotFound) {
 		t.Errorf("expected ErrTemplateNotFound, got %v", err)
 	}
@@ -123,6 +136,7 @@ func TestUpgrade_LocalTemplate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Upgrade: unexpected error: %v", err)
 	}
+
 	if !result.IsLocal {
 		t.Error("expected IsLocal=true for template with local: repository")
 	}
@@ -151,6 +165,7 @@ func TestUpgrade_LocalTemplate_WithGitHistory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Upgrade: unexpected error: %v", err)
 	}
+
 	if !result.IsLocal {
 		t.Error("expected IsLocal=true — must not attempt network clone of local: repository")
 	}
@@ -168,6 +183,7 @@ func TestUpgrade_NoMetadata_TreatedAsLocal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Upgrade: unexpected error: %v", err)
 	}
+
 	if !result.IsLocal {
 		t.Error("expected IsLocal=true for template without metadata")
 	}

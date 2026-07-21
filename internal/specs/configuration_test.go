@@ -16,6 +16,7 @@ func TestConfigDir_XDGOverride(t *testing.T) {
 
 	got := specs.ConfigDir()
 	want := filepath.Join(tmp, "specs")
+
 	if got != want {
 		t.Errorf("ConfigDir() = %q, want %q", got, want)
 	}
@@ -29,6 +30,7 @@ func TestTemplateDir_XDGOverride(t *testing.T) {
 
 	got := specs.TemplateDir()
 	want := filepath.Join(tmp, "specs", "templates")
+
 	if got != want {
 		t.Errorf("TemplateDir() = %q, want %q", got, want)
 	}
@@ -53,4 +55,3 @@ func TestIsReservedName(t *testing.T) {
 		}
 	}
 }
-

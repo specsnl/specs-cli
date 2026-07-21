@@ -7,10 +7,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/spf13/cobra"
 	"github.com/specsnl/specs-cli/internal/specs"
 	pkgtemplate "github.com/specsnl/specs-cli/internal/template"
 	"github.com/specsnl/specs-cli/internal/util/exit"
+	"github.com/spf13/cobra"
 )
 
 func newTemplateValidateCmd(app *App) *cobra.Command {
@@ -32,6 +32,7 @@ func newTemplateValidateCmd(app *App) *cobra.Command {
 
 			cfg := app.templateConfig()
 			cfg.ContinueOnRenderError = true // validate collects all render errors; never aborts early
+
 			tmpl, err := pkgtemplate.Get(templateRoot, cfg)
 			if err != nil {
 				return fmt.Errorf("invalid template: %w", err)
@@ -46,6 +47,7 @@ func newTemplateValidateCmd(app *App) *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("resolving computed values: %w", err)
 				}
+
 				tmpl.Context = computed
 			}
 
@@ -83,21 +85,26 @@ func newTemplateValidateCmd(app *App) *cobra.Command {
 			if len(tmpl.Warnings) > 0 {
 				code |= exit.ValidateRender
 			}
+
 			if pkgtemplate.HasUnknown(issues) {
 				code |= exit.ValidateUnknown
 			}
+
 			if strict && pkgtemplate.HasUnused(issues) {
 				code |= exit.ValidateUnused
 			}
+
 			if code != 0 {
 				return &exit.ExitError{Code: code}
 			}
 
 			app.Output.Info("template is valid")
+
 			return nil
 		},
 	}
 
 	cmd.Flags().BoolVar(&strict, "strict", false, "Treat unused variables and computed values as errors")
+
 	return cmd
 }
