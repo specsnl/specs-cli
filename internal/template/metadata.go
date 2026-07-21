@@ -27,7 +27,7 @@ type JSONTime struct {
 }
 
 func (t JSONTime) MarshalJSON() ([]byte, error) {
-	return json.Marshal(t.Time.Format(time.RFC1123Z))
+	return json.Marshal(t.Format(time.RFC1123Z))
 }
 
 func (t *JSONTime) UnmarshalJSON(data []byte) error {
@@ -73,7 +73,7 @@ func LoadMetadata(templateRoot string) (*Metadata, error) {
 	}
 	// Metadata written before the Updated field existed has no Updated timestamp.
 	// Fall back to Created so pre-existing templates display a sensible value.
-	if m.Updated.Time.IsZero() {
+	if m.Updated.IsZero() {
 		m.Updated = m.Created
 	}
 	return &m, nil

@@ -111,7 +111,7 @@ func TestStatusRoundtrip(t *testing.T) {
 	if loaded.ErrorKind != original.ErrorKind {
 		t.Errorf("ErrorKind: got %q, want %q", loaded.ErrorKind, original.ErrorKind)
 	}
-	if !loaded.CheckedAt.Time.Equal(original.CheckedAt.Time) {
+	if !loaded.CheckedAt.Equal(original.CheckedAt.Time) {
 		t.Errorf("CheckedAt: got %v, want %v", loaded.CheckedAt.Time, original.CheckedAt.Time)
 	}
 

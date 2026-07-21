@@ -24,10 +24,10 @@ func TestWriteMetadata_PreservesSuppliedCreated(t *testing.T) {
 	if got == nil {
 		t.Fatal("LoadMetadata returned nil metadata")
 	}
-	if !got.Created.Time.Equal(want) {
+	if !got.Created.Equal(want) {
 		t.Errorf("Created = %s, want %s", got.Created.Time, want)
 	}
-	if !got.Updated.Time.Equal(want) {
+	if !got.Updated.Equal(want) {
 		t.Errorf("Updated = %s, want %s", got.Updated.Time, want)
 	}
 }
@@ -67,10 +67,10 @@ func TestWriteMetadata_UpgradeRoundTripPreservesCreated(t *testing.T) {
 	if upgraded == nil {
 		t.Fatal("LoadMetadata returned nil metadata after upgrade")
 	}
-	if !upgraded.Created.Time.Equal(original) {
+	if !upgraded.Created.Equal(original) {
 		t.Errorf("Created after upgrade = %s, want %s", upgraded.Created.Time, original)
 	}
-	if !upgraded.Updated.Time.Equal(upgradedAt) {
+	if !upgraded.Updated.Equal(upgradedAt) {
 		t.Errorf("Updated after upgrade = %s, want %s", upgraded.Updated.Time, upgradedAt)
 	}
 	if upgraded.Commit != "new-sha" {

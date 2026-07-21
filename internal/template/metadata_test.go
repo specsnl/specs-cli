@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	pkgtemplate "github.com/specsnl/specs-cli/internal/template"
 	"github.com/specsnl/specs-cli/internal/specs"
+	pkgtemplate "github.com/specsnl/specs-cli/internal/template"
 )
 
 // --- JSONTime.MarshalJSON / UnmarshalJSON ---
@@ -27,7 +27,7 @@ func TestJSONTime_RoundTrip(t *testing.T) {
 		t.Fatalf("UnmarshalJSON: %v", err)
 	}
 
-	if !original.Time.Equal(restored.Time) {
+	if !original.Equal(restored.Time) {
 		t.Errorf("round-trip mismatch: got %v, want %v", restored.Time, original.Time)
 	}
 }
@@ -43,7 +43,7 @@ func TestJSONTime_MarshalJSON_UsesRFC1123Z(t *testing.T) {
 	if err := json.Unmarshal(data, &s); err != nil {
 		t.Fatalf("unexpected format: %v", err)
 	}
-	want := jt.Time.Format(time.RFC1123Z)
+	want := jt.Format(time.RFC1123Z)
 	if s != want {
 		t.Errorf("MarshalJSON = %q, want %q", s, want)
 	}
@@ -128,7 +128,7 @@ func TestGet_LoadsMetadata(t *testing.T) {
 	if tmpl.Metadata.Repository != "user/repo" {
 		t.Errorf("Repository = %q, want %q", tmpl.Metadata.Repository, "user/repo")
 	}
-	if !tmpl.Metadata.Created.Time.Equal(created) {
+	if !tmpl.Metadata.Created.Equal(created) {
 		t.Errorf("Created = %v, want %v", tmpl.Metadata.Created.Time, created)
 	}
 }
@@ -225,10 +225,10 @@ func TestSaveMetadata_RoundTrip(t *testing.T) {
 	if m.Version != "v1.2.3" {
 		t.Errorf("Version = %q, want %q", m.Version, "v1.2.3")
 	}
-	if !m.Created.Time.Equal(created) {
+	if !m.Created.Equal(created) {
 		t.Errorf("Created = %v, want %v", m.Created.Time, created)
 	}
-	if !m.Updated.Time.Equal(updated) {
+	if !m.Updated.Equal(updated) {
 		t.Errorf("Updated = %v, want %v", m.Updated.Time, updated)
 	}
 }
@@ -257,10 +257,10 @@ func TestSaveMetadata_PreservesCreatedOnUpgrade(t *testing.T) {
 	if upgraded == nil {
 		t.Fatal("LoadMetadata returned nil after upgrade")
 	}
-	if !upgraded.Created.Time.Equal(original) {
+	if !upgraded.Created.Equal(original) {
 		t.Errorf("Created after upgrade = %v, want %v", upgraded.Created.Time, original)
 	}
-	if !upgraded.Updated.Time.Equal(upgradedAt) {
+	if !upgraded.Updated.Equal(upgradedAt) {
 		t.Errorf("Updated after upgrade = %v, want %v", upgraded.Updated.Time, upgradedAt)
 	}
 	if upgraded.Commit != "new-sha" {
@@ -294,7 +294,7 @@ func TestLoadMetadata_MissingUpdated_FallsBackToCreated(t *testing.T) {
 	if m == nil {
 		t.Fatal("LoadMetadata returned nil")
 	}
-	if !m.Updated.Time.Equal(created) {
+	if !m.Updated.Equal(created) {
 		t.Errorf("Updated = %v, want fallback to Created %v", m.Updated.Time, created)
 	}
 }

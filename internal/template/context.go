@@ -370,13 +370,13 @@ func extractRefs(expr string, funcMap texttemplate.FuncMap, delims specs.Delimit
 		Delims(delims.Left, delims.Right).
 		Funcs(funcMap).
 		Parse(expr)
-	if err != nil || tmpl == nil || tmpl.Tree == nil || tmpl.Tree.Root == nil {
+	if err != nil || tmpl == nil || tmpl.Tree == nil || tmpl.Root == nil {
 		slog.Debug("extractRefs: failed to parse expression; dependency detection skipped", "err", err)
 		return nil // parse errors surface during actual rendering
 	}
 	seen := make(map[string]bool)
 	var refs []string
-	walkForRefs(tmpl.Tree.Root, seen, &refs)
+	walkForRefs(tmpl.Root, seen, &refs)
 	return refs
 }
 

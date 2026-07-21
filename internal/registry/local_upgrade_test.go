@@ -119,7 +119,7 @@ func TestUpgrade_LocalGitSource_Advanced(t *testing.T) {
 	if after.Commit != newDesc.Commit {
 		t.Errorf("Commit = %q, want %q", after.Commit, newDesc.Commit)
 	}
-	if !after.Created.Time.Equal(before.Created.Time) {
+	if !after.Created.Equal(before.Created.Time) {
 		t.Error("Created should be preserved across upgrade")
 	}
 	// The freshly copied file must be present in the registry.

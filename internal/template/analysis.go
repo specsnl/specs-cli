@@ -91,13 +91,13 @@ func analyseExpr(
 		return
 	}
 	tmpl, err := texttemplate.New("").Delims(delims.Left, delims.Right).Funcs(funcMap).Parse(src)
-	if err != nil || tmpl == nil || tmpl.Tree == nil || tmpl.Tree.Root == nil {
+	if err != nil || tmpl == nil || tmpl.Tree == nil || tmpl.Root == nil {
 		if err != nil {
 			slog.Debug("analyseExpr: failed to parse expression; conditional analysis skipped", "err", err)
 		}
 		return
 	}
-	walkNode(tmpl.Tree.Root, outerGate, funcMap, conds, always)
+	walkNode(tmpl.Root, outerGate, funcMap, conds, always)
 }
 
 // walkNode recursively walks a template AST node, tracking conditional gates.
