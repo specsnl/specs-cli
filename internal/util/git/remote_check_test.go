@@ -17,6 +17,7 @@ import (
 
 func TestClassifyRemoteError_Network(t *testing.T) {
 	err := &net.OpError{Op: "dial", Err: fmt.Errorf("connection refused")}
+
 	got := classifyRemoteError(err)
 	if got != CheckErrorNetwork {
 		t.Errorf("classifyRemoteError(&net.OpError): got %q, want %q", got, CheckErrorNetwork)
@@ -60,10 +61,12 @@ func TestResolveStatus_BranchUpToDate(t *testing.T) {
 	refs := []*plumbing.Reference{
 		plumbing.NewHashReference(plumbing.NewBranchReferenceName("main"), hashA),
 	}
+
 	result := resolveStatus(refs, hashA, "main", "")
 	if !result.IsUpToDate {
 		t.Error("expected IsUpToDate = true when branch hash matches local HEAD")
 	}
+
 	if result.ErrorKind != CheckErrorNone {
 		t.Errorf("expected no error, got %q", result.ErrorKind)
 	}
@@ -73,10 +76,12 @@ func TestResolveStatus_BranchBehind(t *testing.T) {
 	refs := []*plumbing.Reference{
 		plumbing.NewHashReference(plumbing.NewBranchReferenceName("main"), hashB),
 	}
+
 	result := resolveStatus(refs, hashA, "main", "")
 	if result.IsUpToDate {
 		t.Error("expected IsUpToDate = false when branch hash differs from local HEAD")
 	}
+
 	if result.ErrorKind != CheckErrorNone {
 		t.Errorf("expected no error, got %q", result.ErrorKind)
 	}
@@ -92,10 +97,12 @@ func TestResolveStatus_BranchOnSemverTagNotOutdatedByLowerTag(t *testing.T) {
 		plumbing.NewHashReference(plumbing.NewTagReferenceName("1.1.0"), hashA),
 		plumbing.NewHashReference(plumbing.NewTagReferenceName("1.0.1"), hashB),
 	}
+
 	result := resolveStatus(refs, hashA, "main", "1.1.0")
 	if !result.IsUpToDate {
 		t.Error("expected IsUpToDate = true: 1.0.1 is not a semver upgrade over 1.1.0")
 	}
+
 	if result.LatestVersion != "" {
 		t.Errorf("expected empty LatestVersion, got %q", result.LatestVersion)
 	}
@@ -109,10 +116,12 @@ func TestResolveStatus_BranchOnSemverTagUpgradesToHigherTag(t *testing.T) {
 		plumbing.NewHashReference(plumbing.NewTagReferenceName("1.1.0"), hashA),
 		plumbing.NewHashReference(plumbing.NewTagReferenceName("1.2.0"), hashB),
 	}
+
 	result := resolveStatus(refs, hashA, "main", "1.1.0")
 	if result.IsUpToDate {
 		t.Error("expected IsUpToDate = false when a higher semver tag exists")
 	}
+
 	if result.LatestVersion != "1.2.0" {
 		t.Errorf("LatestVersion: got %q, want %q", result.LatestVersion, "1.2.0")
 	}
@@ -124,6 +133,7 @@ func TestResolveStatus_BranchNonSemverFallsBackToCommit(t *testing.T) {
 	refs := []*plumbing.Reference{
 		plumbing.NewHashReference(plumbing.NewBranchReferenceName("main"), hashB),
 	}
+
 	result := resolveStatus(refs, hashA, "main", "")
 	if result.IsUpToDate {
 		t.Error("expected IsUpToDate = false: non-semver checkout falls back to commit comparison")
@@ -134,10 +144,12 @@ func TestResolveStatus_TagAlreadyLatest(t *testing.T) {
 	refs := []*plumbing.Reference{
 		plumbing.NewHashReference(plumbing.NewTagReferenceName("v1.0.0"), hashA),
 	}
+
 	result := resolveStatus(refs, hashA, "v1.0.0", "v1.0.0")
 	if !result.IsUpToDate {
 		t.Error("expected IsUpToDate = true when on latest semver tag")
 	}
+
 	if result.LatestVersion != "" {
 		t.Errorf("expected empty LatestVersion, got %q", result.LatestVersion)
 	}
@@ -148,10 +160,12 @@ func TestResolveStatus_TagNewerExists(t *testing.T) {
 		plumbing.NewHashReference(plumbing.NewTagReferenceName("v1.0.0"), hashA),
 		plumbing.NewHashReference(plumbing.NewTagReferenceName("v2.0.0"), hashB),
 	}
+
 	result := resolveStatus(refs, hashA, "v1.0.0", "v1.0.0")
 	if result.IsUpToDate {
 		t.Error("expected IsUpToDate = false when newer tag exists")
 	}
+
 	if result.LatestVersion != "v2.0.0" {
 		t.Errorf("LatestVersion: got %q, want %q", result.LatestVersion, "v2.0.0")
 	}
@@ -167,26 +181,33 @@ func TestResolveStatus_RefNotFound(t *testing.T) {
 // commitFile stages a file and commits it, returning the new commit hash.
 func commitFile(t *testing.T, repo *gogit.Repository, dir, name, msg string) plumbing.Hash {
 	t.Helper()
+
 	if err := os.WriteFile(filepath.Join(dir, name), []byte(name), 0644); err != nil {
 		t.Fatalf("write file: %v", err)
 	}
+
 	wt, err := repo.Worktree()
 	if err != nil {
 		t.Fatalf("worktree: %v", err)
 	}
+
 	if _, err := wt.Add(name); err != nil {
 		t.Fatalf("add: %v", err)
 	}
+
 	sig := &object.Signature{Name: "T", Email: "t@example.com", When: time.Unix(0, 0).UTC()}
+
 	h, err := wt.Commit(msg, &gogit.CommitOptions{Author: sig, Committer: sig})
 	if err != nil {
 		t.Fatalf("commit: %v", err)
 	}
+
 	return h
 }
 
 func TestSemverTagAtCommit(t *testing.T) {
 	dir := t.TempDir()
+
 	repo, err := gogit.PlainInit(dir, false)
 	if err != nil {
 		t.Fatalf("init: %v", err)
@@ -197,6 +218,7 @@ func TestSemverTagAtCommit(t *testing.T) {
 	if _, err := repo.CreateTag("1.1.0", tagged, nil); err != nil {
 		t.Fatalf("lightweight tag: %v", err)
 	}
+
 	sig := &object.Signature{Name: "T", Email: "t@example.com", When: time.Unix(0, 0).UTC()}
 	if _, err := repo.CreateTag("v1.2.0", tagged, &gogit.CreateTagOptions{Message: "release", Tagger: sig}); err != nil {
 		t.Fatalf("annotated tag: %v", err)
@@ -221,6 +243,7 @@ func TestLatestSemverTag_NewerExists(t *testing.T) {
 		"v2.0.0":     {},
 		"not-semver": {},
 	}
+
 	got := latestSemverTag(tags, "v1.1.0")
 	if got != "v2.0.0" {
 		t.Errorf("latestSemverTag: got %q, want %q", got, "v2.0.0")
@@ -232,6 +255,7 @@ func TestLatestSemverTag_AlreadyLatest(t *testing.T) {
 		"v1.0.0": {},
 		"v1.1.0": {},
 	}
+
 	got := latestSemverTag(tags, "v1.1.0")
 	if got != "" {
 		t.Errorf("latestSemverTag: got %q, want empty string (already latest)", got)
@@ -240,6 +264,7 @@ func TestLatestSemverTag_AlreadyLatest(t *testing.T) {
 
 func TestLatestSemverTag_InvalidCurrent(t *testing.T) {
 	tags := map[string]struct{}{"v1.0.0": {}}
+
 	got := latestSemverTag(tags, "not-a-version")
 	if got != "" {
 		t.Errorf("latestSemverTag: got %q, want empty string for invalid current", got)

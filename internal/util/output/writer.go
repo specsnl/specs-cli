@@ -100,6 +100,7 @@ func (w *JSONWriter) WriteErr(err error) {
 	if kind := specs.KindOf(err); kind != "" {
 		payload["error_kind"] = kind
 	}
+
 	data, _ := json.Marshal(payload)
 	fmt.Fprintln(w.stderr, string(data))
 }
@@ -107,15 +108,19 @@ func (w *JSONWriter) WriteErr(err error) {
 // Table outputs an array of JSON objects, one per row, keyed by column header.
 func (w *JSONWriter) Table(headers []string, rows [][]string) {
 	records := make([]map[string]string, len(rows))
+
 	for i, row := range rows {
 		record := make(map[string]string, len(headers))
+
 		for j, header := range headers {
 			if j < len(row) {
 				record[header] = row[j]
 			}
 		}
+
 		records[i] = record
 	}
+
 	data, _ := json.Marshal(records)
 	fmt.Fprintln(w.stdout, string(data))
 }

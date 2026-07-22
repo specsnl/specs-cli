@@ -23,6 +23,7 @@ func TestRename_Success(t *testing.T) {
 	if _, err := os.Stat(specs.TemplatePath("new-tpl")); err != nil {
 		t.Error("expected new-tpl to exist")
 	}
+
 	if _, err := os.Stat(specs.TemplatePath("old-tpl")); !os.IsNotExist(err) {
 		t.Error("expected old-tpl to be gone")
 	}
@@ -35,9 +36,11 @@ func TestRename_MvAlias(t *testing.T) {
 	if _, err := executeCmd("template", "save", src, "old-tpl"); err != nil {
 		t.Fatal(err)
 	}
+
 	if _, err := executeCmd("template", "mv", "old-tpl", "new-tpl"); err != nil {
 		t.Fatalf("template mv: %v", err)
 	}
+
 	if _, err := os.Stat(specs.TemplatePath("new-tpl")); err != nil {
 		t.Error("expected new-tpl to exist after mv")
 	}
@@ -68,6 +71,7 @@ func TestRename_NameConflict_IsErrTemplateAlreadyExists(t *testing.T) {
 	if _, err := executeCmd("template", "save", src, "old-tpl"); err != nil {
 		t.Fatal(err)
 	}
+
 	if _, err := executeCmd("template", "save", src, "new-tpl"); err != nil {
 		t.Fatal(err)
 	}

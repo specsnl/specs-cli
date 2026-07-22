@@ -33,6 +33,7 @@ func executeCmdWithCheckFn(
 	cmd.SetErr(buf)
 	cmd.SetArgs(args)
 	err := cmd.Execute()
+
 	return buf.String(), err
 }
 
@@ -64,6 +65,7 @@ func TestList_ShowsTemplate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("template list: %v", err)
 	}
+
 	if !strings.Contains(out, "my-tpl") {
 		t.Errorf("expected output to contain 'my-tpl', got: %q", out)
 	}
@@ -79,9 +81,11 @@ func TestList_JSONOutput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("template list --output=json: %v", err)
 	}
+
 	if !strings.Contains(out, `"Name"`) {
 		t.Errorf("expected JSON with Name key, got: %q", out)
 	}
+
 	if !strings.Contains(out, "my-tpl") {
 		t.Errorf("expected JSON to contain 'my-tpl', got: %q", out)
 	}
@@ -89,12 +93,15 @@ func TestList_JSONOutput(t *testing.T) {
 
 func TestList_UpdatedColumn(t *testing.T) {
 	registryDir := withTempRegistry(t)
+
 	tmplDir := filepath.Join(registryDir, "local-tpl")
 	if err := os.MkdirAll(tmplDir, 0755); err != nil {
 		t.Fatal(err)
 	}
+
 	created := time.Now().Add(-30 * 24 * time.Hour).UTC()
 	updated := time.Now().Add(-2 * 24 * time.Hour).UTC()
+
 	if err := pkgtemplate.SaveMetadata(tmplDir, "local-tpl", "/local/path", "", "", "", created, updated); err != nil {
 		t.Fatal(err)
 	}
@@ -104,6 +111,7 @@ func TestList_UpdatedColumn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("template list: %v", err)
 	}
+
 	if !strings.Contains(out, "Updated") {
 		t.Errorf("expected table to contain 'Updated' header, got: %q", out)
 	}
@@ -113,6 +121,7 @@ func TestList_UpdatedColumn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("template list --output=json: %v", err)
 	}
+
 	if !strings.Contains(jsonOut, `"Updated"`) {
 		t.Errorf("expected JSON to contain 'Updated' key, got: %q", jsonOut)
 	}
@@ -120,6 +129,7 @@ func TestList_UpdatedColumn(t *testing.T) {
 
 func TestList_StatusColumn_LocalNoStatus(t *testing.T) {
 	registryDir := withTempRegistry(t)
+
 	tmplDir := filepath.Join(registryDir, "local-tpl")
 	if err := os.MkdirAll(tmplDir, 0755); err != nil {
 		t.Fatal(err)
@@ -134,6 +144,7 @@ func TestList_StatusColumn_LocalNoStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("template list: %v", err)
 	}
+
 	if !strings.Contains(out, `"Status":"-"`) {
 		t.Errorf("expected '-' status for local template, got: %q", out)
 	}
@@ -141,6 +152,7 @@ func TestList_StatusColumn_LocalNoStatus(t *testing.T) {
 
 func TestList_StatusColumn_EmptyBranchWithGitRepo(t *testing.T) {
 	registryDir := withTempRegistry(t)
+
 	tmplDir := filepath.Join(registryDir, "remote-tpl")
 	if err := os.MkdirAll(tmplDir, 0755); err != nil {
 		t.Fatal(err)
@@ -151,13 +163,17 @@ func TestList_StatusColumn_EmptyBranchWithGitRepo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PlainInit: %v", err)
 	}
+
 	wt, _ := repo.Worktree()
+
 	if err := os.WriteFile(filepath.Join(tmplDir, "f.txt"), []byte("x"), 0644); err != nil {
 		t.Fatal(err)
 	}
+
 	if _, err := wt.Add("f.txt"); err != nil {
 		t.Fatal(err)
 	}
+
 	sig := &object.Signature{Name: "t", Email: "t@t.com", When: time.Now()}
 	if _, err := wt.Commit("init", &gogit.CommitOptions{Author: sig}); err != nil {
 		t.Fatal(err)
@@ -182,6 +198,7 @@ func TestList_StatusColumn_EmptyBranchWithGitRepo(t *testing.T) {
 	if strings.Contains(out, `"Status":"-"`) {
 		t.Errorf("expected non-dash status when branch resolved from git HEAD, got: %q", out)
 	}
+
 	if !strings.Contains(out, "up-to-date") {
 		t.Errorf("expected 'up-to-date' in output, got: %q", out)
 	}
@@ -189,10 +206,12 @@ func TestList_StatusColumn_EmptyBranchWithGitRepo(t *testing.T) {
 
 func TestList_StatusColumn_FreshUpToDate(t *testing.T) {
 	registryDir := withTempRegistry(t)
+
 	tmplDir := filepath.Join(registryDir, "remote-tpl")
 	if err := os.MkdirAll(tmplDir, 0755); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := pkgtemplate.SaveMetadata(tmplDir, "remote-tpl", "https://example.com/repo", "main", "", "", time.Now().UTC(), time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
@@ -210,6 +229,7 @@ func TestList_StatusColumn_FreshUpToDate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("template list: %v", err)
 	}
+
 	if !strings.Contains(out, "up-to-date") {
 		t.Errorf("expected 'up-to-date' in output, got: %q", out)
 	}
@@ -245,10 +265,12 @@ func TestStatusLabel(t *testing.T) {
 
 func TestList_StatusColumn_NetworkWarn(t *testing.T) {
 	registryDir := withTempRegistry(t)
+
 	tmplDir := filepath.Join(registryDir, "remote-tpl")
 	if err := os.MkdirAll(tmplDir, 0755); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := pkgtemplate.SaveMetadata(tmplDir, "remote-tpl", "https://example.com/repo", "main", "", "", time.Now().UTC(), time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
@@ -273,18 +295,22 @@ func TestList_StatusColumn_NetworkWarn(t *testing.T) {
 
 func TestList_ConcurrencyCap(t *testing.T) {
 	const numTemplates = 20
+
 	registryDir := withTempRegistry(t)
 
 	// Create numTemplates templates with stale statuses so all trigger a refresh.
 	for i := range numTemplates {
 		name := fmt.Sprintf("tpl-%02d", i)
+
 		tmplDir := filepath.Join(registryDir, name)
 		if err := os.MkdirAll(tmplDir, 0755); err != nil {
 			t.Fatal(err)
 		}
+
 		if err := pkgtemplate.SaveMetadata(tmplDir, name, "https://example.com/repo", "main", "", "", time.Now().UTC(), time.Now().UTC()); err != nil {
 			t.Fatal(err)
 		}
+
 		stale := &pkgtemplate.TemplateStatus{
 			CheckedAt: pkgtemplate.JSONTime{Time: time.Now().Add(-25 * time.Hour)},
 			ErrorKind: pkggit.CheckErrorNetwork,
@@ -302,6 +328,7 @@ func TestList_ConcurrencyCap(t *testing.T) {
 
 	fake := func(ctx context.Context, dir, url, branch string) pkggit.RemoteCheckResult {
 		mu.Lock()
+
 		current++
 		if current > peak {
 			peak = current
@@ -312,9 +339,11 @@ func TestList_ConcurrencyCap(t *testing.T) {
 		case <-time.After(20 * time.Millisecond):
 		case <-ctx.Done():
 		}
+
 		mu.Lock()
 		current--
 		mu.Unlock()
+
 		return pkggit.RemoteCheckResult{IsUpToDate: true}
 	}
 
@@ -329,13 +358,16 @@ func TestList_ConcurrencyCap(t *testing.T) {
 
 func TestList_PerCheckTimeout(t *testing.T) {
 	registryDir := withTempRegistry(t)
+
 	tmplDir := filepath.Join(registryDir, "slow-tpl")
 	if err := os.MkdirAll(tmplDir, 0755); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := pkgtemplate.SaveMetadata(tmplDir, "slow-tpl", "https://example.com/repo", "main", "", "", time.Now().UTC(), time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
+
 	stale := &pkgtemplate.TemplateStatus{
 		CheckedAt: pkgtemplate.JSONTime{Time: time.Now().Add(-25 * time.Hour)},
 		ErrorKind: pkggit.CheckErrorNetwork,
@@ -345,10 +377,12 @@ func TestList_PerCheckTimeout(t *testing.T) {
 	}
 
 	var called atomic.Bool
+
 	fake := func(ctx context.Context, dir, url, branch string) pkggit.RemoteCheckResult {
 		called.Store(true)
 		// Block until the per-check context times out.
 		<-ctx.Done()
+
 		return pkggit.RemoteCheckResult{ErrorKind: pkggit.CheckErrorNetwork}
 	}
 
@@ -359,6 +393,7 @@ func TestList_PerCheckTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatalf("template list: %v", err)
 	}
+
 	if !called.Load() {
 		t.Fatal("expected fake checkRemoteFn to be called")
 	}

@@ -31,27 +31,33 @@ func buildTemplate(t *testing.T, yaml string, files map[string][]byte) string {
 		if err := os.MkdirAll(filepath.Dir(abs), 0755); err != nil {
 			t.Fatalf("creating dir for %s: %v", relPath, err)
 		}
+
 		if err := os.WriteFile(abs, content, 0644); err != nil {
 			t.Fatalf("writing %s: %v", relPath, err)
 		}
 	}
+
 	return root
 }
 
 // readFile reads the content of a file in the target dir; fails the test if absent.
 func readFile(t *testing.T, targetDir, relPath string) string {
 	t.Helper()
+
 	data, err := os.ReadFile(filepath.Join(targetDir, filepath.FromSlash(relPath)))
 	if err != nil {
 		t.Fatalf("reading %s: %v", relPath, err)
 	}
+
 	return string(data)
 }
 
 // fileExists reports whether a file or directory exists at relPath inside targetDir.
 func fileExists(t *testing.T, targetDir, relPath string) bool {
 	t.Helper()
+
 	_, err := os.Stat(filepath.Join(targetDir, filepath.FromSlash(relPath)))
+
 	return err == nil
 }
 
@@ -183,6 +189,7 @@ func TestExecute_BinaryFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading image.bin: %v", err)
 	}
+
 	if string(got) != string(content) {
 		t.Errorf("image.bin content mismatch (binary file not copied verbatim)")
 	}
@@ -246,6 +253,7 @@ func TestExecute_ComputedValueInTemplate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ApplyComputed: %v", err)
 	}
+
 	tmpl.Context = ctx
 
 	target := t.TempDir()
@@ -300,6 +308,7 @@ func TestExecute_PassthroughDoubleBrace(t *testing.T) {
 
 	got := readFile(t, target, "ci.yml")
 	want := "group: ${{ github.ref }}\nname: ci"
+
 	if got != want {
 		t.Errorf("ci.yml = %q, want %q", got, want)
 	}
@@ -316,6 +325,7 @@ func TestExecute_CustomDelimiters_NotInContext(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
+
 	if _, ok := tmpl.Context["__delimiters"]; ok {
 		t.Error("__delimiters should not appear in the template context")
 	}
@@ -324,6 +334,7 @@ func TestExecute_CustomDelimiters_NotInContext(t *testing.T) {
 	if err := tmpl.Execute(target); err != nil {
 		t.Fatalf("Execute: %v", err)
 	}
+
 	if got := readFile(t, target, "out.txt"); got != "test" {
 		t.Errorf("out.txt = %q, want %q", got, "test")
 	}
@@ -341,9 +352,11 @@ func TestExecute_ReservedSpecsVersionAvailable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
+
 	if _, ok := tmpl.Context["__specs__version"]; ok {
 		t.Error("__specs__version should not appear in the schema context")
 	}
+
 	if tmpl.Reserved["__specs__version"] != ">=0.0.1" {
 		t.Errorf("Reserved[__specs__version] = %v, want %q", tmpl.Reserved["__specs__version"], ">=0.0.1")
 	}
@@ -352,6 +365,7 @@ func TestExecute_ReservedSpecsVersionAvailable(t *testing.T) {
 	if err := tmpl.Execute(target); err != nil {
 		t.Fatalf("Execute: %v", err)
 	}
+
 	if got := readFile(t, target, "out.txt"); got != "v=>=0.0.1" {
 		t.Errorf("out.txt = %q, want %q", got, "v=>=0.0.1")
 	}
@@ -374,6 +388,7 @@ func TestExecute_ReservedDelimitersAvailable(t *testing.T) {
 	if err := tmpl.Execute(target); err != nil {
 		t.Fatalf("Execute: %v", err)
 	}
+
 	if got := readFile(t, target, "out.txt"); got != "d=[[]]" {
 		t.Errorf("out.txt = %q, want %q", got, "d=[[]]")
 	}
@@ -411,10 +426,12 @@ func TestExecute_ParseError_ContinueOnError(t *testing.T) {
 	if len(tmpl.Warnings) == 0 {
 		t.Fatal("expected at least one RenderWarning, got none")
 	}
+
 	w := tmpl.Warnings[0]
 	if w.Path != "compose.yml" {
 		t.Errorf("warning path = %q, want %q", w.Path, "compose.yml")
 	}
+
 	if w.Preview == "" {
 		t.Error("expected Preview to be set on RenderWarning")
 	}
@@ -446,6 +463,7 @@ func TestExecute_ParseError_FailFast(t *testing.T) {
 	if fileExists(t, target, "compose.yml") {
 		t.Error("compose.yml must not be written when Execute aborts due to a parse error")
 	}
+
 	if len(tmpl.Warnings) != 0 {
 		t.Errorf("expected no Warnings in fail-fast mode, got %d", len(tmpl.Warnings))
 	}
@@ -493,10 +511,12 @@ func TestExecute_ExecuteError_ContinueOnError(t *testing.T) {
 	if len(tmpl.Warnings) == 0 {
 		t.Fatal("expected at least one RenderWarning, got none")
 	}
+
 	w := tmpl.Warnings[0]
 	if w.Path != "out.txt" {
 		t.Errorf("warning path = %q, want %q", w.Path, "out.txt")
 	}
+
 	if w.Preview == "" {
 		t.Error("expected Preview to be set on RenderWarning")
 	}
@@ -512,14 +532,17 @@ func TestExecute_PreservesPermissions_TextFile(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "project.yaml"), []byte("Name: test\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
+
 	templateDir := filepath.Join(root, "template")
 	if err := os.MkdirAll(templateDir, 0755); err != nil {
 		t.Fatal(err)
 	}
+
 	scriptPath := filepath.Join(templateDir, "run.sh")
 	if err := os.WriteFile(scriptPath, []byte("#!/bin/sh\necho {{.Name}}\n"), 0755); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := os.Chmod(scriptPath, 0755); err != nil {
 		t.Fatal(err)
 	}
@@ -528,6 +551,7 @@ func TestExecute_PreservesPermissions_TextFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
+
 	target := t.TempDir()
 	if err := tmpl.Execute(target); err != nil {
 		t.Fatalf("Execute: %v", err)
@@ -537,6 +561,7 @@ func TestExecute_PreservesPermissions_TextFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat: %v", err)
 	}
+
 	if got := info.Mode().Perm(); got != 0755 {
 		t.Errorf("run.sh permissions = %04o, want 0755", got)
 	}
@@ -547,15 +572,18 @@ func TestExecute_PreservesPermissions_BinaryFile(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "project.yaml"), []byte("Name: test\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
+
 	templateDir := filepath.Join(root, "template")
 	if err := os.MkdirAll(templateDir, 0755); err != nil {
 		t.Fatal(err)
 	}
+
 	binPath := filepath.Join(templateDir, "tool")
 	// null byte makes it detected as binary
 	if err := os.WriteFile(binPath, []byte{0x7f, 0x45, 0x4c, 0x46, 0x00}, 0755); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := os.Chmod(binPath, 0755); err != nil {
 		t.Fatal(err)
 	}
@@ -564,6 +592,7 @@ func TestExecute_PreservesPermissions_BinaryFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
+
 	target := t.TempDir()
 	if err := tmpl.Execute(target); err != nil {
 		t.Fatalf("Execute: %v", err)
@@ -573,6 +602,7 @@ func TestExecute_PreservesPermissions_BinaryFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat: %v", err)
 	}
+
 	if got := info.Mode().Perm(); got != 0755 {
 		t.Errorf("tool permissions = %04o, want 0755", got)
 	}
@@ -593,6 +623,7 @@ func TestExecute_BinaryDetection_JPEG(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
+
 	target := t.TempDir()
 	if err := tmpl.Execute(target); err != nil {
 		t.Fatalf("Execute: %v", err)
@@ -602,6 +633,7 @@ func TestExecute_BinaryDetection_JPEG(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading photo.jpg: %v", err)
 	}
+
 	if string(got) != string(content) {
 		t.Error("photo.jpg not copied verbatim (JPEG magic bytes should be detected as binary)")
 	}
@@ -619,6 +651,7 @@ func TestExecute_BinaryDetection_Gzip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
+
 	target := t.TempDir()
 	if err := tmpl.Execute(target); err != nil {
 		t.Fatalf("Execute: %v", err)
@@ -628,6 +661,7 @@ func TestExecute_BinaryDetection_Gzip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading archive.tar.gz: %v", err)
 	}
+
 	if string(got) != string(content) {
 		t.Error("archive.tar.gz not copied verbatim (gzip magic bytes should be detected as binary)")
 	}
@@ -646,6 +680,7 @@ func TestExecute_BinaryDetection_UTF16BOM(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
+
 	target := t.TempDir()
 	if err := tmpl.Execute(target); err != nil {
 		t.Fatalf("Execute: %v", err)
@@ -655,6 +690,7 @@ func TestExecute_BinaryDetection_UTF16BOM(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading utf16.txt: %v", err)
 	}
+
 	if string(got) != string(content) {
 		t.Error("utf16.txt not copied verbatim (UTF-16 BOM should be detected as binary)")
 	}
@@ -675,6 +711,7 @@ func TestExecute_BinaryDetection_PDFHeader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
+
 	target := t.TempDir()
 	if err := tmpl.Execute(target); err != nil {
 		t.Fatalf("Execute: %v", err)
@@ -684,6 +721,7 @@ func TestExecute_BinaryDetection_PDFHeader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading document.pdf: %v", err)
 	}
+
 	if string(got) != string(content) {
 		t.Errorf("document.pdf = %q, want verbatim %q (PDF header should be detected as binary even though bytes are valid UTF-8)", got, string(content))
 	}
@@ -757,10 +795,12 @@ func TestGet_CustomDelimiters_ConditionalFilename(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
+
 	target := t.TempDir()
 	if err := tmpl.Execute(target); err != nil {
 		t.Fatalf("Execute: %v", err)
 	}
+
 	if !fileExists(t, target, "feature.txt") {
 		t.Error("feature.txt should exist when UseX is true and custom delimiters are set")
 	}

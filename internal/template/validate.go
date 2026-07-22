@@ -30,6 +30,7 @@ func (v ValidationIssue) Error() string {
 	if v.File != "" {
 		return fmt.Sprintf("%s: %q in %s", v.Kind, v.Name, v.File)
 	}
+
 	return fmt.Sprintf("%s: %q", v.Kind, v.Name)
 }
 
@@ -43,6 +44,7 @@ func HasUnknown(issues []ValidationIssue) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -53,6 +55,7 @@ func HasUnused(issues []ValidationIssue) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -67,6 +70,7 @@ func (t *Template) Validate() ([]ValidationIssue, error) {
 	for k := range t.Context {
 		allDefined[k] = true
 	}
+
 	for k := range t.ComputedDefs {
 		allDefined[k] = true
 	}
@@ -80,27 +84,33 @@ func (t *Template) Validate() ([]ValidationIssue, error) {
 		kind       error
 		name, file string
 	}
+
 	seen := make(map[issueKey]bool)
+
 	var issues []ValidationIssue
 
 	addIssue := func(kind error, name, file string) {
 		k := issueKey{kind, name, file}
 		if !seen[k] {
 			seen[k] = true
+
 			issues = append(issues, ValidationIssue{Kind: kind, Name: name, File: file})
 		}
 	}
 
 	// Scan template files and path expressions for unknown variable references.
 	srcRoot := filepath.Join(t.Root, specs.TemplateDirFile)
+
 	err := filepath.WalkDir(srcRoot, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
+
 		relFromRoot, _ := filepath.Rel(t.Root, path)
 		if relFromRoot == "." {
 			return nil
 		}
+
 		reportPath := filepath.ToSlash(relFromRoot)
 
 		// Check the entry's name as a path template expression.
@@ -119,11 +129,13 @@ func (t *Template) Validate() ([]ValidationIssue, error) {
 		if readErr != nil {
 			return readErr
 		}
+
 		for _, k := range extractRefs(string(data), t.funcMap, t.cfg.delims()) {
 			if !allDefined[k] {
 				addIssue(ErrUnknownVariable, k, reportPath)
 			}
 		}
+
 		return nil
 	})
 	if err != nil {
@@ -146,14 +158,17 @@ func (t *Template) Validate() ([]ValidationIssue, error) {
 	}
 
 	kindRank := map[error]int{ErrUnknownVariable: 0, ErrUnusedVariable: 1, ErrUnusedComputed: 2}
+
 	sort.Slice(issues, func(i, j int) bool {
 		a, b := issues[i], issues[j]
 		if kindRank[a.Kind] != kindRank[b.Kind] {
 			return kindRank[a.Kind] < kindRank[b.Kind]
 		}
+
 		if a.Name != b.Name {
 			return a.Name < b.Name
 		}
+
 		return a.File < b.File
 	})
 

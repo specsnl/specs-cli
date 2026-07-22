@@ -1,50 +1,91 @@
 volumes:
-  go-mod:
-  go-build-cache:
-  hugo-mod:
+  cache:
 
 services:
+  volume-init:
+    image: busybox:1.37.0-musl
+    user: root
+    volumes:
+      - cache:/cache
+    command:
+      - sh
+      - -c
+      - |
+        mkdir -p /cache/go-build
+        mkdir -p /cache/go-mod
+        mkdir -p /cache/golangci-lint
+        chown -R ${FIXUID:-1000}:${FIXGID:-1000} /cache
+
   go-builder:
     profiles: ["build"]
+    user: ${FIXUID:-1000}:${FIXGID:-1000}
     build:
       context: .
       dockerfile: Dockerfile
       target: builder-download
+    environment:
+      GOCACHE: /cache/go-build
+      GOMODCACHE: /cache/go-mod
+    depends_on:
+      volume-init:
+        condition: service_completed_successfully
     volumes:
       - .:/src
-      - go-mod:/go/pkg/mod
-      - go-build-cache:/root/.cache/go-build
+      - cache:/cache
 
   go-binary:
     profiles: ["build"]
+    user: ${FIXUID:-1000}:${FIXGID:-1000}
     build:
       context: .
       dockerfile: Dockerfile
       target: export
+    environment:
+      GOCACHE: /cache/go-build
+      GOMODCACHE: /cache/go-mod
+    depends_on:
+      volume-init:
+        condition: service_completed_successfully
+    volumes:
+      - cache:/cache
 
   goreleaser:
     profiles: ["build"]
+    user: ${FIXUID:-1000}:${FIXGID:-1000}
     # Latest version: https://hub.docker.com/r/goreleaser/goreleaser/tags
     image: goreleaser/goreleaser:v2.15.1
     working_dir: /src
+    environment:
+      GOCACHE: /cache/go-build
+      GOMODCACHE: /cache/go-mod
+    depends_on:
+      volume-init:
+        condition: service_completed_successfully
     volumes:
       - .:/src
-      - go-mod:/go/pkg/mod
-      - go-build-cache:/root/.cache/go-build
+      - cache:/cache
 
   hugo:
     profiles: ["docs"]
+    user: ${FIXUID:-1000}:${FIXGID:-1000}
     # Latest version: https://hub.docker.com/r/hugomods/hugo/tags
     image: hugomods/hugo:debian-go-git-non-root-0.161.1
     working_dir: /src/docs
+    environment:
+      GOCACHE: /cache/go-build
+      GOMODCACHE: /cache/go-mod
     volumes:
       - .:/src
-      - hugo-mod:/root/go/pkg/mod
+      - cache:/cache
+    depends_on:
+      volume-init:
+        condition: service_completed_successfully
     ports:
       - "1313:1313"
 
   docs-preview:
     profiles: ["docs"]
+    user: ${FIXUID:-1000}:${FIXGID:-1000}
     image: nginx:alpine
     volumes:
       - ./docs/public:/usr/share/nginx/html:ro
@@ -59,3 +100,20 @@ services:
     working_dir: /src
     volumes:
       - .:/src
+
+  golangci-lint:
+    profiles: ["lint"]
+    user: ${FIXUID:-1000}:${FIXGID:-1000}
+    # Latest version: https://hub.docker.com/r/golangci/golangci-lint/tags
+    image: golangci/golangci-lint:v2.12.2-alpine
+    working_dir: /src
+    environment:
+      GOCACHE: /cache/go-build
+      GOMODCACHE: /cache/go-mod
+      GOLANGCI_LINT_CACHE: /cache/golangci-lint
+    depends_on:
+      volume-init:
+        condition: service_completed_successfully
+    volumes:
+      - .:/src
+      - cache:/cache

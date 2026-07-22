@@ -15,5 +15,6 @@ func withTempRegistry(t *testing.T) string {
 	t.Setenv("XDG_CONFIG_HOME", tmp)
 	xdg.Reload()
 	t.Cleanup(func() { xdg.Reload() })
+
 	return specs.TemplateDir()
 }

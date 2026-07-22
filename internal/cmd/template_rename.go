@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/spf13/cobra"
 	"github.com/specsnl/specs-cli/internal/specs"
 	"github.com/specsnl/specs-cli/internal/util/validate"
+	"github.com/spf13/cobra"
 )
 
 func newTemplateRenameCmd(app *App) *cobra.Command {
@@ -21,6 +21,7 @@ func newTemplateRenameCmd(app *App) *cobra.Command {
 			if err := validate.Name(newName); err != nil {
 				return err
 			}
+
 			if err := specs.EnsureRegistry(); err != nil {
 				return err
 			}
@@ -40,6 +41,7 @@ func newTemplateRenameCmd(app *App) *cobra.Command {
 			}
 
 			app.Output.Info("template %q renamed to %q", oldName, newName)
+
 			return nil
 		},
 	}

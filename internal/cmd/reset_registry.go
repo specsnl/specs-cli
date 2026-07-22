@@ -3,8 +3,8 @@ package cmd
 import (
 	"os"
 
-	"github.com/spf13/cobra"
 	"github.com/specsnl/specs-cli/internal/specs"
+	"github.com/spf13/cobra"
 )
 
 func newResetRegistryCmd(app *App) *cobra.Command {
@@ -18,10 +18,13 @@ func newResetRegistryCmd(app *App) *cobra.Command {
 			if err := os.RemoveAll(dir); err != nil {
 				return err
 			}
+
 			if err := os.MkdirAll(dir, 0755); err != nil {
 				return err
 			}
+
 			app.Output.Info("registry reset at %s", dir)
+
 			return nil
 		},
 	}

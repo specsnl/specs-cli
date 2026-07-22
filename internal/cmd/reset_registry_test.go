@@ -34,10 +34,12 @@ func TestResetRegistry_WipesAndRecreates(t *testing.T) {
 func TestResetRegistry_HiddenFromHelp(t *testing.T) {
 	app := NewApp()
 	root := newRootCmd(app)
+
 	cmd, _, err := root.Find([]string{"reset-registry"})
 	if err != nil || cmd == nil || cmd.Name() != "reset-registry" {
 		t.Fatal("reset-registry command not found")
 	}
+
 	if !cmd.Hidden {
 		t.Error("expected reset-registry to be hidden")
 	}

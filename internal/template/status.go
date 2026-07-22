@@ -45,13 +45,16 @@ func LoadStatus(templateRoot string) (*TemplateStatus, error) {
 	if os.IsNotExist(err) {
 		return nil, nil
 	}
+
 	if err != nil {
 		return nil, err
 	}
+
 	var s TemplateStatus
 	if err := json.Unmarshal(data, &s); err != nil {
 		return nil, err
 	}
+
 	return &s, nil
 }
 
@@ -61,5 +64,6 @@ func SaveStatus(templateRoot string, s *TemplateStatus) error {
 	if err != nil {
 		return err
 	}
+
 	return os.WriteFile(filepath.Join(templateRoot, specs.StatusFile), data, 0644)
 }

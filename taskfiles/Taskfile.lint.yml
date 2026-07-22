@@ -1,0 +1,17 @@
+# https://taskfile.dev
+version: "3"
+
+tasks:
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - task: dc:run:golangci-lint
+        vars:
+          SUB_CMD: "golangci-lint run"
+
+  lint:fix:
+    desc: Run golangci-lint
+    cmds:
+      - task: dc:run:golangci-lint
+        vars:
+          SUB_CMD: "golangci-lint run --fix"

@@ -34,6 +34,7 @@ func TestLoad_InlinePreUse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(h.PreUse) != 1 || h.PreUse[0] != "echo hi" {
 		t.Errorf("PreUse = %v, want [echo hi]", h.PreUse)
 	}
@@ -48,6 +49,7 @@ func TestLoad_InlinePostUse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(h.PostUse) != 1 || h.PostUse[0] != "npm install" {
 		t.Errorf("PostUse = %v, want [npm install]", h.PostUse)
 	}
@@ -63,9 +65,11 @@ func TestLoad_InlineBothTriggers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(h.PreUse) != 1 || h.PreUse[0] != "echo pre" {
 		t.Errorf("PreUse = %v", h.PreUse)
 	}
+
 	if len(h.PostUse) != 2 {
 		t.Errorf("PostUse = %v, want 2 items", h.PostUse)
 	}
@@ -76,9 +80,11 @@ func TestLoad_NoHooks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if h == nil {
 		t.Fatal("expected non-nil *Hooks")
 	}
+
 	if len(h.PreUse) != 0 || len(h.PostUse) != 0 {
 		t.Errorf("expected empty hooks, got %+v", h)
 	}
@@ -91,6 +97,7 @@ func TestLoad_EmptyHooks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(h.PreUse) != 0 || len(h.PostUse) != 0 {
 		t.Errorf("expected empty hooks, got %+v", h)
 	}
@@ -100,10 +107,12 @@ func TestLoad_EmptyHooks(t *testing.T) {
 
 func TestLoad_DirPreUse(t *testing.T) {
 	dir := t.TempDir()
+
 	hooksDir := filepath.Join(dir, "hooks")
 	if err := os.Mkdir(hooksDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := os.WriteFile(filepath.Join(hooksDir, "pre-use.sh"), []byte("echo from file"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -112,6 +121,7 @@ func TestLoad_DirPreUse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(h.PreUse) != 1 || h.PreUse[0] != "echo from file" {
 		t.Errorf("PreUse = %v", h.PreUse)
 	}
@@ -119,10 +129,12 @@ func TestLoad_DirPreUse(t *testing.T) {
 
 func TestLoad_DirPostUse(t *testing.T) {
 	dir := t.TempDir()
+
 	hooksDir := filepath.Join(dir, "hooks")
 	if err := os.Mkdir(hooksDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := os.WriteFile(filepath.Join(hooksDir, "post-use.sh"), []byte("npm install"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -131,6 +143,7 @@ func TestLoad_DirPostUse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(h.PostUse) != 1 || h.PostUse[0] != "npm install" {
 		t.Errorf("PostUse = %v", h.PostUse)
 	}
@@ -146,6 +159,7 @@ func TestLoad_DirMissingFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if h.PreUse != nil {
 		t.Errorf("expected nil PreUse, got %v", h.PreUse)
 	}
@@ -191,6 +205,7 @@ func TestRun_StopsOnFirstFailure(t *testing.T) {
 	sentinel := t.TempDir() + "/sentinel"
 	h := &Hooks{PostUse: []string{"exit 1", "touch " + sentinel}}
 	_ = h.Run("post-use", t.TempDir(), map[string]any{}, emptyFuncMap, specs.DefaultDelimiters)
+
 	if _, err := os.Stat(sentinel); err == nil {
 		t.Error("second command ran after first failure")
 	}
@@ -199,6 +214,7 @@ func TestRun_StopsOnFirstFailure(t *testing.T) {
 func TestRun_InjectsEnvVarsWithPrefix(t *testing.T) {
 	h := &Hooks{PostUse: []string{`test "$SPECS_PROJECTNAME" = acme`}, EnvPrefix: specs.HookEnvPrefix}
 	ctx := map[string]any{"ProjectName": "acme"}
+
 	if err := h.Run("post-use", t.TempDir(), ctx, emptyFuncMap, specs.DefaultDelimiters); err != nil {
 		t.Errorf("env var not injected: %v", err)
 	}
@@ -207,6 +223,7 @@ func TestRun_InjectsEnvVarsWithPrefix(t *testing.T) {
 func TestRun_InjectsEnvVarsNoPrefix(t *testing.T) {
 	h := &Hooks{PostUse: []string{`test "$PROJECTNAME" = acme`}, EnvPrefix: ""}
 	ctx := map[string]any{"ProjectName": "acme"}
+
 	if err := h.Run("post-use", t.TempDir(), ctx, emptyFuncMap, specs.DefaultDelimiters); err != nil {
 		t.Errorf("env var not injected without prefix: %v", err)
 	}
@@ -215,6 +232,7 @@ func TestRun_InjectsEnvVarsNoPrefix(t *testing.T) {
 func TestRun_RendersTemplateInCommand(t *testing.T) {
 	h := &Hooks{PostUse: []string{`test "{{.Name}}" = world`}}
 	ctx := map[string]any{"Name": "world"}
+
 	if err := h.Run("post-use", t.TempDir(), ctx, emptyFuncMap, specs.DefaultDelimiters); err != nil {
 		t.Errorf("template not rendered: %v", err)
 	}
@@ -236,11 +254,14 @@ func TestRun_EmptyHooks(t *testing.T) {
 
 func TestRun_MissingBash_ReturnsError(t *testing.T) {
 	h := &Hooks{PostUse: []string{"echo ok"}}
+
 	t.Setenv("PATH", "")
+
 	err := h.Run("post-use", t.TempDir(), map[string]any{}, emptyFuncMap, specs.DefaultDelimiters)
 	if err == nil {
 		t.Fatal("expected error when bash is absent from PATH")
 	}
+
 	if !strings.Contains(err.Error(), "bash") {
 		t.Errorf("error should mention bash, got: %v", err)
 	}
@@ -251,10 +272,12 @@ func TestRun_MissingBash_ReturnsError(t *testing.T) {
 func TestRendered_PreUse(t *testing.T) {
 	h := &Hooks{PreUse: []string{`echo {{ .Name }}`}}
 	ctx := map[string]any{"Name": "world"}
+
 	got, err := h.Rendered("pre-use", ctx, emptyFuncMap, specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(got) != 1 || got[0] != "echo world" {
 		t.Errorf("Rendered = %v, want [echo world]", got)
 	}
@@ -262,10 +285,12 @@ func TestRendered_PreUse(t *testing.T) {
 
 func TestRendered_PostUse(t *testing.T) {
 	h := &Hooks{PostUse: []string{"npm install", "git init"}}
+
 	got, err := h.Rendered("post-use", map[string]any{}, emptyFuncMap, specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(got) != 2 || got[0] != "npm install" || got[1] != "git init" {
 		t.Errorf("Rendered = %v", got)
 	}

@@ -1,17 +1,30 @@
 # https://taskfile.dev
 version: "3"
 
+includes:
+  docs: ./taskfiles/Taskfile.docs.yml
+  md: ./taskfiles/Taskfile.md.yml
+  lint:
+    taskfile: ./taskfiles/Taskfile.lint.yml
+    flatten: true
+
 silent: true
 
 # env:
 #   BUILDKIT_PROGRESS: plain
 
 tasks:
+
   dc:
     desc: Run a docker compose command
     internal: true
+    vars:
+      FIXUID:
+        sh: echo ${FIXUID:-$(id -u)}
+      FIXGID:
+        sh: echo ${FIXGID:-$(id -g)}
     cmds:
-      - docker compose {{.SUB_CMD}} {{.CLI_ARGS}}
+      - FIXUID={{ .FIXUID }} FIXGID={{ .FIXGID }} docker compose {{ .SUB_CMD }} {{ .CLI_ARGS }}
 
   dc:build:
     desc: Run docker compose build
@@ -23,12 +36,21 @@ tasks:
   dc:run:*:
     desc: Run a one-off docker compose command
     vars:
-      SERVICE: "{{index .MATCH 0}}"
+      SERVICE: '{{ index .MATCH 0 }}'
+      RUN_FLAGS: '{{ .RUN_FLAGS | default "" }}'
+      USER_FLAG: '{{ (ne (.NON_ROOT | default "true") "false") | ternary " --user $(id -u):$(id -g)" "" }}'
+      COMPOSE_SERVICES:
+        sh: COMPOSE_PROFILES="*" docker compose config --services
     cmds:
       - task: dc
         vars:
-          SUB_CMD: "run --rm {{.SERVICE}} {{.SUB_CMD}}"
-          CLI_ARGS: "{{.CLI_ARGS}}"
+          SUB_CMD: 'run --rm {{ .RUN_FLAGS }} {{ .USER_FLAG }} {{ .SERVICE }} {{ .SUB_CMD }}'
+          CLI_ARGS: '{{ .CLI_ARGS }}'
+    requires:
+      vars:
+        - name: SERVICE
+          enum:
+            ref: .COMPOSE_SERVICES | splitLines | compact
 
   dc:shell:
     desc: Shell into a docker compose service
@@ -53,27 +75,6 @@ tasks:
         --set "go-binary.args.SPECS_VERSION={{.SPECS_VERSION}}"
         go-binary
 
-  vet:
-    desc: Run go vet
-    cmds:
-      - task: dc:run:go-builder
-        vars:
-          SUB_CMD: go vet
-
-  fix:
-    desc: Run go fix
-    cmds:
-      - task: dc:run:go-builder
-        vars:
-          SUB_CMD: "go fix ./..."
-
-  fix:diff:
-    desc: Run go fix in diff mode
-    cmds:
-      - task: dc:run:go-builder
-        vars:
-          SUB_CMD: "go fix -diff ./..."
-
   test:
     desc: Run go tests
     cmds:
@@ -87,60 +88,6 @@ tasks:
       - task: dc:run:goreleaser
         vars:
           SUB_CMD: release --snapshot --clean
-
-  docs:build:
-    desc: Build the static documentation site into docs/public/
-    cmds:
-      - task: dc:run:hugo
-        vars:
-          SUB_CMD: --minify
-
-  docs:serve:
-    desc: Start Hugo development server with live reload (http://localhost:1313)
-    cmds:
-      - task: dc
-        vars:
-          SUB_CMD: "run --rm --service-ports hugo server --bind 0.0.0.0"
-
-  docs:preview:
-    desc: Build and serve the static docs site locally (http://localhost:8080)
-    cmds:
-      - task: dc:run:hugo
-        vars:
-          SUB_CMD: --minify --baseURL http://localhost:8080
-      - task: dc
-        vars:
-          SUB_CMD: "run --rm --service-ports docs-preview"
-
-  docs:mod:tidy:
-    desc: Tidy Hugo module dependencies and regenerate go.sum
-    cmds:
-      - task: dc:run:hugo
-        vars:
-          SUB_CMD: mod tidy
-
-  md:check:
-    desc: Check the style of Markdown files with markdownlint
-    cmds:
-      - task: dc:run:node
-        vars:
-          SUB_CMD: "npx --yes markdownlint-cli2 {{.SUB_CMD}}"
-
-  md:fix:
-    desc: Fix Markdown style — align tables, then apply autofixable lint rules
-    cmds:
-      - task: md:fix-tables
-      - task: md:check
-        vars:
-          SUB_CMD: --fix
-
-  md:fix-tables:
-    desc: Align table spacing in Markdown files
-    cmds:
-      # dotglob so hidden directories (e.g. .github) are covered too.
-      - task: dc:run:node
-        vars:
-          SUB_CMD: bash -c "shopt -s globstar dotglob && npx --yes markdown-table-formatter **/*.md"
 
   cleanup:
     desc: Cleanup workspace

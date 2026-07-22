@@ -15,6 +15,7 @@ func TestResolveReferencedDefaults_DoesNotMutateInput(t *testing.T) {
 	originalSlug := input["Slug"]
 
 	fm := FuncMap(Config{})
+
 	result, err := resolveReferencedDefaults(input, fm, specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("resolveReferencedDefaults: %v", err)
@@ -34,6 +35,7 @@ func TestResolveReferencedDefaults_DoesNotMutateInput(t *testing.T) {
 func TestResolveReferencedDefaults_NoRefs_ReturnsSameMap(t *testing.T) {
 	input := map[string]any{"Name": "plain"}
 	fm := FuncMap(Config{})
+
 	result, err := resolveReferencedDefaults(input, fm, specs.DefaultDelimiters)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

@@ -38,6 +38,7 @@ func (r *SpecsRegistry) RegisterFunctions(funcsMap sprout.FunctionMap) error {
 	sprout.AddFunction(funcsMap, "toBinary", r.ToBinary)
 	sprout.AddFunction(funcsMap, "formatFilesize", r.FormatFilesize)
 	sprout.AddFunction(funcsMap, "password", r.Password)
+
 	return nil
 }
 
@@ -47,13 +48,22 @@ func (r *SpecsRegistry) Hostname() string {
 	return h
 }
 
-// Username returns the current OS username.
+// Username returns the current OS username. When the user database is
+// unavailable (e.g. a container running as a UID without an /etc/passwd
+// entry), it falls back to the USER/LOGNAME environment variables and,
+// finally, the numeric user ID.
 func (r *SpecsRegistry) Username() string {
-	u, _ := user.Current()
-	if u != nil {
+	if u, err := user.Current(); err == nil && u.Username != "" {
 		return u.Username
 	}
-	return ""
+
+	for _, key := range []string{"USER", "LOGNAME", "USERNAME"} {
+		if name := os.Getenv(key); name != "" {
+			return name
+		}
+	}
+
+	return strconv.Itoa(os.Getuid())
 }
 
 // ToBinary formats an integer as a binary string.

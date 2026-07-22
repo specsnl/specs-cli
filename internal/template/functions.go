@@ -66,6 +66,7 @@ func FuncMap(cfg Config) texttemplate.FuncMap {
 
 	handler := sprout.New(sprout.WithLogger(slog.Default()))
 	mustAddRegistries(handler, registries...)
+
 	return handler.Build()
 }
 

@@ -18,7 +18,9 @@ func LoadFile(path string) (map[string]any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("reading values file %q: %w", path, err)
 	}
+
 	var m map[string]any
+
 	ext := strings.ToLower(filepath.Ext(path))
 	if ext == ".yaml" || ext == ".yml" {
 		if err := yaml.Unmarshal(data, &m); err != nil {
@@ -29,6 +31,7 @@ func LoadFile(path string) (map[string]any, error) {
 			return nil, fmt.Errorf("parsing values file %q: %w", path, err)
 		}
 	}
+
 	return m, nil
 }
 
@@ -38,6 +41,7 @@ func ParseArg(arg string) (key, value string, err error) {
 	if len(parts) != 2 {
 		return "", "", fmt.Errorf("--arg %q must be in Key=Value form", arg)
 	}
+
 	return parts[0], parts[1], nil
 }
 
@@ -46,5 +50,6 @@ func Merge(base, overrides map[string]any) map[string]any {
 	result := make(map[string]any, len(base))
 	maps.Copy(result, base)
 	maps.Copy(result, overrides)
+
 	return result
 }

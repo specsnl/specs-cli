@@ -104,6 +104,7 @@ func TestFuncMap_NoPanic(t *testing.T) {
 			t.Errorf("FuncMap() panicked: %v", r)
 		}
 	}()
+
 	pkgtemplate.FuncMap(pkgtemplate.Config{})
 	pkgtemplate.FuncMap(pkgtemplate.Config{SafeMode: true})
 }

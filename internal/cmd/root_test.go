@@ -25,6 +25,7 @@ func executeCmdWithApp(args ...string) (*App, string, error) {
 	cmd.SetErr(buf)
 	cmd.SetArgs(args)
 	err := cmd.Execute()
+
 	return app, buf.String(), err
 }
 
@@ -33,6 +34,7 @@ func TestHelp_ExitsZero(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if !strings.Contains(out, "specs") {
 		t.Errorf("expected output to contain 'specs', got: %q", out)
 	}
@@ -50,6 +52,7 @@ func TestHookEnvPrefix_Default(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if app.HookEnvPrefix != specs.HookEnvPrefix {
 		t.Errorf("HookEnvPrefix = %q, want %q", app.HookEnvPrefix, specs.HookEnvPrefix)
 	}
@@ -60,6 +63,7 @@ func TestHookEnvPrefix_Disabled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if app.HookEnvPrefix != "" {
 		t.Errorf("HookEnvPrefix = %q, want empty string", app.HookEnvPrefix)
 	}

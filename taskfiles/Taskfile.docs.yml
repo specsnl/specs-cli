@@ -1,0 +1,27 @@
+# https://taskfile.dev
+version: "3"
+
+tasks:
+
+  check:
+    desc: Check the style of Markdown files with markdownlint
+    cmds:
+      - task: :dc:run:node
+        vars:
+          SUB_CMD: "npx --yes markdownlint-cli2 {{.SUB_CMD}}"
+
+  fix:
+    desc: Fix Markdown style — align tables, then apply autofixable lint rules
+    cmds:
+      - task: fix-tables
+      - task: check
+        vars:
+          SUB_CMD: --fix
+
+  fix-tables:
+    desc: Align table spacing in Markdown files
+    cmds:
+      # dotglob so hidden directories (e.g. .github) are covered too.
+      - task: :dc:run:node
+        vars:
+          SUB_CMD: bash -c "shopt -s globstar dotglob && npx --yes markdown-table-formatter **/*.md"

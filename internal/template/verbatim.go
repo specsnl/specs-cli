@@ -20,24 +20,30 @@ type VerbatimRules struct {
 // (no patterns, no error) if the file does not exist.
 func LoadVerbatim(templateRoot string) (*VerbatimRules, error) {
 	path := filepath.Join(templateRoot, specs.VerbatimFile)
+
 	f, err := os.Open(path)
 	if os.IsNotExist(err) {
 		return &VerbatimRules{}, nil
 	}
+
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+
+	defer func() { _ = f.Close() }()
 
 	var patterns []string
+
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
+
 		patterns = append(patterns, line)
 	}
+
 	return &VerbatimRules{patterns: patterns}, scanner.Err()
 }
 
@@ -49,5 +55,6 @@ func (r *VerbatimRules) Matches(path string) bool {
 			return true
 		}
 	}
+
 	return false
 }

@@ -1,0 +1,16 @@
+version: "2"
+linters:
+  default: standard
+  enable:
+    - wsl_v5
+    - whitespace
+    - modernize
+    # - wrapcheck
+  settings:
+    errcheck:
+      # Output to stdout/stderr is best-effort: the output Writer interface has
+      # no error channel and reporting a write failure would itself need a
+      # working stream. See internal/util/output/writer.go.
+      exclude-functions:
+        - fmt.Fprintln
+        - charm.land/lipgloss/v2.Fprintln

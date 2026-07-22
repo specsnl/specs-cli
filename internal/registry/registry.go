@@ -40,10 +40,12 @@ func Load(name string) (*Entry, error) {
 	if _, err := os.Stat(root); os.IsNotExist(err) {
 		return nil, nil
 	}
+
 	meta, err := pkgtemplate.LoadMetadata(root)
 	if err != nil {
 		slog.Debug("failed to parse template metadata", "template", name, "error", err)
 	}
+
 	var status *pkgtemplate.TemplateStatus
 	if meta != nil && meta.Repository != "" && meta.Branch != "" {
 		status, err = pkgtemplate.LoadStatus(root)
@@ -51,6 +53,7 @@ func Load(name string) (*Entry, error) {
 			slog.Debug("failed to load template status", "template", name, "error", err)
 		}
 	}
+
 	return &Entry{Name: name, Root: root, Metadata: meta, Status: status}, nil
 }
 
@@ -73,9 +76,11 @@ func Upgrade(name string) (UpgradeResult, error) {
 	if err != nil {
 		slog.Debug("failed to parse template metadata", "template", name, "error", err)
 	}
+
 	if meta == nil || meta.Repository == "" {
 		return UpgradeResult{IsLocal: true}, nil
 	}
+
 	if strings.HasPrefix(meta.Repository, "local:") {
 		return upgradeLocal(name, root, meta)
 	}
@@ -87,14 +92,17 @@ func Upgrade(name string) (UpgradeResult, error) {
 			slog.Debug("could not resolve branch from local HEAD, treating as local", "template", name, "error", err)
 			return UpgradeResult{IsLocal: true}, nil
 		}
+
 		branch = b
 	}
 
 	targetRef := branch
+
 	result := pkggit.CheckRemote(root, meta.Repository, branch)
 	if err := result.Err(); err != nil {
 		return UpgradeResult{}, err
 	}
+
 	if result.IsUpToDate && result.LatestVersion == "" {
 		return UpgradeResult{AlreadyUpToDate: true}, nil
 	}
@@ -108,6 +116,7 @@ func Upgrade(name string) (UpgradeResult, error) {
 	)
 
 	newBranch := branch
+
 	if result.LatestVersion != "" {
 		targetRef = result.LatestVersion
 		newBranch = result.LatestVersion
@@ -116,6 +125,7 @@ func Upgrade(name string) (UpgradeResult, error) {
 	if err := os.RemoveAll(root); err != nil {
 		return UpgradeResult{}, err
 	}
+
 	if err := pkggit.Clone(meta.Repository, root, pkggit.CloneOptions{Branch: targetRef}); err != nil {
 		return UpgradeResult{}, err
 	}
@@ -131,6 +141,7 @@ func Upgrade(name string) (UpgradeResult, error) {
 	}
 
 	slog.Debug("upgrade complete", "template", name, "target_ref", targetRef)
+
 	return UpgradeResult{Repository: meta.Repository, TargetRef: targetRef}, nil
 }
 
@@ -149,9 +160,11 @@ func upgradeLocal(name, root string, meta *pkgtemplate.Metadata) (UpgradeResult,
 
 	src := strings.TrimPrefix(meta.Repository, "local:")
 	check := pkggit.CheckLocalSource(src, meta.Commit, meta.Version)
+
 	if check.ErrorKind == pkggit.CheckErrorSourceMissing {
 		return UpgradeResult{}, fmt.Errorf("%w: %s", specs.ErrLocalSourceMissing, src)
 	}
+
 	if check.IsUpToDate {
 		return UpgradeResult{AlreadyUpToDate: true}, nil
 	}
@@ -161,6 +174,7 @@ func upgradeLocal(name, root string, meta *pkgtemplate.Metadata) (UpgradeResult,
 	if err := os.RemoveAll(root); err != nil {
 		return UpgradeResult{}, err
 	}
+
 	if err := osutil.CopyDir(src, root); err != nil {
 		return UpgradeResult{}, err
 	}
@@ -176,5 +190,6 @@ func upgradeLocal(name, root string, meta *pkgtemplate.Metadata) (UpgradeResult,
 	}
 
 	slog.Debug("upgrade local complete", "template", name, "source", src)
+
 	return UpgradeResult{Repository: meta.Repository, TargetRef: src}, nil
 }

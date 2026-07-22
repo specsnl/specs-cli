@@ -5,12 +5,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/spf13/cobra"
 	"github.com/specsnl/specs-cli/internal/host"
 	"github.com/specsnl/specs-cli/internal/specs"
 	pkgtemplate "github.com/specsnl/specs-cli/internal/template"
 	pkggit "github.com/specsnl/specs-cli/internal/util/git"
 	"github.com/specsnl/specs-cli/internal/util/validate"
+	"github.com/spf13/cobra"
 )
 
 func newTemplateDownloadCmd(app *App) *cobra.Command {
@@ -27,6 +27,7 @@ func newTemplateDownloadCmd(app *App) *cobra.Command {
 			if err := validate.Name(name); err != nil {
 				return err
 			}
+
 			if err := specs.EnsureRegistry(); err != nil {
 				return err
 			}
@@ -35,6 +36,7 @@ func newTemplateDownloadCmd(app *App) *cobra.Command {
 			if err != nil {
 				return err
 			}
+
 			if src.IsLocal() {
 				return specs.ErrLocalSource
 			}
@@ -43,6 +45,7 @@ func newTemplateDownloadCmd(app *App) *cobra.Command {
 			if _, err := os.Stat(dest); err == nil && !force {
 				return fmt.Errorf("%w: %s — use --force to overwrite", specs.ErrTemplateAlreadyExists, name)
 			}
+
 			if err := os.RemoveAll(dest); err != nil {
 				return err
 			}
@@ -73,12 +76,14 @@ func newTemplateDownloadCmd(app *App) *cobra.Command {
 
 			// git layer logs describe result or failure
 			desc, _ := pkggit.Describe(dest)
+
 			now := time.Now().UTC()
 			if err := pkgtemplate.SaveMetadata(dest, name, src.CloneURL, branch, desc.Commit, desc.Version, now, now); err != nil {
 				return err
 			}
 
 			app.Output.Info("template %q downloaded", name)
+
 			return nil
 		},
 	}

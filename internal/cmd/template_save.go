@@ -6,12 +6,12 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/spf13/cobra"
 	"github.com/specsnl/specs-cli/internal/specs"
 	pkgtemplate "github.com/specsnl/specs-cli/internal/template"
 	pkggit "github.com/specsnl/specs-cli/internal/util/git"
 	"github.com/specsnl/specs-cli/internal/util/osutil"
 	"github.com/specsnl/specs-cli/internal/util/validate"
+	"github.com/spf13/cobra"
 )
 
 func newTemplateSaveCmd(app *App) *cobra.Command {
@@ -27,6 +27,7 @@ func newTemplateSaveCmd(app *App) *cobra.Command {
 			if err := validate.Name(name); err != nil {
 				return err
 			}
+
 			if err := specs.EnsureRegistry(); err != nil {
 				return err
 			}
@@ -39,20 +40,25 @@ func newTemplateSaveCmd(app *App) *cobra.Command {
 			if err := os.RemoveAll(dest); err != nil {
 				return err
 			}
+
 			if err := osutil.CopyDir(srcPath, dest); err != nil {
 				return err
 			}
+
 			absPath, err := filepath.Abs(srcPath)
 			if err != nil {
 				return err
 			}
+
 			desc, _ := pkggit.Describe(srcPath)
+
 			now := time.Now().UTC()
 			if err := pkgtemplate.SaveMetadata(dest, name, "local:"+absPath, "", desc.Commit, desc.Version, now, now); err != nil {
 				return err
 			}
 
 			app.Output.Info("template %q saved", name)
+
 			return nil
 		},
 	}

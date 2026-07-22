@@ -32,12 +32,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Vet
-        run: go vet ./...
-
-      - name: Fix (diff mode)
-        continue-on-error: true
-        run: go fix -diff ./...
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12
 
       - name: Test
         run: go test -race -count=1 ./...

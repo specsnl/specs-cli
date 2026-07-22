@@ -54,7 +54,11 @@ func runUse(app *App, rawSource, targetDir string, opts executeOpts) error {
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(tmp)
+	defer func() {
+		if err := os.RemoveAll(tmp); err != nil {
+			app.Output.Warn("failed to remove temp dir %s: %v", tmp, err)
+		}
+	}()
 
 	var templateRoot string
 
@@ -62,6 +66,7 @@ func runUse(app *App, rawSource, targetDir string, opts executeOpts) error {
 		if err := osutil.CopyDir(src.LocalPath, tmp); err != nil {
 			return fmt.Errorf("copying local template: %w", err)
 		}
+
 		templateRoot = tmp
 	} else {
 		app.Output.Info("cloning %s…", src.CloneURL)
@@ -70,6 +75,7 @@ func runUse(app *App, rawSource, targetDir string, opts executeOpts) error {
 		if err != nil {
 			return err
 		}
+
 		templateRoot = cloneDir
 		opts.remote = true
 	}

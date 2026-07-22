@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/spf13/cobra"
 	"github.com/specsnl/specs-cli/internal/specs"
 	pkgtemplate "github.com/specsnl/specs-cli/internal/template"
 	pkggit "github.com/specsnl/specs-cli/internal/util/git"
+	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -31,9 +31,11 @@ func isTrackable(meta *pkgtemplate.Metadata) bool {
 	if meta == nil || meta.Repository == "" {
 		return false
 	}
+
 	if isLocalRepo(meta.Repository) {
 		return meta.Commit != ""
 	}
+
 	return meta.Branch != ""
 }
 
@@ -60,12 +62,15 @@ func newTemplateListCmd(app *App) *cobra.Command {
 			}
 
 			var tmplEntries []templateEntry
+
 			for _, e := range entries {
 				if !e.IsDir() {
 					continue
 				}
+
 				name := e.Name()
 				root := specs.TemplatePath(name)
+
 				meta, err := pkgtemplate.LoadMetadata(root)
 				if err != nil {
 					slog.Debug("failed to parse template metadata", "template", name, "error", err)
@@ -80,6 +85,7 @@ func newTemplateListCmd(app *App) *cobra.Command {
 						}
 					}
 				}
+
 				var status *pkgtemplate.TemplateStatus
 				if meta != nil && meta.Repository != "" && meta.Branch != "" {
 					status, err = pkgtemplate.LoadStatus(root)
@@ -87,13 +93,16 @@ func newTemplateListCmd(app *App) *cobra.Command {
 						slog.Debug("failed to load template status", "template", name, "error", err)
 					}
 				}
+
 				tmplEntries = append(tmplEntries, templateEntry{name: name, meta: meta, status: status})
 			}
 
 			// Refresh stale statuses in parallel, capped at 8 concurrent checks.
 			// A top-level timeout guards the whole phase; each check also has its own timeout.
 			const maxConcurrency = 8
+
 			var mu sync.Mutex
+
 			networkErrorSeen := false
 
 			refreshCtx, cancelRefresh := context.WithTimeout(cmd.Context(), app.refreshTimeout)
@@ -111,12 +120,15 @@ func newTemplateListCmd(app *App) *cobra.Command {
 				if entry.status != nil && !entry.status.NeedsRefresh(Version) {
 					continue
 				}
+
 				i, name := i, entry.name
 				repo, branch := entry.meta.Repository, entry.meta.Branch
 				commit, version := entry.meta.Commit, entry.meta.Version
 				local := isLocalRepo(repo)
+
 				eg.Go(func() error {
 					root := specs.TemplatePath(name)
+
 					var result pkggit.RemoteCheckResult
 					if local {
 						// Local templates compare against the source path on disk, not a
@@ -128,6 +140,7 @@ func newTemplateListCmd(app *App) *cobra.Command {
 						// git layer logs the check-remote start/result
 						result = app.checkRemoteFn(checkCtx, root, repo, branch)
 					}
+
 					newStatus := &pkgtemplate.TemplateStatus{
 						CheckedAt:     pkgtemplate.JSONTime{Time: time.Now().UTC()},
 						IsUpToDate:    result.IsUpToDate,
@@ -138,18 +151,23 @@ func newTemplateListCmd(app *App) *cobra.Command {
 					if err := pkgtemplate.SaveStatus(root, newStatus); err != nil {
 						slog.Debug("failed to save template status", "template", name, "error", err)
 					}
+
 					mu.Lock()
 					tmplEntries[i].status = newStatus
+
 					if result.ErrorKind == pkggit.CheckErrorNetwork {
 						networkErrorSeen = true
 					}
 					mu.Unlock()
+
 					return nil
 				})
 			}
+
 			_ = eg.Wait()
 
 			headers := []string{"Name", "Repository", "Version", "Status", "Created", "Updated"}
+
 			var rows [][]string
 
 			for _, entry := range tmplEntries {
@@ -157,11 +175,13 @@ func newTemplateListCmd(app *App) *cobra.Command {
 				if entry.meta != nil {
 					repo = entry.meta.Repository
 					created = entry.meta.Created.String()
+
 					updated = entry.meta.Updated.String()
 					if entry.meta.Version != "" {
 						version = entry.meta.Version
 					}
 				}
+
 				statusStr := statusLabel(entry.status, isTrackable(entry.meta))
 				rows = append(rows, []string{entry.name, repo, version, statusStr, created, updated})
 			}
@@ -191,9 +211,11 @@ func statusLabel(status *pkgtemplate.TemplateStatus, tracked bool) string {
 	if !tracked {
 		return "-"
 	}
+
 	if status == nil {
 		return "unknown"
 	}
+
 	switch status.ErrorKind {
 	case pkggit.CheckErrorNetwork:
 		return "unknown (offline?)"
@@ -206,11 +228,14 @@ func statusLabel(status *pkgtemplate.TemplateStatus, tracked bool) string {
 	case pkggit.CheckErrorUnknown:
 		return "check failed"
 	}
+
 	if status.IsUpToDate {
 		return "up-to-date"
 	}
+
 	if status.LatestVersion != "" {
 		return "update: " + status.LatestVersion
 	}
+
 	return "update available"
 }
