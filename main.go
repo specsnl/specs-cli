@@ -17,8 +17,7 @@ func main() {
 
 	app := cmd.NewApp()
 	if err := cmd.ExecuteContext(ctx, app); err != nil {
-		var exitErr *exit.ExitError
-		if errors.As(err, &exitErr) {
+		if exitErr, ok := errors.AsType[*exit.ExitError](err); ok {
 			os.Exit(exitErr.Code)
 		}
 

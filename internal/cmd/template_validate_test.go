@@ -91,8 +91,7 @@ func validateExitCode(err error) int {
 		return 0
 	}
 
-	var exitErr *exit.ExitError
-	if errors.As(err, &exitErr) {
+	if exitErr, ok := errors.AsType[*exit.ExitError](err); ok {
 		return exitErr.Code
 	}
 

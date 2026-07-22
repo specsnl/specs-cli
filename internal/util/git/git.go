@@ -523,8 +523,7 @@ func stripDirty(version string) string {
 
 // classifyRemoteError maps a remote.List error to a CheckErrorKind.
 func classifyRemoteError(err error) CheckErrorKind {
-	var netErr *net.OpError
-	if errors.As(err, &netErr) {
+	if _, ok := errors.AsType[*net.OpError](err); ok {
 		return CheckErrorNetwork
 	}
 
