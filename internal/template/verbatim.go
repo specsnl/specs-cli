@@ -30,7 +30,7 @@ func LoadVerbatim(templateRoot string) (*VerbatimRules, error) {
 		return nil, err
 	}
 
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var patterns []string
 

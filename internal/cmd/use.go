@@ -54,7 +54,11 @@ func runUse(app *App, rawSource, targetDir string, opts executeOpts) error {
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(tmp)
+	defer func() {
+		if err := os.RemoveAll(tmp); err != nil {
+			app.Output.Warn("failed to remove temp dir %s: %v", tmp, err)
+		}
+	}()
 
 	var templateRoot string
 

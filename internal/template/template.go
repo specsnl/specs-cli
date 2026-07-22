@@ -403,7 +403,7 @@ func isBinary(path string) bool {
 	if err != nil {
 		return false
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	buf := make([]byte, 512)
 	n, _ := f.Read(buf)
@@ -431,7 +431,7 @@ func hasEmptySegment(path string) bool {
 	return false
 }
 
-func copyFile(src, dst string) error {
+func copyFile(src, dst string) (err error) {
 	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
 		return err
 	}
@@ -446,14 +446,20 @@ func copyFile(src, dst string) error {
 		return err
 	}
 
-	defer in.Close()
+	defer func() { _ = in.Close() }()
 
 	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, info.Mode())
 	if err != nil {
 		return err
 	}
 
-	defer out.Close()
+	// A failed Close on a writable file can mean buffered data was not flushed,
+	// so surface it when no earlier error already took precedence.
+	defer func() {
+		if cerr := out.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	if _, err = io.Copy(out, in); err != nil {
 		return err

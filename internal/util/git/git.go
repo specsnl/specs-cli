@@ -99,8 +99,11 @@ func cloneWithRef(url, dir string, cloneOpts *gogit.CloneOptions, ref string) er
 		return fmt.Errorf("cloning %s: %w", url, err)
 	}
 
-	// Tag ref not found — retry as a branch.
-	os.RemoveAll(dir)
+	// Tag ref not found — retry as a branch. The dir must be emptied first,
+	// otherwise the retry clone fails on a non-empty target.
+	if rmErr := os.RemoveAll(dir); rmErr != nil {
+		return fmt.Errorf("cleaning up %s before branch retry: %w", dir, rmErr)
+	}
 
 	cloneOpts.ReferenceName = plumbing.NewBranchReferenceName(ref)
 

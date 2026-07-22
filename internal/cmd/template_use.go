@@ -177,7 +177,11 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(tmp)
+	defer func() {
+		if err := os.RemoveAll(tmp); err != nil {
+			a.Output.Warn("failed to remove temp dir %s: %v", tmp, err)
+		}
+	}()
 
 	tmpl.Context = ctx
 	if err := tmpl.Execute(tmp); err != nil {
