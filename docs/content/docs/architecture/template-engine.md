@@ -297,13 +297,13 @@ All of Go's standard `text/template` built-ins are available, plus:
 
 ### Custom Functions (`internal/template/specsregistry.go`)
 
-| Function         | Signature                                                         | Description                     |
-|------------------|-------------------------------------------------------------------|---------------------------------|
-| `hostname`       | `() string`                                                       | System hostname                 |
-| `username`       | `() string`                                                       | Current OS username             |
-| `toBinary`       | `(n int) string`                                                  | Format integer as binary string |
-| `formatFilesize` | `(bytes float64) string`                                          | Human-readable size (KB/MB/GB…) |
-| `password`       | `(length, digits, symbols int, noUpper, allowRepeat bool) string` | Secure random password          |
+| Function         | Signature                                                         | Description                             |
+|------------------|-------------------------------------------------------------------|-----------------------------------------|
+| `hostname`       | `() string`                                                       | System hostname                         |
+| `username`       | `() string`                                                       | Current OS username (env/UID fallbacks) |
+| `toBinary`       | `(n int) string`                                                  | Format integer as binary string         |
+| `formatFilesize` | `(bytes float64) string`                                          | Human-readable size (KB/MB/GB…)         |
+| `password`       | `(length, digits, symbols int, noUpper, allowRepeat bool) string` | Secure random password                  |
 
 ### Sprout Functions
 

@@ -7,13 +7,13 @@ Templates have access to 200+ functions provided by [Sprout](https://github.com/
 
 ## Specs functions
 
-| Function         | Signature                                                                 | Description                                |
-|------------------|---------------------------------------------------------------------------|--------------------------------------------|
-| `hostname`       | `hostname` → `string`                                                     | System hostname                            |
-| `username`       | `username` → `string`                                                     | Current OS username                        |
-| `toBinary`       | `toBinary <int>` → `string`                                               | Integer to binary string                   |
-| `formatFilesize` | `formatFilesize <bytes>` → `string`                                       | Human-readable file size (e.g. `"1.0 MB"`) |
-| `password`       | `password <length> <digits> <symbols> <noUpper> <allowRepeat>` → `string` | Generate a secure random password          |
+| Function         | Signature                                                                 | Description                                                                              |
+|------------------|---------------------------------------------------------------------------|------------------------------------------------------------------------------------------|
+| `hostname`       | `hostname` → `string`                                                     | System hostname                                                                          |
+| `username`       | `username` → `string`                                                     | Current OS username (falls back to `$USER`/`$LOGNAME`/`$USERNAME`, then the numeric UID) |
+| `toBinary`       | `toBinary <int>` → `string`                                               | Integer to binary string                                                                 |
+| `formatFilesize` | `formatFilesize <bytes>` → `string`                                       | Human-readable file size (e.g. `"1.0 MB"`)                                               |
+| `password`       | `password <length> <digits> <symbols> <noUpper> <allowRepeat>` → `string` | Generate a secure random password                                                        |
 
 ```text
 Default registry: {{ hostname }}.azurecr.io
