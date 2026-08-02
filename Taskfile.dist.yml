@@ -66,7 +66,7 @@ tasks:
       SPECS_VERSION:
         sh: git describe --tags --always --dirty="-dev" 2>/dev/null || echo "dev"
     cmds:
-      - task: vet
+      - task: lint
       - >-
         docker buildx bake --file compose.yml
         --set "go-binary.output=type=local,dest=."
