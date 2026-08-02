@@ -3,25 +3,33 @@ version: "3"
 
 tasks:
 
-  check:
-    desc: Check the style of Markdown files with markdownlint
+  build:
+    desc: Build the static documentation site into docs/public/
     cmds:
-      - task: :dc:run:node
+      - task: :dc:run:hugo
         vars:
-          SUB_CMD: "npx --yes markdownlint-cli2 {{.SUB_CMD}}"
+          SUB_CMD: --minify
 
-  fix:
-    desc: Fix Markdown style — align tables, then apply autofixable lint rules
+  serve:
+    desc: Start Hugo development server with live reload (http://localhost:1313)
     cmds:
-      - task: fix-tables
-      - task: check
+      - task: :dc
         vars:
-          SUB_CMD: --fix
+          SUB_CMD: "run --rm --service-ports hugo server --bind 0.0.0.0"
 
-  fix-tables:
-    desc: Align table spacing in Markdown files
+  preview:
+    desc: Build and serve the static docs site locally (http://localhost:8080)
     cmds:
-      # dotglob so hidden directories (e.g. .github) are covered too.
-      - task: :dc:run:node
+      - task: :dc:run:hugo
         vars:
-          SUB_CMD: bash -c "shopt -s globstar dotglob && npx --yes markdown-table-formatter **/*.md"
+          SUB_CMD: --minify --baseURL http://localhost:8080
+      - task: :dc
+        vars:
+          SUB_CMD: "run --rm --service-ports docs-preview"
+
+  mod:tidy:
+    desc: Tidy Hugo module dependencies and regenerate go.sum
+    cmds:
+      - task: :dc:run:hugo
+        vars:
+          SUB_CMD: mod tidy

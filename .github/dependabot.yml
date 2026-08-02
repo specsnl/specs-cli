@@ -1,0 +1,74 @@
+# Config options: https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - github-actions
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      specsnl-actions:
+        patterns:
+          - "specsnl/github-actions*"
+
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - go
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      go-dependencies:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: gomod
+    directory: /docs
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - go
+      - docs
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      go-dependencies:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - docker
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      debian-minor-patch:
+        patterns:
+          - debian
+        update-types:
+          - minor
+          - patch
+      debian-major:
+        patterns:
+          - debian
+        update-types:
+          - major
