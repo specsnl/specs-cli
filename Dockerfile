@@ -41,7 +41,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
         -ldflags "-s -w -X ${GO_MODULE}/internal/cmd.Version=${SPECS_VERSION}" -o ./specs
 
 # Latest version: https://hub.docker.com/_/debian/tags
-FROM debian:13.4-slim
+FROM debian:13.6-slim
 
 COPY --from=build /src/specs /usr/local/bin
 
