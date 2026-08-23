@@ -1,7 +1,9 @@
 package template_test
 
 import (
+	"bytes"
 	"testing"
+	texttemplate "text/template"
 
 	pkgtemplate "github.com/specsnl/specs-cli/internal/template"
 )
@@ -37,7 +39,7 @@ func TestFuncMap_ContainsSproutFunctions(t *testing.T) {
 		{"crypto", "bcrypt"},
 		{"reflect", "typeOf"},
 		{"encoding", "base64Encode"},
-		{"regexp", "regexMatch"},
+		{"regex", "regexMatch"},
 		{"slices", "list"},
 		{"maps", "dict"},
 		{"numeric", "add"},
@@ -49,6 +51,45 @@ func TestFuncMap_ContainsSproutFunctions(t *testing.T) {
 		if _, ok := m[tc.fn]; !ok {
 			t.Errorf("sprout function %q (from %s registry) missing from FuncMap", tc.fn, tc.registry)
 		}
+	}
+}
+
+// --- Regex registry selection ---
+
+// The regex and regexp registries expose identical function names, so presence
+// alone cannot tell them apart. These are the four functions whose argument
+// order differs between them: rendering them pins that FuncMap registers regex
+// (subject last, pipeable) and not the deprecated regexp.
+func TestFuncMap_RegistersPipeableRegexRegistry(t *testing.T) {
+	cases := []struct {
+		name string
+		tmpl string
+		want string
+	}{
+		{"regexFindAll", `{{ "abac" | regexFindAll "a." -1 }}`, "[ab ac]"},
+		{"regexSplit", `{{ "a,b,c" | regexSplit "," -1 }}`, "[a b c]"},
+		{"regexReplaceAll", `{{ "abca" | regexReplaceAll "a" "X" }}`, "XbcX"},
+		{"regexReplaceAllLiteral", `{{ "abca" | regexReplaceAllLiteral "a" "$1" }}`, "$1bc$1"},
+	}
+
+	funcs := pkgtemplate.FuncMap(pkgtemplate.Config{})
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tpl, err := texttemplate.New(tc.name).Funcs(funcs).Parse(tc.tmpl)
+			if err != nil {
+				t.Fatalf("parse: %v", err)
+			}
+
+			var buf bytes.Buffer
+			if err := tpl.Execute(&buf, nil); err != nil {
+				t.Fatalf("execute: %v", err)
+			}
+
+			if got := buf.String(); got != tc.want {
+				t.Errorf("%s = %q, want %q", tc.name, got, tc.want)
+			}
+		})
 	}
 }
 
