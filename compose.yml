@@ -14,6 +14,7 @@ services:
         mkdir -p /cache/go-build
         mkdir -p /cache/go-mod
         mkdir -p /cache/golangci-lint
+        mkdir -p /cache/npm
         chown -R ${FIXUID:-1000}:${FIXGID:-1000} /cache
 
   go-builder:
@@ -95,11 +96,18 @@ services:
 
   node:
     profiles: ["markdown"]
+    user: ${FIXUID:-1000}:${FIXGID:-1000}
     # Latest version: https://hub.docker.com/_/node/tags
     image: node:24.15.0-bookworm
     working_dir: /src
+    environment:
+      NPM_CONFIG_CACHE: /cache/npm
+    depends_on:
+      volume-init:
+        condition: service_completed_successfully
     volumes:
       - .:/src
+      - cache:/cache
 
   golangci-lint:
     profiles: ["lint"]
