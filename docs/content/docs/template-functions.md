@@ -42,4 +42,21 @@ Secret key: {{ password 32 4 4 false false }}
 
 > **Note:** Sprout uses Go-convention camelCase names. If you're migrating from sprig, see the [rename table](https://docs.gosprout.dev) for the full mapping.
 
+### Regex functions take the subject last
+
+Specs registers sprout's `regex` registry, in which the string being operated on is always the
+**last** argument, so every regex function works in a pipeline:
+
+```text
+{{ .Name | regexMatch "^[a-z]+$" }}
+{{ .Name | regexFind "[0-9]+" }}
+{{ .Name | regexFindAll "[0-9]+" -1 }}
+{{ .Name | regexSplit "," -1 }}
+{{ .Name | regexReplaceAll "[^a-z0-9]+" "-" }}
+```
+
+This differs from sprig (and from sprout's deprecated `regexp` registry), where the subject came
+second: `regexReplaceAll "[^a-z0-9]+" .Name "-"`. The `mustRegex*` aliases are not available —
+use the plain names.
+
 Full function reference: [docs.gosprout.dev](https://docs.gosprout.dev).

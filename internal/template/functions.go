@@ -16,7 +16,7 @@ import (
 	sproutnumeric "github.com/go-sprout/sprout/registry/numeric"
 	sproutrandom "github.com/go-sprout/sprout/registry/random"
 	sproutreflect "github.com/go-sprout/sprout/registry/reflect"
-	sproutregexp "github.com/go-sprout/sprout/registry/regexp"
+	sproutregex "github.com/go-sprout/sprout/registry/regex"
 	sproutsemver "github.com/go-sprout/sprout/registry/semver"
 	sproutslices "github.com/go-sprout/sprout/registry/slices"
 	sproutstd "github.com/go-sprout/sprout/registry/std"
@@ -37,7 +37,7 @@ func FuncMap(cfg Config) texttemplate.FuncMap {
 		// String & encoding
 		sproutstrings.NewRegistry(),
 		sproutencoding.NewRegistry(),
-		sproutregexp.NewRegistry(),
+		sproutregex.NewRegistry(),
 		// Collections
 		sproutslices.NewRegistry(),
 		sproutmaps.NewRegistry(),

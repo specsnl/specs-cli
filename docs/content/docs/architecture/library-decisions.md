@@ -85,6 +85,9 @@ Backwards compatibility layer is **not** used.
 - `env` and `expandenv` are not included by default — templates cannot read host environment
   variables, reducing the attack surface for untrusted template downloads.
 - Canonical function names follow Go conventions.
+- The `regex` registry is used instead of the deprecated `regexp` one: it puts the subject
+  string last in every signature, so regex functions compose with the pipe operator. The two
+  registries expose the same names and are mutually exclusive.
 
 ---
 
