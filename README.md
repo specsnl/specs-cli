@@ -18,6 +18,15 @@ A general-purpose developer CLI for scaffolding projects from templates. Define 
 brew install specsnl/tap/specs
 ```
 
+**Release candidates** — the `@rc` cask tracks every tag, prereleases included:
+
+```sh
+brew install specsnl/tap/specs@rc
+```
+
+Both casks install a binary called `specs`, so pick one: `brew uninstall specs` before installing
+`specs@rc`, and the other way round.
+
 **From source:**
 
 ```sh
