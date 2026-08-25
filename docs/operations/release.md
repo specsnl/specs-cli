@@ -16,7 +16,7 @@ are needed.
 - Archive packaging (`.tar.gz` for Unix, `.zip` for Windows)
 - SHA-256 checksum file generation
 - GitHub Release creation and asset uploads
-- Homebrew tap cask update
+- Homebrew tap cask updates, on two channels: `specs` (stable) and `specs@rc` (release candidates)
 
 GoReleaser runs only in the release workflow — not needed for local development or CI tests.
 
@@ -91,9 +91,17 @@ release:
 
 ### `homebrew_casks`
 
+Two casks are published from one definition, using a YAML anchor so the shared configuration cannot
+drift between them:
+
 ```yaml
 homebrew_casks:
-  - name: specs
+  # The release-candidate channel, updated on every tag — prereleases included.
+  # `binaries` is set explicitly because the cask is named specs@rc: without it
+  # the installed binary would inherit the cask name rather than being `specs`.
+  - &cask
+    name: specs@rc
+    binaries: [specs]
     repository:
       owner: specsnl
       name: homebrew-tap
@@ -107,7 +115,35 @@ homebrew_casks:
           if OS.mac?
             system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/specs"]
           end
+
+  # The stable channel: the same cask under the plain name, skipped whenever the
+  # tag is a prerelease, so `brew install specsnl/tap/specs` never moves onto an
+  # -rc build.
+  - <<: *cask
+    name: specs
+    skip_upload: auto
 ```
+
+### Release channels
+
+| Tag           | `specs@rc` | `specs` |
+|---------------|------------|---------|
+| `v1.2.0`      | updated    | updated |
+| `v1.2.0-rc.1` | updated    | skipped |
+
+`skip_upload: auto` is what draws the line: GoReleaser skips that cask's upload when the tag carries
+a prerelease identifier. The RC cask sets no `skip_upload`, so it follows every tag.
+
+Two things are easy to get wrong here:
+
+- **`binaries: [specs]` is not optional on the RC cask.** Left unset, the installed binary name is
+  derived from the cask name, and `specs@rc` is not a command anyone wants to type. The generated
+  `Casks/specs@rc.rb` must contain `binary "specs"`.
+- **The explicit `name:` on the second entry must stay.** It overrides the anchor's `specs@rc`;
+  YAML gives an explicit key precedence over a merged one, so the order within the mapping does not
+  matter, but removing it would publish the same cask twice.
+
+Verify both with a dry run before tagging — see [Local Dry Run](#local-dry-run).
 
 ---
 
@@ -120,7 +156,8 @@ Structure after first release:
 ```text
 homebrew-tap/
   Casks/
-    specs.rb     ← generated and committed by GoReleaser on every release
+    specs.rb        ← generated and committed by GoReleaser on every stable release
+    specs@rc.rb     ← generated and committed on every release, prereleases included
   README.md
 ```
 
@@ -128,8 +165,13 @@ Users install with:
 
 ```shell
 brew tap specsnl/tap
-brew install --cask specs
+brew install --cask specs        # stable
+brew install --cask specs@rc     # release candidates
 ```
+
+Both casks install a binary called `specs`, so Homebrew will refuse to link the second one while the
+first is installed. Switching channels means uninstalling the other cask first. No `conflicts_with`
+stanza is declared — the link failure is already clear about the cause.
 
 ### Setup Steps
 
@@ -146,6 +188,8 @@ brew install --cask specs
 - Tags follow [Semantic Versioning](https://semver.org/): `vMAJOR.MINOR.PATCH`
 - Pre-release suffixes are supported: `v1.0.0-rc.1`, `v1.0.0-beta.1`
 - GoReleaser strips the leading `v` when injecting into `-ldflags`.
+- A prerelease tag reaches only the `specs@rc` cask; the stable `specs` cask is left on the last
+  stable version. See [Release channels](#release-channels).
 
 ---
 

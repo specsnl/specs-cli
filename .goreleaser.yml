@@ -30,7 +30,12 @@ release:
   prerelease: auto
 
 homebrew_casks:
-  - name: specs
+  # The release-candidate channel, updated on every tag — prereleases included.
+  # `binaries` is set explicitly because the cask is named specs@rc: without it
+  # the installed binary would inherit the cask name rather than being `specs`.
+  - &cask
+    name: specs@rc
+    binaries: [specs]
     repository:
       owner: specsnl
       name: homebrew-tap
@@ -44,3 +49,10 @@ homebrew_casks:
           if OS.mac?
             system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/specs"]
           end
+
+  # The stable channel: the same cask under the plain name, skipped whenever the
+  # tag is a prerelease, so `brew install specsnl/tap/specs` never moves onto an
+  # -rc build.
+  - <<: *cask
+    name: specs
+    skip_upload: auto
