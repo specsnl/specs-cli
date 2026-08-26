@@ -48,7 +48,7 @@ Use "specs <command> --help" for more information about a command.`,
 			case "json":
 				app.Output = output.NewJSONWriter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 			default:
-				app.Output = output.NewHumanWriter(cmd.OutOrStdout(), cmd.ErrOrStderr())
+				app.Output = output.NewPrettyWriter(cmd.OutOrStdout(), cmd.ErrOrStderr(), nil)
 			}
 
 			// Configure the slog logger level; swap to JSON handler when both

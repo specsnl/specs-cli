@@ -10,36 +10,36 @@ import (
 	"github.com/specsnl/specs-cli/internal/util/output"
 )
 
-func TestHumanWriter_Info_NonEmpty(t *testing.T) {
+func TestPrettyWriter_Info_NonEmpty(t *testing.T) {
 	var buf bytes.Buffer
 
-	w := output.NewHumanWriter(&buf, &bytes.Buffer{})
+	w := output.NewPrettyWriter(&buf, &bytes.Buffer{}, nil)
 	w.Info("hello %s", "world")
 
 	if buf.Len() == 0 {
-		t.Error("HumanWriter.Info produced no output")
+		t.Error("PrettyWriter.Info produced no output")
 	}
 }
 
-func TestHumanWriter_Warn_NonEmpty(t *testing.T) {
+func TestPrettyWriter_Warn_NonEmpty(t *testing.T) {
 	var errBuf bytes.Buffer
 
-	w := output.NewHumanWriter(&bytes.Buffer{}, &errBuf)
+	w := output.NewPrettyWriter(&bytes.Buffer{}, &errBuf, nil)
 	w.Warn("something wrong")
 
 	if errBuf.Len() == 0 {
-		t.Error("HumanWriter.Warn produced no output")
+		t.Error("PrettyWriter.Warn produced no output")
 	}
 }
 
-func TestHumanWriter_Error_NonEmpty(t *testing.T) {
+func TestPrettyWriter_Error_NonEmpty(t *testing.T) {
 	var errBuf bytes.Buffer
 
-	w := output.NewHumanWriter(&bytes.Buffer{}, &errBuf)
+	w := output.NewPrettyWriter(&bytes.Buffer{}, &errBuf, nil)
 	w.Error("fatal error")
 
 	if errBuf.Len() == 0 {
-		t.Error("HumanWriter.Error produced no output")
+		t.Error("PrettyWriter.Error produced no output")
 	}
 }
 
@@ -115,14 +115,14 @@ func TestJSONWriter_WriteErr_UnknownError(t *testing.T) {
 	}
 }
 
-func TestHumanWriter_WriteErr_NonEmpty(t *testing.T) {
+func TestPrettyWriter_WriteErr_NonEmpty(t *testing.T) {
 	var errBuf bytes.Buffer
 
-	w := output.NewHumanWriter(&bytes.Buffer{}, &errBuf)
+	w := output.NewPrettyWriter(&bytes.Buffer{}, &errBuf, nil)
 	w.WriteErr(specs.ErrTemplateNotFound)
 
 	if errBuf.Len() == 0 {
-		t.Error("HumanWriter.WriteErr produced no output")
+		t.Error("PrettyWriter.WriteErr produced no output")
 	}
 }
 

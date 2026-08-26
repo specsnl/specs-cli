@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
+	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/colorprofile"
 	"github.com/specsnl/specs-cli/internal/specs"
 )
 
@@ -27,39 +30,89 @@ type Writer interface {
 	Table(headers []string, rows [][]string)
 }
 
-// HumanWriter writes lipgloss-styled output to stdout/stderr.
-type HumanWriter struct {
+// PrettyWriter writes lipgloss-styled output to stdout/stderr.
+type PrettyWriter struct {
 	stdout io.Writer
 	stderr io.Writer
 }
 
-// NewHumanWriter creates a HumanWriter writing to the given streams.
-func NewHumanWriter(stdout, stderr io.Writer) *HumanWriter {
-	return &HumanWriter{stdout: stdout, stderr: stderr}
+// NewPrettyWriter creates a PrettyWriter over the given streams. Each stream is
+// wrapped in a colorprofile.Writer, so how much colour is emitted is decided from
+// that stream and the given environment rather than from the process as a whole.
+// NO_COLOR, CLICOLOR and CLICOLOR_FORCE are honoured. Pass nil for environ to use
+// the process environment; tests pass an explicit slice so the output does not
+// depend on who is running them.
+func NewPrettyWriter(stdout, stderr io.Writer, environ []string) *PrettyWriter {
+	// colorprofile.NewWriter documents a nil environ as "use os.Environ()" but
+	// builds an empty environment from it, which would strip colour everywhere.
+	if environ == nil {
+		environ = os.Environ()
+	}
+
+	return &PrettyWriter{
+		stdout: profileWriter(stdout, environ),
+		stderr: profileWriter(stderr, environ),
+	}
 }
 
-// NewDefaultHumanWriter creates a HumanWriter writing to os.Stdout/os.Stderr.
-func NewDefaultHumanWriter() *HumanWriter {
-	return NewHumanWriter(os.Stdout, os.Stderr)
+// profileWriter wraps w so that colour is downsampled to what that stream and
+// environ support.
+//
+// NO_COLOR is applied here rather than left to colorprofile, which honours it
+// only for a stream that is itself a terminal — so NO_COLOR=1 together with
+// CLICOLOR_FORCE=1 would otherwise still emit colour into a pipe. ASCII keeps
+// bold and the other text decorations, which is what no-color.org asks for.
+func profileWriter(w io.Writer, environ []string) io.Writer {
+	pw := colorprofile.NewWriter(w, environ)
+	if envNoColor(environ) && pw.Profile > colorprofile.ASCII {
+		pw.Profile = colorprofile.ASCII
+	}
+
+	return pw
 }
 
-func (w *HumanWriter) Info(format string, args ...any) {
-	lipgloss.Fprintln(w.stdout, fmt.Sprintf(styleInfo.Render("info")+" "+format, args...))
+// envNoColor reports whether environ sets NO_COLOR, using the same boolean
+// parsing colorprofile applies.
+func envNoColor(environ []string) bool {
+	for _, e := range environ {
+		name, value, found := strings.Cut(e, "=")
+		if found && name == "NO_COLOR" {
+			noColor, _ := strconv.ParseBool(value)
+
+			return noColor
+		}
+	}
+
+	return false
 }
 
-func (w *HumanWriter) Warn(format string, args ...any) {
-	lipgloss.Fprintln(w.stderr, fmt.Sprintf(styleWarn.Render("warn")+" "+format, args...))
+// NewDefaultPrettyWriter creates a PrettyWriter over os.Stdout/os.Stderr using the
+// process environment.
+func NewDefaultPrettyWriter() *PrettyWriter {
+	return NewPrettyWriter(os.Stdout, os.Stderr, nil)
 }
 
-func (w *HumanWriter) Error(format string, args ...any) {
-	lipgloss.Fprintln(w.stderr, fmt.Sprintf(styleError.Render("error")+" "+format, args...))
+// The streams already downsample colour, so these render with fmt rather than
+// lipgloss.Fprintln — the latter wraps the stream again using the process
+// environment, which is the decision this writer exists to avoid.
+
+func (w *PrettyWriter) Info(format string, args ...any) {
+	fmt.Fprintln(w.stdout, fmt.Sprintf(styleInfo.Render("info")+" "+format, args...))
 }
 
-func (w *HumanWriter) WriteErr(err error) {
+func (w *PrettyWriter) Warn(format string, args ...any) {
+	fmt.Fprintln(w.stderr, fmt.Sprintf(styleWarn.Render("warn")+" "+format, args...))
+}
+
+func (w *PrettyWriter) Error(format string, args ...any) {
+	fmt.Fprintln(w.stderr, fmt.Sprintf(styleError.Render("error")+" "+format, args...))
+}
+
+func (w *PrettyWriter) WriteErr(err error) {
 	w.Error("%v", err)
 }
 
-func (w *HumanWriter) Table(headers []string, rows [][]string) {
+func (w *PrettyWriter) Table(headers []string, rows [][]string) {
 	fmt.Fprintln(w.stdout, RenderTable(headers, rows))
 }
 

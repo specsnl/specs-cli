@@ -73,7 +73,7 @@ func NewApp(opts ...Option) *App {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})))
 
 	app := &App{
-		Output:         output.NewDefaultHumanWriter(),
+		Output:         output.NewDefaultPrettyWriter(),
 		level:          level,
 		checkRemoteFn:  pkggit.CheckRemoteContext,
 		checkTimeout:   10 * time.Second,
