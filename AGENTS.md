@@ -44,4 +44,5 @@ Architecture documentation lives in the `docs/` directory.
 | [docs/content/docs/architecture/template-engine.md](./docs/content/docs/architecture/template-engine.md)     | Template engine: delimiters, verbatim copy, conditional files, file permissions, hooks |
 | [docs/content/docs/architecture/computed-values.md](./docs/content/docs/architecture/computed-values.md)     | Computed values: post-prompt derived context keys                                      |
 | [docs/content/docs/architecture/library-decisions.md](./docs/content/docs/architecture/library-decisions.md) | Library choices and rationale                                                          |
+| [docs/content/docs/architecture/output.md](./docs/content/docs/architecture/output.md)                       | Output: the stdout/stderr contract, the Writer interface, colour, golden tests         |
 | [docs/operations/release.md](./docs/operations/release.md)                                                   | Release pipeline: GoReleaser, GitHub Releases, Homebrew, CI/CD                         |
