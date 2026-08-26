@@ -287,10 +287,52 @@ type Writer interface {
 
 Two implementations are selected at startup via `--output`:
 
-| Flag value         | Writer        | Behaviour                                                                                        |
-|--------------------|---------------|--------------------------------------------------------------------------------------------------|
-| `pretty` (default) | `HumanWriter` | Lipgloss-styled text; `Info` → stdout, `Warn`/`Error`/`WriteErr` → stderr                        |
-| `json`             | `JSONWriter`  | NDJSON lines; `Table` → JSON array to stdout; `WriteErr` adds `"error_kind"` for known sentinels |
+| Flag value         | Writer         | Behaviour                                                                                        |
+|--------------------|----------------|--------------------------------------------------------------------------------------------------|
+| `pretty` (default) | `PrettyWriter` | Lipgloss-styled text; `Info` → stdout, `Warn`/`Error`/`WriteErr` → stderr                        |
+| `json`             | `JSONWriter`   | NDJSON lines; `Table` → JSON array to stdout; `WriteErr` adds `"error_kind"` for known sentinels |
+
+### Where the colour decision is made
+
+`NewPrettyWriter(stdout, stderr, environ)` wraps **each** stream in a
+`colorprofile.Writer`, so how much colour is emitted is decided per stream from the streams
+themselves plus `environ` — not once per process. A terminal on stderr and a redirected stdout get
+different answers, which is the ordinary case for `specs template list > out.txt`.
+
+Pass `nil` for `environ` to use the process environment; `NewDefaultPrettyWriter()` does exactly
+that. Tests pass an explicit slice so the rendered bytes do not depend on who runs the suite.
+
+`CLICOLOR_FORCE` and `CLICOLOR` are honoured by `colorprofile`. `NO_COLOR` is applied by
+`profileWriter` instead, because `colorprofile` honours it only for a stream that is itself a
+terminal — `NO_COLOR=1 CLICOLOR_FORCE=1` into a pipe would otherwise still be coloured. It clamps to
+the ASCII profile, which drops colour and keeps bold, as [no-color.org](https://no-color.org/) asks.
+
+`JSONWriter` writes to the raw streams: JSON output is never styled.
+
+### Testing the rendering
+
+Rendering is long, mostly whitespace, and tedious to assert field by field — so it is asserted
+against golden files in `internal/util/output/testdata/*.golden` rather than by hand.
+
+| Command            | Effect                                                                 |
+|--------------------|------------------------------------------------------------------------|
+| `task test`        | Compares the current output against the checked-in `.golden` files     |
+| `task test:update` | Rewrites the `.golden` files from the current output — review the diff |
+
+`golden_test.go` pins two environments so the files are reproducible wherever the suite runs:
+
+| Environment    | Value                                                   | Renders                 |
+|----------------|---------------------------------------------------------|-------------------------|
+| `goldenPlain`  | `[]string{}`                                            | Every sequence stripped |
+| `goldenColour` | `CLICOLOR_FORCE=1`, `TERM=xterm`, `COLORTERM=truecolor` | Full colour             |
+
+`COLORTERM=truecolor` is deliberate: it short-circuits `colorprofile.Detect` before the terminfo
+lookup, which reads the system terminfo database and would answer differently on a developer's
+machine than in the `go-builder` container.
+
+Two goldens freeze behaviour that is known to be wrong, so the issue that fixes it produces a
+reviewable diff: `Info` writing to stdout (#113) and column widths measured in bytes (#117). Both
+are marked as such in the tests.
 
 `JSONWriter.WriteErr` example for a known sentinel:
 

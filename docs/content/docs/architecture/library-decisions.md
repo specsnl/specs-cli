@@ -54,6 +54,23 @@ weight: 4
 
 ---
 
+## Colour Downsampling: colorprofile
+
+**Decision:** `github.com/charmbracelet/colorprofile` — a direct dependency, promoted from the
+indirect one lipgloss already pulls in.
+
+**Rationale:**
+
+- `lipgloss.Fprintln` re-derives a colour profile from `os.Environ()` on every call, so the
+  decision is per process and cannot be injected. `PrettyWriter` wraps each stream in a
+  `colorprofile.Writer` at construction instead — see
+  [overview.md](./overview.md#where-the-colour-decision-is-made).
+- Making the environment a constructor parameter is what lets the golden tests in
+  `internal/util/output` render identical bytes under a terminal and in CI.
+- No new module: lipgloss depends on it already.
+
+---
+
 ## TUI Components: bubbles (indirect)
 
 `charm.land/bubbles/v2` is pulled in transitively by huh but is not used directly.
@@ -162,18 +179,19 @@ configDir := filepath.Join(xdg.ConfigHome, "specs")
 
 ## Full Dependency Picture
 
-| Package                            | Purpose                                            |
-|------------------------------------|----------------------------------------------------|
-| `github.com/spf13/cobra`           | CLI command tree                                   |
-| `charm.land/huh/v2`                | Interactive forms & prompts                        |
-| `charm.land/lipgloss/v2`           | Output styling (logger + table renderer)           |
-| `gopkg.in/yaml.v3`                 | `project.yml` parsing and `--values` YAML files    |
-| `github.com/go-sprout/sprout`      | Extended template functions                        |
-| `github.com/go-git/go-git/v5`      | Git clone for template download/upgrade            |
-| `github.com/adrg/xdg`              | Config/data directory resolution                   |
-| `github.com/danwakefield/fnmatch`  | Glob matching for `.specsverbatim`                 |
-| `github.com/Masterminds/semver/v3` | Semver comparison for `template upgrade`           |
-| `github.com/sethvargo/go-password` | `password()` template function                     |
-| `github.com/docker/go-units`       | `formatFilesize()` template function               |
-| `golang.org/x/crypto`              | SSH host key verification via `~/.ssh/known_hosts` |
-| `log/slog`                         | Internal debug logging (stdlib)                    |
+| Package                                 | Purpose                                            |
+|-----------------------------------------|----------------------------------------------------|
+| `github.com/spf13/cobra`                | CLI command tree                                   |
+| `charm.land/huh/v2`                     | Interactive forms & prompts                        |
+| `charm.land/lipgloss/v2`                | Output styling (logger + table renderer)           |
+| `github.com/charmbracelet/colorprofile` | Per-stream colour downsampling for `PrettyWriter`  |
+| `gopkg.in/yaml.v3`                      | `project.yml` parsing and `--values` YAML files    |
+| `github.com/go-sprout/sprout`           | Extended template functions                        |
+| `github.com/go-git/go-git/v5`           | Git clone for template download/upgrade            |
+| `github.com/adrg/xdg`                   | Config/data directory resolution                   |
+| `github.com/danwakefield/fnmatch`       | Glob matching for `.specsverbatim`                 |
+| `github.com/Masterminds/semver/v3`      | Semver comparison for `template upgrade`           |
+| `github.com/sethvargo/go-password`      | `password()` template function                     |
+| `github.com/docker/go-units`            | `formatFilesize()` template function               |
+| `golang.org/x/crypto`                   | SSH host key verification via `~/.ssh/known_hosts` |
+| `log/slog`                              | Internal debug logging (stdlib)                    |

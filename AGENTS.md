@@ -27,6 +27,13 @@
   - **README** — update `README.md` if the change affects anything user-facing: commands,
     flags, template syntax, source formats, functions, or storage layout.
 
+- **Golden files:** `internal/util/output` asserts its rendering against
+  `internal/util/output/testdata/*.golden`. Run `task test` to check them and `task test:update`
+  to rewrite them from the current output. Read the resulting diff before committing it — that
+  diff is the rendering change, and accepting it blindly defeats the point of the files.
+  Rendering is pinned to an explicit environment (`goldenPlain` / `goldenColour` in
+  `golden_test.go`) so the bytes are the same under a terminal and in CI.
+
 ## Architecture documentation
 
 Architecture documentation lives in the `docs/` directory.
