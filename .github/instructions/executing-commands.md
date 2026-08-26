@@ -14,6 +14,7 @@ installing host tools) may run locally on the host.
 | Operation                           | How to run              |
 |-------------------------------------|-------------------------|
 | Run tests                           | `task test`             |
+| Rewrite the golden files            | `task test:update`      |
 | Build the binary                    | `task build`            |
 | Check Markdown style                | `task md:check`         |
 | Fix Markdown (tables + autofixable) | `task md:fix`           |
@@ -28,6 +29,10 @@ task --list
 ```
 
 ## Container Context
+
+`task test:update` rewrites `internal/util/output/testdata/*.golden` from what the renderer
+produces now. Never run it to make a red test green without reading the diff first — that diff
+*is* the rendering change.
 
 `task test` and `task build` execute inside the `go-builder` Docker Compose service. This
 service is a one-off container (`--rm`) under the `build` profile — it does not need to be

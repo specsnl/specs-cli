@@ -82,6 +82,19 @@ tasks:
         vars:
           SUB_CMD: "go test -tags=integration ./..."
 
+  test:update:
+    desc: Rewrite the golden files from the current output
+    summary: |
+      Regenerates internal/util/output/testdata/*.golden from what the renderer
+      produces now, then review the diff — that diff is the rendering change.
+
+      Scoped to the one package that defines -update: `go test ./... -update`
+      fails in every package that does not declare the flag.
+    cmds:
+      - task: dc:run:go-builder
+        vars:
+          SUB_CMD: "go test ./internal/util/output -update"
+
   release:dry-run:
     desc: Build a snapshot release locally without publishing
     cmds:

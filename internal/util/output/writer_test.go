@@ -2,14 +2,188 @@ package output_test
 
 import (
 	"bytes"
+	"errors"
 	"strings"
 	"testing"
 
+	"github.com/specsnl/specs-cli/internal/specs"
 	"github.com/specsnl/specs-cli/internal/util/output"
 )
 
 // esc is the prefix of every ANSI style sequence lipgloss emits.
 const esc = "\x1b["
+
+// stream names the buffer a writer method is expected to write to. Every case
+// asserts the other stream stayed empty, which is the assertion the old
+// buf.Len() != 0 tests could not make.
+type stream int
+
+const (
+	streamStdout stream = iota
+	streamStderr
+)
+
+func (s stream) String() string {
+	if s == streamStdout {
+		return "stdout"
+	}
+
+	return "stderr"
+}
+
+// capture runs call against a fresh writer and returns what landed on want,
+// failing if anything landed on the other stream.
+func capture(t *testing.T, out, errOut *bytes.Buffer, want stream) string {
+	t.Helper()
+
+	got, other, otherName := out, errOut, streamStderr
+	if want == streamStderr {
+		got, other, otherName = errOut, out, streamStdout
+	}
+
+	if other.Len() != 0 {
+		t.Errorf("wrote %q to %s, expected output on %s only", other.String(), otherName, want)
+	}
+
+	return got.String()
+}
+
+func TestPrettyWriter_Golden(t *testing.T) {
+	tests := []struct {
+		name    string
+		environ []string
+		stream  stream
+		call    func(w *output.PrettyWriter)
+	}{
+		// Info on stdout is the behaviour issue #113 will change; the golden is
+		// what will show that diff.
+		{"pretty_info_plain", goldenPlain, streamStdout, func(w *output.PrettyWriter) { w.Info("hello %s", "world") }},
+		{"pretty_info_colour", goldenColour, streamStdout, func(w *output.PrettyWriter) { w.Info("hello %s", "world") }},
+		{"pretty_warn_plain", goldenPlain, streamStderr, func(w *output.PrettyWriter) { w.Warn("something wrong") }},
+		{"pretty_warn_colour", goldenColour, streamStderr, func(w *output.PrettyWriter) { w.Warn("something wrong") }},
+		{"pretty_error_plain", goldenPlain, streamStderr, func(w *output.PrettyWriter) { w.Error("fatal error") }},
+		{"pretty_error_colour", goldenColour, streamStderr, func(w *output.PrettyWriter) { w.Error("fatal error") }},
+		{
+			"pretty_writeerr_sentinel_plain", goldenPlain, streamStderr,
+			func(w *output.PrettyWriter) { w.WriteErr(specs.ErrTemplateNotFound) },
+		},
+		{
+			"pretty_writeerr_sentinel_colour", goldenColour, streamStderr,
+			func(w *output.PrettyWriter) { w.WriteErr(specs.ErrTemplateNotFound) },
+		},
+		{
+			"pretty_writeerr_unknown_plain", goldenPlain, streamStderr,
+			func(w *output.PrettyWriter) { w.WriteErr(errors.New("something unexpected")) },
+		},
+		{
+			"pretty_table_plain", goldenPlain, streamStdout,
+			func(w *output.PrettyWriter) {
+				w.Table([]string{"Name", "Version"}, [][]string{{"my-tpl", "1.0.0"}, {"other", "2.0.0"}})
+			},
+		},
+		{
+			"pretty_table_colour", goldenColour, streamStdout,
+			func(w *output.PrettyWriter) {
+				w.Table([]string{"Name", "Version"}, [][]string{{"my-tpl", "1.0.0"}, {"other", "2.0.0"}})
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var out, errOut bytes.Buffer
+
+			tt.call(output.NewPrettyWriter(&out, &errOut, tt.environ))
+			assertGolden(t, tt.name, capture(t, &out, &errOut, tt.stream))
+		})
+	}
+}
+
+func TestJSONWriter_Golden(t *testing.T) {
+	tests := []struct {
+		name   string
+		stream stream
+		call   func(w *output.JSONWriter)
+	}{
+		{"json_info", streamStdout, func(w *output.JSONWriter) { w.Info("hello %s", "world") }},
+		{"json_warn", streamStderr, func(w *output.JSONWriter) { w.Warn("something wrong") }},
+		{"json_error", streamStderr, func(w *output.JSONWriter) { w.Error("fatal error") }},
+		{
+			"json_writeerr_sentinel", streamStderr,
+			func(w *output.JSONWriter) { w.WriteErr(specs.ErrTemplateNotFound) },
+		},
+		{
+			"json_writeerr_unknown", streamStderr,
+			func(w *output.JSONWriter) { w.WriteErr(errors.New("something unexpected")) },
+		},
+		{
+			// Emitting one array rather than one object per line is what issue
+			// #109 will change.
+			"json_table", streamStdout,
+			func(w *output.JSONWriter) {
+				w.Table([]string{"Name", "Version"}, [][]string{{"my-tpl", "1.0.0"}, {"other", "2.0.0"}})
+			},
+		},
+		{
+			"json_table_empty", streamStdout,
+			func(w *output.JSONWriter) { w.Table([]string{"Name", "Version"}, nil) },
+		},
+		{
+			// A row shorter than the headers leaves the missing keys out.
+			"json_table_ragged", streamStdout,
+			func(w *output.JSONWriter) {
+				w.Table([]string{"Name", "Version"}, [][]string{{"my-tpl"}, {"other", "2.0.0", "extra"}})
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var out, errOut bytes.Buffer
+
+			tt.call(output.NewJSONWriter(&out, &errOut))
+			assertGolden(t, tt.name, capture(t, &out, &errOut, tt.stream))
+		})
+	}
+}
+
+// Every JSON line is framed by exactly one trailing newline, so consecutive
+// calls stay parseable as NDJSON.
+func TestJSONWriter_LineFraming(t *testing.T) {
+	var out bytes.Buffer
+
+	w := output.NewJSONWriter(&out, &bytes.Buffer{})
+	w.Info("first")
+	w.Info("second")
+
+	lines := strings.Split(out.String(), "\n")
+	if len(lines) != 3 || lines[2] != "" {
+		t.Fatalf("expected two newline-terminated lines, got %q", out.String())
+	}
+
+	for _, line := range lines[:2] {
+		if !strings.HasPrefix(line, "{") || !strings.HasSuffix(line, "}") {
+			t.Errorf("line is not a bare JSON object: %q", line)
+		}
+	}
+}
+
+// JSON output is never styled, whatever the environment says.
+func TestJSONWriter_NeverStyled(t *testing.T) {
+	t.Setenv("CLICOLOR_FORCE", "1")
+	t.Setenv("TERM", "xterm-256color")
+	t.Setenv("COLORTERM", "truecolor")
+
+	var out, errOut bytes.Buffer
+
+	w := output.NewJSONWriter(&out, &errOut)
+	w.Info("hello")
+	w.Error("bad")
+
+	if strings.Contains(out.String()+errOut.String(), esc) {
+		t.Errorf("JSON output contains escape sequences: %q %q", out.String(), errOut.String())
+	}
+}
 
 func TestPrettyWriter_ColourFollowsEnviron(t *testing.T) {
 	tests := []struct {
@@ -19,12 +193,12 @@ func TestPrettyWriter_ColourFollowsEnviron(t *testing.T) {
 	}{
 		{
 			name:    "empty environ strips every sequence",
-			environ: []string{},
+			environ: goldenPlain,
 			want:    "info hello\n",
 		},
 		{
 			name:    "CLICOLOR_FORCE renders colour to a non-terminal",
-			environ: []string{"CLICOLOR_FORCE=1", "TERM=xterm", "COLORTERM=truecolor"},
+			environ: goldenColour,
 			want:    "\x1b[1;38;5;12minfo\x1b[m hello\n",
 		},
 		{
@@ -57,19 +231,19 @@ func TestPrettyWriter_IgnoresProcessEnviron(t *testing.T) {
 
 	var buf bytes.Buffer
 
-	output.NewPrettyWriter(&buf, &bytes.Buffer{}, []string{}).Info("hello")
+	output.NewPrettyWriter(&buf, &bytes.Buffer{}, goldenPlain).Info("hello")
 
 	if strings.Contains(buf.String(), esc) {
 		t.Errorf("process environment leaked into the rendering: %q", buf.String())
 	}
 }
 
-// Each stream gets its own colorprofile.Writer, so a plain stdout does not force
-// stderr to be plain too.
+// Each stream gets its own colorprofile.Writer, so a decision made for one is
+// not inherited by the other.
 func TestPrettyWriter_StreamsAreWrappedIndependently(t *testing.T) {
-	var out, errBuf bytes.Buffer
+	var out, errOut bytes.Buffer
 
-	w := output.NewPrettyWriter(&out, &errBuf, []string{"CLICOLOR_FORCE=1", "TERM=xterm", "COLORTERM=truecolor"})
+	w := output.NewPrettyWriter(&out, &errOut, goldenColour)
 	w.Info("info")
 	w.Warn("warn")
 
@@ -77,7 +251,7 @@ func TestPrettyWriter_StreamsAreWrappedIndependently(t *testing.T) {
 		t.Errorf("stdout not styled: %q", out.String())
 	}
 
-	if !strings.Contains(errBuf.String(), esc) {
-		t.Errorf("stderr not styled: %q", errBuf.String())
+	if !strings.Contains(errOut.String(), esc) {
+		t.Errorf("stderr not styled: %q", errOut.String())
 	}
 }

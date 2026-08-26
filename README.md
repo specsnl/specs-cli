@@ -112,8 +112,9 @@ task dc:build
 Then use the standard tasks:
 
 ```sh
-task build    # Build the binary for the current platform
-task test     # Run unit tests
+task build        # Build the binary for the current platform
+task test         # Run unit tests
+task test:update  # Rewrite the output golden files, then review the diff
 ```
 
 List all available tasks:

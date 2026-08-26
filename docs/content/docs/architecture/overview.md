@@ -309,6 +309,31 @@ the ASCII profile, which drops colour and keeps bold, as [no-color.org](https://
 
 `JSONWriter` writes to the raw streams: JSON output is never styled.
 
+### Testing the rendering
+
+Rendering is long, mostly whitespace, and tedious to assert field by field — so it is asserted
+against golden files in `internal/util/output/testdata/*.golden` rather than by hand.
+
+| Command            | Effect                                                                 |
+|--------------------|------------------------------------------------------------------------|
+| `task test`        | Compares the current output against the checked-in `.golden` files     |
+| `task test:update` | Rewrites the `.golden` files from the current output — review the diff |
+
+`golden_test.go` pins two environments so the files are reproducible wherever the suite runs:
+
+| Environment    | Value                                                   | Renders                 |
+|----------------|---------------------------------------------------------|-------------------------|
+| `goldenPlain`  | `[]string{}`                                            | Every sequence stripped |
+| `goldenColour` | `CLICOLOR_FORCE=1`, `TERM=xterm`, `COLORTERM=truecolor` | Full colour             |
+
+`COLORTERM=truecolor` is deliberate: it short-circuits `colorprofile.Detect` before the terminfo
+lookup, which reads the system terminfo database and would answer differently on a developer's
+machine than in the `go-builder` container.
+
+Two goldens freeze behaviour that is known to be wrong, so the issue that fixes it produces a
+reviewable diff: `Info` writing to stdout (#113) and column widths measured in bytes (#117). Both
+are marked as such in the tests.
+
 `JSONWriter.WriteErr` example for a known sentinel:
 
 ```json
