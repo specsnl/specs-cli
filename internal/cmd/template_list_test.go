@@ -53,6 +53,25 @@ func TestList_Empty(t *testing.T) {
 	}
 }
 
+// The empty answer keeps the shape of the non-empty one: an empty record set on
+// stdout, with the hint that explains it narrated on stderr.
+func TestList_Empty_JSONIsAnEmptyRecordSet(t *testing.T) {
+	withTempRegistry(t)
+
+	stdout, stderr, err := executeCmdStreams("template", "list", "--output=json")
+	if err != nil {
+		t.Fatalf("template list --output=json: %v", err)
+	}
+
+	if got := strings.TrimSpace(stdout); got != "[]" {
+		t.Errorf("stdout = %q, want %q", got, "[]")
+	}
+
+	if !strings.Contains(stderr, "no templates registered") {
+		t.Errorf("expected the hint on stderr, got: %q", stderr)
+	}
+}
+
 func TestList_ShowsTemplate(t *testing.T) {
 	registryDir := withTempRegistry(t)
 

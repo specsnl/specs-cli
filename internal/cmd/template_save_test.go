@@ -41,6 +41,27 @@ func TestSave_Success(t *testing.T) {
 	}
 }
 
+// "template %q saved" is narration about a side effect, not a product: a caller
+// redirecting stdout captures nothing.
+func TestSave_NarratesOnStderrOnly(t *testing.T) {
+	withTempRegistry(t)
+
+	src := makeFakeTemplate(t)
+
+	stdout, stderr, err := executeCmdStreams("template", "save", src, "my-tpl")
+	if err != nil {
+		t.Fatalf("template save: %v", err)
+	}
+
+	if stdout != "" {
+		t.Errorf("expected nothing on stdout, got: %q", stdout)
+	}
+
+	if !strings.Contains(stderr, `template "my-tpl" saved`) {
+		t.Errorf("expected the confirmation on stderr, got: %q", stderr)
+	}
+}
+
 func TestSave_AlreadyExists(t *testing.T) {
 	withTempRegistry(t)
 

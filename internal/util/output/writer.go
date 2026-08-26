@@ -20,6 +20,10 @@ var (
 )
 
 // Writer is the interface for all user-facing output.
+//
+// stdout carries the product — what a caller would redirect to a file or pipe
+// into another command — and stderr carries the narration. Table and WriteResult
+// write the product; Info, Warn, Error and WriteErr narrate.
 type Writer interface {
 	Info(format string, args ...any)
 	Warn(format string, args ...any)
@@ -28,6 +32,10 @@ type Writer interface {
 	// "error_kind" field when err wraps a known specs sentinel.
 	WriteErr(err error)
 	Table(headers []string, rows [][]string)
+	// WriteResult renders a single-line result on stdout: the product of a command
+	// whose answer is not a table. Pretty writes the formatted text; JSON marshals
+	// record and ignores the text, so every stdout line stays a typed object.
+	WriteResult(record any, format string, args ...any)
 }
 
 // PrettyWriter writes lipgloss-styled output to stdout/stderr.
@@ -97,7 +105,7 @@ func NewDefaultPrettyWriter() *PrettyWriter {
 // environment, which is the decision this writer exists to avoid.
 
 func (w *PrettyWriter) Info(format string, args ...any) {
-	fmt.Fprintln(w.stdout, fmt.Sprintf(styleInfo.Render("info")+" "+format, args...))
+	fmt.Fprintln(w.stderr, fmt.Sprintf(styleInfo.Render("info")+" "+format, args...))
 }
 
 func (w *PrettyWriter) Warn(format string, args ...any) {
@@ -116,7 +124,13 @@ func (w *PrettyWriter) Table(headers []string, rows [][]string) {
 	fmt.Fprintln(w.stdout, RenderTable(headers, rows))
 }
 
-// JSONWriter writes NDJSON output: info/table to stdout, warn/error to stderr.
+// The result is unprefixed and unstyled: it is an answer, not a level.
+func (w *PrettyWriter) WriteResult(_ any, format string, args ...any) {
+	fmt.Fprintln(w.stdout, fmt.Sprintf(format, args...))
+}
+
+// JSONWriter writes NDJSON output: table/result to stdout, info/warn/error to
+// stderr.
 type JSONWriter struct {
 	stdout io.Writer
 	stderr io.Writer
@@ -130,7 +144,7 @@ func NewJSONWriter(stdout, stderr io.Writer) *JSONWriter {
 func (w *JSONWriter) Info(format string, args ...any) {
 	msg := fmt.Sprintf(format, args...)
 	data, _ := json.Marshal(map[string]string{"level": "info", "message": msg})
-	fmt.Fprintln(w.stdout, string(data))
+	fmt.Fprintln(w.stderr, string(data))
 }
 
 func (w *JSONWriter) Warn(format string, args ...any) {
@@ -175,5 +189,16 @@ func (w *JSONWriter) Table(headers []string, rows [][]string) {
 	}
 
 	data, _ := json.Marshal(records)
+	fmt.Fprintln(w.stdout, string(data))
+}
+
+// The formatted text is dropped: a consumer reads the record's fields rather
+// than parsing an English sentence back apart.
+func (w *JSONWriter) WriteResult(record any, _ string, _ ...any) {
+	data, err := json.Marshal(record)
+	if err != nil {
+		return
+	}
+
 	fmt.Fprintln(w.stdout, string(data))
 }

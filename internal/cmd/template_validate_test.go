@@ -234,3 +234,53 @@ func TestValidate_NoIssues(t *testing.T) {
 		t.Errorf("expected 'template is valid', got: %q", out)
 	}
 }
+
+// The verdict is the product of the command, so it is on stdout in both formats
+// and for both answers, while the per-issue warnings stay on stderr.
+func TestValidate_VerdictIsOnStdout(t *testing.T) {
+	tests := []struct {
+		name       string
+		project    string
+		files      map[string]string
+		wantErr    bool
+		wantPretty string
+		wantJSON   string
+	}{
+		{
+			name:       "valid",
+			project:    "Name: \"\"\n",
+			files:      map[string]string{"main.go": "package {{ .Name }}"},
+			wantPretty: "template is valid",
+			wantJSON:   `{"valid":true}`,
+		},
+		{
+			name:       "invalid",
+			project:    "Name: \"\"\n",
+			files:      map[string]string{"main.go": "package {{ .Unknown }}"},
+			wantErr:    true,
+			wantPretty: "template is invalid",
+			wantJSON:   `{"valid":false}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			withTempRegistry(t)
+			src := makeValidateTemplate(t, tt.project, tt.files)
+
+			stdout, _, err := executeCmdStreams("template", "validate", src)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("err = %v, wantErr = %v", err, tt.wantErr)
+			}
+
+			if got := strings.TrimSpace(stdout); got != tt.wantPretty {
+				t.Errorf("pretty stdout = %q, want %q", got, tt.wantPretty)
+			}
+
+			stdout, _, _ = executeCmdStreams("template", "validate", src, "--output=json")
+			if got := strings.TrimSpace(stdout); got != tt.wantJSON {
+				t.Errorf("json stdout = %q, want %q", got, tt.wantJSON)
+			}
+		})
+	}
+}

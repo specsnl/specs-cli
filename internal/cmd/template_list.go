@@ -186,8 +186,12 @@ func newTemplateListCmd(app *App) *cobra.Command {
 				rows = append(rows, []string{entry.name, repo, version, statusStr, created, updated})
 			}
 
+			// The empty answer keeps the shape of the non-empty one — an empty
+			// table on stdout — so a consumer parses one document either way.
 			if len(rows) == 0 {
+				app.Output.Table(headers, nil)
 				app.Output.Info("no templates registered — run 'specs template download' or 'specs template save'")
+
 				return nil
 			}
 
@@ -216,17 +220,8 @@ func statusLabel(status *pkgtemplate.TemplateStatus, tracked bool) string {
 		return "unknown"
 	}
 
-	switch status.ErrorKind {
-	case pkggit.CheckErrorNetwork:
-		return "unknown (offline?)"
-	case pkggit.CheckErrorAuth:
-		return "auth error"
-	case pkggit.CheckErrorNotFound:
-		return "not found"
-	case pkggit.CheckErrorSourceMissing:
-		return "source missing"
-	case pkggit.CheckErrorUnknown:
-		return "check failed"
+	if label := checkErrorLabel(status.ErrorKind); label != "" {
+		return label
 	}
 
 	if status.IsUpToDate {
@@ -238,4 +233,23 @@ func statusLabel(status *pkgtemplate.TemplateStatus, tracked bool) string {
 	}
 
 	return "update available"
+}
+
+// checkErrorLabel renders why a status check failed, or "" when it did not.
+// Shared by the Status column of `template list` and `template update`.
+func checkErrorLabel(kind pkggit.CheckErrorKind) string {
+	switch kind {
+	case pkggit.CheckErrorNetwork:
+		return "unknown (offline?)"
+	case pkggit.CheckErrorAuth:
+		return "auth error"
+	case pkggit.CheckErrorNotFound:
+		return "not found"
+	case pkggit.CheckErrorSourceMissing:
+		return "source missing"
+	case pkggit.CheckErrorUnknown:
+		return "check failed"
+	default:
+		return ""
+	}
 }

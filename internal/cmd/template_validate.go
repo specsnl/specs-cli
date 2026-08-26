@@ -99,10 +99,12 @@ func newTemplateValidateCmd(app *App) *cobra.Command {
 			}
 
 			if code != 0 {
+				app.Output.WriteResult(map[string]bool{"valid": false}, "template is invalid")
+
 				return &exit.ExitError{Code: code}
 			}
 
-			app.Output.Info("template is valid")
+			app.Output.WriteResult(map[string]bool{"valid": true}, "template is valid")
 
 			return nil
 		},
