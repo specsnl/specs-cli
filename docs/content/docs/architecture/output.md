@@ -106,8 +106,7 @@ the ASCII profile, which drops colour and keeps bold, as [no-color.org](https://
 
 `RenderTable(headers, rows, maxWidth)` renders with
 [`charm.land/lipgloss/v2/table`](library-decisions#output-styling-lipgloss) and takes the width as a
-**parameter**
-rather than detecting it — the same reasoning as `environ` above: the function stays
+**parameter** rather than detecting it — the same reasoning as `environ` above: the function stays
 environment-free and its goldens stay deterministic.
 
 `maxWidth` is a **cap, never a stretch**. It is applied only when the natural table — every column
@@ -137,6 +136,42 @@ cell is not counted as wide as its escape bytes.
 
 ---
 
+## Hyperlinked cells
+
+A **data** cell that is entirely an `http(s)` URL is rendered as an
+[OSC 8 hyperlink](https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda), so a
+`Repository` value opens on a click instead of leaving the reader to select and copy it. Headers are
+never linked; nor is anything a terminal could not open — an SSH remote (`git@host:path`), a
+`local:` path, the `-` placeholder, or prose that merely contains a URL.
+
+The interesting part is a URL the width cap has wrapped. Every segment carries the **same `id=`**
+parameter, which is what the OSC 8 spec asks for: segments sharing an id are one logical link, so
+hovering highlights all of them and a click anywhere opens the whole URL. lipgloss closes the
+sequence before the padding on each line, so the border is never swallowed into the link. The id is
+`<row>-<col>`, unique per cell, so two rows pointing at the same repository still highlight
+separately.
+
+Linking is **not** gated on detecting terminal support — there is no reliable query for it, and none
+is needed:
+
+| Destination                                  | Result                                          |
+|----------------------------------------------|-------------------------------------------------|
+| A terminal that supports OSC 8               | A clickable link                                |
+| A terminal that does not (e.g. Terminal.app) | The sequence is ignored; the URL text is shown  |
+| A file or a pipe                             | `colorprofile.Writer` strips it; plain URL text |
+| `CLICOLOR_FORCE=1` into a file or a pipe     | Kept, exactly as forced colour is               |
+
+That last row is the same trade colour already makes, and the third is why `RenderTable` can emit
+the sequences unconditionally: the per-stream `colorprofile.Writer` that strips colour for a
+non-terminal stream strips OSC 8 with it, so `specs template list > out.txt` writes a clean file.
+
+Linking lives in `RenderTable`, **not** at the call site that builds the rows. Rows reach
+`Writer.Table` as plain `[][]string`, and `JSONWriter` copies them straight into JSON values — a
+cell linkified upstream would put escape bytes inside `"Repository"` and corrupt
+`specs template list -o json`.
+
+---
+
 ## Testing the rendering
 
 Rendering is long, mostly whitespace, and tedious to assert field by field — so it is asserted
@@ -162,6 +197,8 @@ machine than in the `go-builder` container.
 
 Table cases also name a `maxWidth`, including one capped well below the natural width and one above
 it, so the wrapping and the "cap only, never stretch" rule each have a golden of their own.
+`table_hyperlink` and `table_hyperlink_wrapped` pin the OSC 8 sequences, the latter across a
+wrapped URL where the shared `id=` is the whole point.
 
 One assertion freezes behaviour that is known to be wrong, so the issue that fixes it produces a
 reviewable diff: `Table` emitting one JSON array rather than NDJSON (#109). It is marked as such in

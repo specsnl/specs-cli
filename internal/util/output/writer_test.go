@@ -332,6 +332,76 @@ func TestPrettyWriter_TableWidthFollowsColumns(t *testing.T) {
 	}
 }
 
+// Hyperlinks are gated by the same per-stream decision as colour, so a table
+// redirected to a file or piped carries the plain URL and no escape bytes,
+// while a stream that can render them keeps them.
+func TestPrettyWriter_HyperlinksFollowTheStream(t *testing.T) {
+	headers := []string{"Name", "Repository"}
+	url := "https://github.com/specsnl/specs-cli.git"
+	rows := [][]string{{"my-tpl", url}}
+
+	tests := []struct {
+		name    string
+		environ []string
+		want    bool
+	}{
+		{
+			// The ordinary `specs template list > out.txt`: a buffer is not a
+			// terminal and nothing forces colour, so colorprofile strips them.
+			name:    "redirected to a file",
+			environ: goldenPlain,
+		},
+		{
+			name:    "colour forced",
+			environ: goldenColour,
+			want:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var out, errOut bytes.Buffer
+
+			output.NewPrettyWriter(&out, &errOut, tt.environ).Table(headers, rows)
+
+			got := capture(t, &out, &errOut, streamStdout)
+			if strings.Contains(got, "\x1b]8;") != tt.want {
+				t.Errorf("hyperlink present = %v, want %v: %q", !tt.want, tt.want, got)
+			}
+
+			// Either way the URL itself is readable and unmangled.
+			if !strings.Contains(got, url) {
+				t.Errorf("the URL text is not in the output: %q", got)
+			}
+		})
+	}
+}
+
+// JSON output never carries hyperlinks: a consumer reads a field, and an escape
+// sequence inside a JSON string value would be nothing but corruption.
+func TestJSONWriter_TableNeverHyperlinks(t *testing.T) {
+	var out, errOut bytes.Buffer
+
+	output.NewJSONWriter(&out, &errOut).Table(
+		[]string{"Name", "Repository"},
+		[][]string{{"my-tpl", "https://github.com/specsnl/specs-cli.git"}},
+	)
+
+	got := capture(t, &out, &errOut, streamStdout)
+
+	// json.Marshal renders a raw ESC as the literal \u001b, so check for that
+	// and for the OSC 8 introducer.
+	for _, seq := range []string{"\x1b", `\u001b`, "]8;"} {
+		if strings.Contains(got, seq) {
+			t.Errorf("JSON output contains %q: %q", seq, got)
+		}
+	}
+
+	if !strings.Contains(got, `"https://github.com/specsnl/specs-cli.git"`) {
+		t.Errorf("the bare URL is not the field value: %q", got)
+	}
+}
+
 // Each stream gets its own colorprofile.Writer, so a decision made for one is
 // not inherited by the other.
 func TestPrettyWriter_StreamsAreWrappedIndependently(t *testing.T) {

@@ -91,6 +91,11 @@ columns shrink and their cells wrap onto extra lines rather than the table break
 stdout to a file or a pipe and the full natural width is written instead; set `COLUMNS` to pin a
 width there (`COLUMNS=100 specs template list | less -R`).
 
+`Repository` values that are `http(s)` URLs are clickable in terminals that support hyperlinks
+(iTerm2, WezTerm, kitty, Ghostty, GNOME Terminal, Windows Terminal, …), and stay clickable as one
+link even when the column wraps them over several lines. Terminals without support simply show the
+URL, and a redirect to a file or a pipe writes the plain text.
+
 ---
 
 ## The project file

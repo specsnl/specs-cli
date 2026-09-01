@@ -93,6 +93,22 @@ one lipgloss already pulls in, exactly as `colorprofile` was.
 
 ---
 
+## Terminal Hyperlinks: x/ansi
+
+**Decision:** `github.com/charmbracelet/x/ansi` — a direct dependency, promoted from the indirect
+one lipgloss already pulls in, as `colorprofile` and `x/term` were.
+
+**Rationale:**
+
+- `ansi.SetHyperlink` / `ansi.ResetHyperlink` emit the OSC 8 sequences that make a `Repository` cell
+  clickable, including the `id=` parameter that keeps a wrapped URL one logical link. See
+  [output.md](./output.md#hyperlinked-cells).
+- Hand-writing `\x1b]8;…` is a poor trade for a sequence with two forms (BEL- and ST-terminated)
+  and parameter joining rules.
+- No new module: lipgloss depends on it already.
+
+---
+
 ## TUI Components: bubbles (indirect)
 
 `charm.land/bubbles/v2` is pulled in transitively by huh but is not used directly.
@@ -208,6 +224,7 @@ configDir := filepath.Join(xdg.ConfigHome, "specs")
 | `charm.land/lipgloss/v2`                | Output styling (logger + table renderer)           |
 | `github.com/charmbracelet/colorprofile` | Per-stream colour downsampling for `PrettyWriter`  |
 | `github.com/charmbracelet/x/term`       | Terminal size for the table width cap              |
+| `github.com/charmbracelet/x/ansi`       | OSC 8 hyperlinks in table cells                    |
 | `gopkg.in/yaml.v3`                      | `project.yml` parsing and `--values` YAML files    |
 | `github.com/go-sprout/sprout`           | Extended template functions                        |
 | `github.com/go-git/go-git/v5`           | Git clone for template download/upgrade            |
