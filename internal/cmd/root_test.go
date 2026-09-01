@@ -29,6 +29,20 @@ func executeCmdWithApp(args ...string) (*App, string, error) {
 	return app, buf.String(), err
 }
 
+// executeCmdStreams keeps the two streams apart, so a test can assert which one
+// a command's product and its narration land on.
+func executeCmdStreams(args ...string) (stdout, stderr string, err error) {
+	app := NewApp()
+	cmd := newRootCmd(app)
+	out, errOut := new(bytes.Buffer), new(bytes.Buffer)
+	cmd.SetOut(out)
+	cmd.SetErr(errOut)
+	cmd.SetArgs(args)
+	err = cmd.Execute()
+
+	return out.String(), errOut.String(), err
+}
+
 func TestHelp_ExitsZero(t *testing.T) {
 	out, err := executeCmd("--help")
 	if err != nil {

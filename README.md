@@ -72,6 +72,20 @@ specs template save ./my-template my-template
 templates are re-copied from their source path. Cached statuses refresh automatically once older
 than 24 hours or when written by a different `specs` version.
 
+### Scripting
+
+stdout carries the answer, stderr the narration — so discarding stderr leaves exactly the data,
+in either format (`--output` / `-o` selects `pretty` or `json`):
+
+```sh
+specs template list -o json 2>/dev/null | jq '.[].Name'
+specs version -o json 2>/dev/null          # {"version":"v0.0.13"}
+specs template validate ./my-template -o json 2>/dev/null   # {"valid":true}
+```
+
+Commands that only change the filesystem (`use`, `template save`, `template download`, …) narrate
+what they did on stderr and write nothing to stdout.
+
 ---
 
 ## The project file

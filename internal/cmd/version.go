@@ -14,7 +14,7 @@ func newVersionCmd(app *App) *cobra.Command {
 		Short: "Print the specs version",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			app.Output.Info("specs version %s", Version)
+			app.Output.WriteResult(map[string]string{"version": Version}, "specs version %s", Version)
 			return nil
 		},
 	}

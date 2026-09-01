@@ -55,10 +55,8 @@ func TestPrettyWriter_Golden(t *testing.T) {
 		stream  stream
 		call    func(w *output.PrettyWriter)
 	}{
-		// Info on stdout is the behaviour issue #113 will change; the golden is
-		// what will show that diff.
-		{"pretty_info_plain", goldenPlain, streamStdout, func(w *output.PrettyWriter) { w.Info("hello %s", "world") }},
-		{"pretty_info_colour", goldenColour, streamStdout, func(w *output.PrettyWriter) { w.Info("hello %s", "world") }},
+		{"pretty_info_plain", goldenPlain, streamStderr, func(w *output.PrettyWriter) { w.Info("hello %s", "world") }},
+		{"pretty_info_colour", goldenColour, streamStderr, func(w *output.PrettyWriter) { w.Info("hello %s", "world") }},
 		{"pretty_warn_plain", goldenPlain, streamStderr, func(w *output.PrettyWriter) { w.Warn("something wrong") }},
 		{"pretty_warn_colour", goldenColour, streamStderr, func(w *output.PrettyWriter) { w.Warn("something wrong") }},
 		{"pretty_error_plain", goldenPlain, streamStderr, func(w *output.PrettyWriter) { w.Error("fatal error") }},
@@ -87,6 +85,26 @@ func TestPrettyWriter_Golden(t *testing.T) {
 				w.Table([]string{"Name", "Version"}, [][]string{{"my-tpl", "1.0.0"}, {"other", "2.0.0"}})
 			},
 		},
+		{
+			// The empty answer a command like `template list` writes when it has
+			// nothing to report: headers only, same shape as a filled table.
+			"pretty_table_empty", goldenPlain, streamStdout,
+			func(w *output.PrettyWriter) { w.Table([]string{"Name", "Version"}, nil) },
+		},
+		{
+			// A result carries no level prefix and no styling: it is the product,
+			// not narration about it.
+			"pretty_writeresult_plain", goldenPlain, streamStdout,
+			func(w *output.PrettyWriter) {
+				w.WriteResult(map[string]string{"version": "v1.2.3"}, "specs version %s", "v1.2.3")
+			},
+		},
+		{
+			"pretty_writeresult_colour", goldenColour, streamStdout,
+			func(w *output.PrettyWriter) {
+				w.WriteResult(map[string]string{"version": "v1.2.3"}, "specs version %s", "v1.2.3")
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -105,7 +123,7 @@ func TestJSONWriter_Golden(t *testing.T) {
 		stream stream
 		call   func(w *output.JSONWriter)
 	}{
-		{"json_info", streamStdout, func(w *output.JSONWriter) { w.Info("hello %s", "world") }},
+		{"json_info", streamStderr, func(w *output.JSONWriter) { w.Info("hello %s", "world") }},
 		{"json_warn", streamStderr, func(w *output.JSONWriter) { w.Warn("something wrong") }},
 		{"json_error", streamStderr, func(w *output.JSONWriter) { w.Error("fatal error") }},
 		{
@@ -135,6 +153,14 @@ func TestJSONWriter_Golden(t *testing.T) {
 				w.Table([]string{"Name", "Version"}, [][]string{{"my-tpl"}, {"other", "2.0.0", "extra"}})
 			},
 		},
+		{
+			// The record is marshalled and the sentence dropped, so a consumer
+			// reads a field instead of parsing English.
+			"json_writeresult", streamStdout,
+			func(w *output.JSONWriter) {
+				w.WriteResult(map[string]string{"version": "v1.2.3"}, "specs version %s", "v1.2.3")
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -153,8 +179,8 @@ func TestJSONWriter_LineFraming(t *testing.T) {
 	var out bytes.Buffer
 
 	w := output.NewJSONWriter(&out, &bytes.Buffer{})
-	w.Info("first")
-	w.Info("second")
+	w.WriteResult(map[string]string{"first": "1"}, "first")
+	w.WriteResult(map[string]string{"second": "2"}, "second")
 
 	lines := strings.Split(out.String(), "\n")
 	if len(lines) != 3 || lines[2] != "" {
@@ -165,6 +191,18 @@ func TestJSONWriter_LineFraming(t *testing.T) {
 		if !strings.HasPrefix(line, "{") || !strings.HasSuffix(line, "}") {
 			t.Errorf("line is not a bare JSON object: %q", line)
 		}
+	}
+}
+
+// A record JSON cannot represent writes nothing at all, rather than a broken
+// line into a stream a consumer is parsing.
+func TestJSONWriter_WriteResultSkipsUnmarshalableRecord(t *testing.T) {
+	var out, errOut bytes.Buffer
+
+	output.NewJSONWriter(&out, &errOut).WriteResult(func() {}, "unreachable")
+
+	if out.Len() != 0 || errOut.Len() != 0 {
+		t.Errorf("wrote %q / %q, expected nothing", out.String(), errOut.String())
 	}
 }
 
@@ -213,7 +251,7 @@ func TestPrettyWriter_ColourFollowsEnviron(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var buf bytes.Buffer
 
-			output.NewPrettyWriter(&buf, &bytes.Buffer{}, tt.environ).Info("hello")
+			output.NewPrettyWriter(&bytes.Buffer{}, &buf, tt.environ).Info("hello")
 
 			if got := buf.String(); got != tt.want {
 				t.Errorf("Info rendered %q, want %q", got, tt.want)
@@ -231,7 +269,7 @@ func TestPrettyWriter_IgnoresProcessEnviron(t *testing.T) {
 
 	var buf bytes.Buffer
 
-	output.NewPrettyWriter(&buf, &bytes.Buffer{}, goldenPlain).Info("hello")
+	output.NewPrettyWriter(&bytes.Buffer{}, &buf, goldenPlain).Info("hello")
 
 	if strings.Contains(buf.String(), esc) {
 		t.Errorf("process environment leaked into the rendering: %q", buf.String())
@@ -244,7 +282,7 @@ func TestPrettyWriter_StreamsAreWrappedIndependently(t *testing.T) {
 	var out, errOut bytes.Buffer
 
 	w := output.NewPrettyWriter(&out, &errOut, goldenColour)
-	w.Info("info")
+	w.Table([]string{"Name"}, [][]string{{"my-tpl"}})
 	w.Warn("warn")
 
 	if !strings.Contains(out.String(), esc) {

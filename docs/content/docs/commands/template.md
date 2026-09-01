@@ -16,7 +16,7 @@ Manage a local registry of named templates. Unlike `specs use`, downloaded templ
 | `validate <path>`                            | Check if a template directory is valid                                                                                                                                                                              |
 | `rename` / `mv <old> <new>`                  | Rename a registered template                                                                                                                                                                                        |
 | `delete` / `rm` / `remove` / `del <name>...` | Remove one or more templates from the registry                                                                                                                                                                      |
-| `update [name]`                              | Force-refresh the cached update status; updates all template statuses if no name is given                                                                                                                           |
+| `update [name]`                              | Force-refresh the cached update status and report a `Name`/`Status`/`Latest` table; updates all template statuses if no name is given                                                                               |
 | `upgrade [name]`                             | Apply available updates; upgrades all templates if no name is given (remote templates re-clone, local templates re-copy from their source path)                                                                     |
 
 `template use` accepts the same flags as `specs use` (`--values`, `--arg`, `--use-defaults`, `--no-hooks`).
@@ -25,7 +25,10 @@ Manage a local registry of named templates. Unlike `specs use`, downloaded templ
 
 `template download` and `template save` accept `-f` / `--force` to overwrite an existing template with the same name.
 
-For machine-readable `list` output, use the global `--output json` flag (see [Global Flags](global-flags)).
+For machine-readable `list` and `update` output, use the global `--output json` flag (see
+[Global Flags](global-flags)). Their tables are the product and go to stdout — an empty registry
+still yields `[]`, with the explanation narrated on stderr — while `validate` answers
+`{"valid": true|false}` and `version` answers `{"version": "…"}`.
 
 ## Update status
 
@@ -44,6 +47,10 @@ The `Status` column reflects where each template's "source of truth" lives:
 
 Possible `Status` values: `up-to-date`, `update: <version>`, `update available`,
 `unknown (offline?)`, `auth error`, `not found`, `source missing`, `unknown`, `-` (untracked).
+
+`template update` reports the same labels, except that it carries the newly found version in its own
+`Latest` column rather than inside the status string, and lists only the templates it actually
+checked — untracked ones are left out instead of shown as `-`.
 
 Cached statuses are stored per template and re-checked when older than 24 hours **or** when they
 were written by a different `specs` version — so an update to the status-check logic takes effect

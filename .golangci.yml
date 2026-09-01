@@ -12,5 +12,6 @@ linters:
       # no error channel and reporting a write failure would itself need a
       # working stream. See internal/util/output/writer.go.
       exclude-functions:
+        - fmt.Fprint
         - fmt.Fprintln
         - charm.land/lipgloss/v2.Fprintln

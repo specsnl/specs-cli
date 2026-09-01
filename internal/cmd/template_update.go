@@ -39,8 +39,9 @@ func newTemplateUpdateCmd(app *App) *cobra.Command {
 			}
 
 			networkErrorSeen := false
-			updatesAvailable := []string{}
 			checkedCount := 0
+
+			var rows [][]string
 
 			for _, name := range names {
 				root := specs.TemplatePath(name)
@@ -108,38 +109,21 @@ func newTemplateUpdateCmd(app *App) *cobra.Command {
 					app.Output.Warn("template %q: local source path is missing", name)
 				case pkggit.CheckErrorUnknown:
 					app.Output.Warn("template %q: status check failed", name)
-				default:
-					if !result.IsUpToDate {
-						updatesAvailable = append(updatesAvailable, name)
-					}
 				}
+
+				rows = append(rows, []string{name, updateStatusLabel(result), latestOrDash(result.LatestVersion)})
 			}
 
 			if networkErrorSeen {
 				app.Output.Warn("could not reach one or more remotes — status may be outdated")
 			}
 
-			if len(updatesAvailable) > 0 {
-				for _, name := range updatesAvailable {
-					root := specs.TemplatePath(name)
+			// The table is the answer, empty or not; the hint that explains an
+			// empty one is narration.
+			app.Output.Table([]string{"Name", "Status", "Latest"}, rows)
 
-					s, err := pkgtemplate.LoadStatus(root)
-					if err != nil {
-						slog.Debug("failed to load template status", "template", name, "error", err)
-					}
-
-					if s != nil && s.LatestVersion != "" {
-						app.Output.Info("template %q has an update available: %s", name, s.LatestVersion)
-					} else {
-						app.Output.Info("template %q has an update available", name)
-					}
-				}
-			} else if !networkErrorSeen && checkedCount > 0 {
-				if len(names) == 1 {
-					app.Output.Info("template %q is up-to-date", names[0])
-				} else {
-					app.Output.Info("all templates are up-to-date")
-				}
+			if checkedCount == 0 {
+				app.Output.Info("no trackable templates — nothing to check")
 			}
 
 			return nil
@@ -147,4 +131,27 @@ func newTemplateUpdateCmd(app *App) *cobra.Command {
 	}
 
 	return cmd
+}
+
+// updateStatusLabel renders the Status column for one just-checked template.
+// The version, when there is one, belongs in the Latest column rather than
+// inside this string — unlike `template list`, which reads a cached status.
+func updateStatusLabel(result pkggit.RemoteCheckResult) string {
+	if label := checkErrorLabel(result.ErrorKind); label != "" {
+		return label
+	}
+
+	if result.IsUpToDate {
+		return "up-to-date"
+	}
+
+	return "update available"
+}
+
+func latestOrDash(version string) string {
+	if version == "" {
+		return "-"
+	}
+
+	return version
 }
