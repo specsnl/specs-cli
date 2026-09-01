@@ -102,6 +102,41 @@ the ASCII profile, which drops colour and keeps bold, as [no-color.org](https://
 
 ---
 
+## Where the width decision is made
+
+`RenderTable(headers, rows, maxWidth)` renders with
+[`charm.land/lipgloss/v2/table`](library-decisions#output-styling-lipgloss) and takes the width as a
+**parameter**
+rather than detecting it — the same reasoning as `environ` above: the function stays
+environment-free and its goldens stay deterministic.
+
+`maxWidth` is a **cap, never a stretch**. It is applied only when the natural table — every column
+sized to its widest cell — is wider than the space available, so a short table keeps its compact
+look and the output does not change with every terminal size. When it does apply, lipgloss shrinks
+the widest columns first (by median non-whitespace length) and wraps **data** cells onto extra
+lines. Headers are never wrapped, so a very narrow window truncates header text; that is preferable
+to the previous behaviour, where the *border* wrapped and the table fell apart into fragments.
+
+`PrettyWriter.Table` resolves the width **per call**, so a terminal resized between two commands is
+honoured:
+
+| Order | Source                                           | Applies to                            |
+|-------|--------------------------------------------------|---------------------------------------|
+| 1     | `term.GetSize` on stdout, when stdout is a tty   | An interactive terminal               |
+| 2     | A positive `COLUMNS` from the captured `environ` | The escape hatch for pipes and tests  |
+| 3     | `0` — unconstrained                              | A file or a pipe, which wants it full |
+
+`PrettyWriter` therefore keeps stdout *before* the `colorprofile` wrapper, so a file descriptor is
+still reachable for step 1, alongside the `environ` slice step 2 reads.
+
+Cells are measured by `ansi.StringWidth`, so display width and embedded ANSI escapes are both
+handled: `café`, `日本語` and `🚀` occupy the cells they actually occupy on screen, and a pre-styled
+cell is not counted as wide as its escape bytes.
+
+`JSONWriter` is unaffected: JSON output is never width-dependent.
+
+---
+
 ## Testing the rendering
 
 Rendering is long, mostly whitespace, and tedious to assert field by field — so it is asserted
@@ -125,6 +160,9 @@ is what pins the contract above.
 lookup, which reads the system terminfo database and would answer differently on a developer's
 machine than in the `go-builder` container.
 
-Two assertions freeze behaviour that is known to be wrong, so the issue that fixes it produces a
-reviewable diff: column widths measured in bytes (#117) and `Table` emitting one JSON array rather
-than NDJSON (#109). Both are marked as such in the tests.
+Table cases also name a `maxWidth`, including one capped well below the natural width and one above
+it, so the wrapping and the "cap only, never stretch" rule each have a golden of their own.
+
+One assertion freezes behaviour that is known to be wrong, so the issue that fixes it produces a
+reviewable diff: `Table` emitting one JSON array rather than NDJSON (#109). It is marked as such in
+the tests.

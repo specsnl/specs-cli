@@ -278,7 +278,7 @@ redirect or pipe, while `Info`, `Warn`, `Error` and `WriteErr` narrate on stderr
 implementations are selected at startup via `--output`: `PrettyWriter` (lipgloss-styled text) and
 `JSONWriter` (NDJSON, useful for scripting or CI pipelines).
 
-See [Output](output) for the full contract, the colour decision and the golden-file tests.
+See [Output](output) for the full contract, the colour and width decisions and the golden-file tests.
 
 ---
 

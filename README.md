@@ -86,6 +86,11 @@ specs template validate ./my-template -o json 2>/dev/null   # {"valid":true}
 Commands that only change the filesystem (`use`, `template save`, `template download`, …) narrate
 what they did on stderr and write nothing to stdout.
 
+Pretty tables are capped to the width of your terminal: when a table does not fit, its widest
+columns shrink and their cells wrap onto extra lines rather than the table breaking apart. Redirect
+stdout to a file or a pipe and the full natural width is written instead; set `COLUMNS` to pin a
+width there (`COLUMNS=100 specs template list | less -R`).
+
 ---
 
 ## The project file
