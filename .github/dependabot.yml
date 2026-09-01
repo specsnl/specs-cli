@@ -7,7 +7,6 @@ updates:
     schedule:
       interval: weekly
     labels:
-      - dependencies
       - github-actions
     commit-message:
       prefix: build
@@ -22,7 +21,6 @@ updates:
     schedule:
       interval: weekly
     labels:
-      - dependencies
       - go
     commit-message:
       prefix: build
@@ -38,9 +36,7 @@ updates:
     schedule:
       interval: weekly
     labels:
-      - dependencies
       - go
-      - docs
     commit-message:
       prefix: build
       include: scope
@@ -55,7 +51,6 @@ updates:
     schedule:
       interval: weekly
     labels:
-      - dependencies
       - docker
     commit-message:
       prefix: build
