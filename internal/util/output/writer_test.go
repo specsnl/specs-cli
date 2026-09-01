@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"charm.land/lipgloss/v2"
 	"github.com/specsnl/specs-cli/internal/specs"
 	"github.com/specsnl/specs-cli/internal/util/output"
 )
@@ -273,6 +274,61 @@ func TestPrettyWriter_IgnoresProcessEnviron(t *testing.T) {
 
 	if strings.Contains(buf.String(), esc) {
 		t.Errorf("process environment leaked into the rendering: %q", buf.String())
+	}
+}
+
+// stdout here is a buffer rather than a terminal, so the width comes from
+// COLUMNS in the captured environ — the escape hatch that makes the plumbing
+// testable and lets a caller pin the width behind a pipe.
+func TestPrettyWriter_TableWidthFollowsColumns(t *testing.T) {
+	headers := []string{"Name", "Repository"}
+	rows := [][]string{{"my-tpl", "https://github.com/specsnl/specs-cli.git"}}
+
+	tests := []struct {
+		name    string
+		environ []string
+		want    int
+	}{
+		{
+			name:    "COLUMNS caps the table",
+			environ: []string{"COLUMNS=40"},
+			want:    40,
+		},
+		{
+			// Unset, unparseable and non-positive all mean unconstrained, which
+			// is the right answer for a file or a pipe.
+			name:    "unset COLUMNS leaves it unconstrained",
+			environ: goldenPlain,
+		},
+		{
+			name:    "invalid COLUMNS leaves it unconstrained",
+			environ: []string{"COLUMNS=wide"},
+		},
+		{
+			name:    "zero COLUMNS leaves it unconstrained",
+			environ: []string{"COLUMNS=0"},
+		},
+	}
+
+	natural := lipgloss.Width(output.RenderTable(headers, rows, 0))
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var out, errOut bytes.Buffer
+
+			output.NewPrettyWriter(&out, &errOut, tt.environ).Table(headers, rows)
+
+			got := lipgloss.Width(capture(t, &out, &errOut, streamStdout))
+
+			want := tt.want
+			if want == 0 {
+				want = natural
+			}
+
+			if got != want {
+				t.Errorf("table rendered %d cells wide, want %d:\n%s", got, want, out.String())
+			}
+		})
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/colorprofile"
+	"github.com/charmbracelet/x/term"
 	"github.com/specsnl/specs-cli/internal/specs"
 )
 
@@ -42,6 +43,12 @@ type Writer interface {
 type PrettyWriter struct {
 	stdout io.Writer
 	stderr io.Writer
+
+	// rawStdout is stdout before the colorprofile wrapper, kept so the table
+	// width can be read from its file descriptor; environ is the captured
+	// environment COLUMNS is read from. Both feed tableWidth.
+	rawStdout io.Writer
+	environ   []string
 }
 
 // NewPrettyWriter creates a PrettyWriter over the given streams. Each stream is
@@ -58,8 +65,10 @@ func NewPrettyWriter(stdout, stderr io.Writer, environ []string) *PrettyWriter {
 	}
 
 	return &PrettyWriter{
-		stdout: profileWriter(stdout, environ),
-		stderr: profileWriter(stderr, environ),
+		stdout:    profileWriter(stdout, environ),
+		stderr:    profileWriter(stderr, environ),
+		rawStdout: stdout,
+		environ:   environ,
 	}
 }
 
@@ -121,7 +130,44 @@ func (w *PrettyWriter) WriteErr(err error) {
 }
 
 func (w *PrettyWriter) Table(headers []string, rows [][]string) {
-	fmt.Fprintln(w.stdout, RenderTable(headers, rows))
+	fmt.Fprintln(w.stdout, RenderTable(headers, rows, w.tableWidth()))
+}
+
+// tableWidth resolves the width a table may occupy, resolved per call so a
+// terminal resized between two commands is honoured: the size of stdout when it
+// is a terminal, else a positive COLUMNS from the captured environment — the
+// escape hatch for pipes and tests — else 0 for unconstrained, which is what a
+// file or a pipe wants.
+func (w *PrettyWriter) tableWidth() int {
+	if f, ok := w.rawStdout.(interface{ Fd() uintptr }); ok {
+		fd := f.Fd()
+		if term.IsTerminal(fd) {
+			if width, _, err := term.GetSize(fd); err == nil && width > 0 {
+				return width
+			}
+		}
+	}
+
+	return envColumns(w.environ)
+}
+
+// envColumns returns a positive COLUMNS from environ, or 0 when it is unset,
+// unparseable or not positive.
+func envColumns(environ []string) int {
+	for _, e := range environ {
+		name, value, found := strings.Cut(e, "=")
+		if !found || name != "COLUMNS" {
+			continue
+		}
+
+		if columns, err := strconv.Atoi(value); err == nil && columns > 0 {
+			return columns
+		}
+
+		return 0
+	}
+
+	return 0
 }
 
 // The result is unprefixed and unstyled: it is an answer, not a level.
