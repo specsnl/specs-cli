@@ -11,18 +11,10 @@ import (
 	"github.com/specsnl/specs-cli/internal/specs"
 	pkgtemplate "github.com/specsnl/specs-cli/internal/template"
 	pkggit "github.com/specsnl/specs-cli/internal/util/git"
+	"github.com/specsnl/specs-cli/internal/util/output"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 )
-
-// localRepoPrefix marks a Repository value that refers to a directory on disk
-// (registered via 'specs template save') rather than a remote git URL.
-const localRepoPrefix = "local:"
-
-// isLocalRepo reports whether repo refers to a local source path.
-func isLocalRepo(repo string) bool {
-	return strings.HasPrefix(repo, localRepoPrefix)
-}
 
 // isTrackable reports whether a template carries enough metadata for a status
 // check. A remote template needs a repository and a branch; a local template
@@ -168,7 +160,7 @@ func newTemplateListCmd(app *App) *cobra.Command {
 
 			headers := []string{"Name", "Repository", "Version", "Status", "Created", "Updated"}
 
-			var rows [][]string
+			var rows [][]output.Cell
 
 			for _, entry := range tmplEntries {
 				repo, version, created, updated := "-", "-", "-", "-"
@@ -183,7 +175,14 @@ func newTemplateListCmd(app *App) *cobra.Command {
 				}
 
 				statusStr := statusLabel(entry.status, isTrackable(entry.meta))
-				rows = append(rows, []string{entry.name, repo, version, statusStr, created, updated})
+				rows = append(rows, []output.Cell{
+					{Value: entry.name},
+					repoCell(repo),
+					{Value: version},
+					{Value: statusStr},
+					{Value: created},
+					{Value: updated},
+				})
 			}
 
 			// The empty answer keeps the shape of the non-empty one — an empty

@@ -9,6 +9,7 @@ import (
 	"github.com/specsnl/specs-cli/internal/specs"
 	pkgtemplate "github.com/specsnl/specs-cli/internal/template"
 	pkggit "github.com/specsnl/specs-cli/internal/util/git"
+	"github.com/specsnl/specs-cli/internal/util/output"
 	"github.com/spf13/cobra"
 )
 
@@ -120,7 +121,7 @@ func newTemplateUpdateCmd(app *App) *cobra.Command {
 
 			// The table is the answer, empty or not; the hint that explains an
 			// empty one is narration.
-			app.Output.Table([]string{"Name", "Status", "Latest"}, rows)
+			app.Output.Table([]string{"Name", "Status", "Latest"}, output.Rows(rows))
 
 			if checkedCount == 0 {
 				app.Output.Info("no trackable templates — nothing to check")

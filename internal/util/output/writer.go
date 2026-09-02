@@ -32,7 +32,11 @@ type Writer interface {
 	// WriteErr renders err as an error-level message. JSON output includes an
 	// "error_kind" field when err wraps a known specs sentinel.
 	WriteErr(err error)
-	Table(headers []string, rows [][]string)
+	// Table renders rows under headers. A Cell's Value is what JSON emits and
+	// its Text what the pretty writer displays, so a command can shorten a
+	// label without changing what a script reads back. Wrap plain string rows
+	// with Rows.
+	Table(headers []string, rows [][]Cell)
 	// WriteResult renders a single-line result on stdout: the product of a command
 	// whose answer is not a table. Pretty writes the formatted text; JSON marshals
 	// record and ignores the text, so every stdout line stays a typed object.
@@ -129,7 +133,7 @@ func (w *PrettyWriter) WriteErr(err error) {
 	w.Error("%v", err)
 }
 
-func (w *PrettyWriter) Table(headers []string, rows [][]string) {
+func (w *PrettyWriter) Table(headers []string, rows [][]Cell) {
 	fmt.Fprintln(w.stdout, RenderTable(headers, rows, w.tableWidth()))
 }
 
@@ -219,7 +223,10 @@ func (w *JSONWriter) WriteErr(err error) {
 }
 
 // Table outputs an array of JSON objects, one per row, keyed by column header.
-func (w *JSONWriter) Table(headers []string, rows [][]string) {
+//
+// Only a cell's Value is emitted: Text is a label for a reader and Link is a
+// terminal capability, neither of which belongs in a stream a consumer parses.
+func (w *JSONWriter) Table(headers []string, rows [][]Cell) {
 	records := make([]map[string]string, len(rows))
 
 	for i, row := range rows {
@@ -227,7 +234,7 @@ func (w *JSONWriter) Table(headers []string, rows [][]string) {
 
 		for j, header := range headers {
 			if j < len(row) {
-				record[header] = row[j]
+				record[header] = row[j].Value
 			}
 		}
 

@@ -91,10 +91,19 @@ columns shrink and their cells wrap onto extra lines rather than the table break
 stdout to a file or a pipe and the full natural width is written instead; set `COLUMNS` to pin a
 width there (`COLUMNS=100 specs template list | less -R`).
 
-`Repository` values that are `http(s)` URLs are clickable in terminals that support hyperlinks
-(iTerm2, WezTerm, kitty, Ghostty, GNOME Terminal, Windows Terminal, …), and stay clickable as one
-link even when the column wraps them over several lines. Terminals without support simply show the
-URL, and a redirect to a file or a pipe writes the plain text.
+The `Repository` column shows a **label**, not the raw value: a GitHub URL reads as
+`specsnl/specs-cli` since GitHub is the default host, another host keeps its name
+(`gitlab.com/acme/tpl`), and a saved path collapses `$HOME` to `~`. The label is clickable in
+terminals that support hyperlinks (iTerm2, WezTerm, kitty, Ghostty, GNOME Terminal, Windows
+Terminal, …) and opens the full URL, staying one link even when the column wraps it over several
+lines. Terminals without support simply show the label, and a redirect to a file or a pipe writes
+plain text.
+
+`--output json` always carries the value as stored, never the label — so scripts read the full URL:
+
+```sh
+specs template list -o json 2>/dev/null | jq -r '.[].Repository'
+```
 
 ---
 

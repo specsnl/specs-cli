@@ -77,13 +77,13 @@ func TestPrettyWriter_Golden(t *testing.T) {
 		{
 			"pretty_table_plain", goldenPlain, streamStdout,
 			func(w *output.PrettyWriter) {
-				w.Table([]string{"Name", "Version"}, [][]string{{"my-tpl", "1.0.0"}, {"other", "2.0.0"}})
+				w.Table([]string{"Name", "Version"}, output.Rows([][]string{{"my-tpl", "1.0.0"}, {"other", "2.0.0"}}))
 			},
 		},
 		{
 			"pretty_table_colour", goldenColour, streamStdout,
 			func(w *output.PrettyWriter) {
-				w.Table([]string{"Name", "Version"}, [][]string{{"my-tpl", "1.0.0"}, {"other", "2.0.0"}})
+				w.Table([]string{"Name", "Version"}, output.Rows([][]string{{"my-tpl", "1.0.0"}, {"other", "2.0.0"}}))
 			},
 		},
 		{
@@ -140,7 +140,7 @@ func TestJSONWriter_Golden(t *testing.T) {
 			// #109 will change.
 			"json_table", streamStdout,
 			func(w *output.JSONWriter) {
-				w.Table([]string{"Name", "Version"}, [][]string{{"my-tpl", "1.0.0"}, {"other", "2.0.0"}})
+				w.Table([]string{"Name", "Version"}, output.Rows([][]string{{"my-tpl", "1.0.0"}, {"other", "2.0.0"}}))
 			},
 		},
 		{
@@ -151,7 +151,7 @@ func TestJSONWriter_Golden(t *testing.T) {
 			// A row shorter than the headers leaves the missing keys out.
 			"json_table_ragged", streamStdout,
 			func(w *output.JSONWriter) {
-				w.Table([]string{"Name", "Version"}, [][]string{{"my-tpl"}, {"other", "2.0.0", "extra"}})
+				w.Table([]string{"Name", "Version"}, output.Rows([][]string{{"my-tpl"}, {"other", "2.0.0", "extra"}}))
 			},
 		},
 		{
@@ -310,13 +310,13 @@ func TestPrettyWriter_TableWidthFollowsColumns(t *testing.T) {
 		},
 	}
 
-	natural := lipgloss.Width(output.RenderTable(headers, rows, 0))
+	natural := lipgloss.Width(output.RenderTable(headers, output.Rows(rows), 0))
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var out, errOut bytes.Buffer
 
-			output.NewPrettyWriter(&out, &errOut, tt.environ).Table(headers, rows)
+			output.NewPrettyWriter(&out, &errOut, tt.environ).Table(headers, output.Rows(rows))
 
 			got := lipgloss.Width(capture(t, &out, &errOut, streamStdout))
 
@@ -362,7 +362,7 @@ func TestPrettyWriter_HyperlinksFollowTheStream(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var out, errOut bytes.Buffer
 
-			output.NewPrettyWriter(&out, &errOut, tt.environ).Table(headers, rows)
+			output.NewPrettyWriter(&out, &errOut, tt.environ).Table(headers, output.Rows(rows))
 
 			got := capture(t, &out, &errOut, streamStdout)
 			if strings.Contains(got, "\x1b]8;") != tt.want {
@@ -382,9 +382,18 @@ func TestPrettyWriter_HyperlinksFollowTheStream(t *testing.T) {
 func TestJSONWriter_TableNeverHyperlinks(t *testing.T) {
 	var out, errOut bytes.Buffer
 
+	// A cell with a shortened label and an explicit link: JSON must emit the
+	// Value and ignore both, which is the whole point of the split.
 	output.NewJSONWriter(&out, &errOut).Table(
 		[]string{"Name", "Repository"},
-		[][]string{{"my-tpl", "https://github.com/specsnl/specs-cli.git"}},
+		[][]output.Cell{{
+			{Value: "my-tpl"},
+			{
+				Value: "https://github.com/specsnl/specs-cli.git",
+				Text:  "specsnl/specs-cli",
+				Link:  "https://github.com/specsnl/specs-cli.git",
+			},
+		}},
 	)
 
 	got := capture(t, &out, &errOut, streamStdout)
@@ -400,6 +409,11 @@ func TestJSONWriter_TableNeverHyperlinks(t *testing.T) {
 	if !strings.Contains(got, `"https://github.com/specsnl/specs-cli.git"`) {
 		t.Errorf("the bare URL is not the field value: %q", got)
 	}
+
+	// The reader's label must not leak into the machine-readable stream.
+	if strings.Contains(got, "specsnl/specs-cli\"") {
+		t.Errorf("the display label reached JSON: %q", got)
+	}
 }
 
 // Each stream gets its own colorprofile.Writer, so a decision made for one is
@@ -408,7 +422,7 @@ func TestPrettyWriter_StreamsAreWrappedIndependently(t *testing.T) {
 	var out, errOut bytes.Buffer
 
 	w := output.NewPrettyWriter(&out, &errOut, goldenColour)
-	w.Table([]string{"Name"}, [][]string{{"my-tpl"}})
+	w.Table([]string{"Name"}, output.Rows([][]string{{"my-tpl"}}))
 	w.Warn("warn")
 
 	if !strings.Contains(out.String(), esc) {
