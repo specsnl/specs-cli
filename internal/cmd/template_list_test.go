@@ -53,8 +53,9 @@ func TestList_Empty(t *testing.T) {
 	}
 }
 
-// The empty answer keeps the shape of the non-empty one: an empty record set on
-// stdout, with the hint that explains it narrated on stderr.
+// NDJSON's empty document is no lines at all, so an empty registry writes
+// nothing to stdout — and the hint that explains it is narrated on stderr,
+// where it cannot be mistaken for a record.
 func TestList_Empty_JSONIsAnEmptyRecordSet(t *testing.T) {
 	withTempRegistry(t)
 
@@ -63,8 +64,8 @@ func TestList_Empty_JSONIsAnEmptyRecordSet(t *testing.T) {
 		t.Fatalf("template list --output=json: %v", err)
 	}
 
-	if got := strings.TrimSpace(stdout); got != "[]" {
-		t.Errorf("stdout = %q, want %q", got, "[]")
+	if stdout != "" {
+		t.Errorf("stdout = %q, want nothing", stdout)
 	}
 
 	if !strings.Contains(stderr, "no templates registered") {
@@ -101,8 +102,10 @@ func TestList_JSONOutput(t *testing.T) {
 		t.Fatalf("template list --output=json: %v", err)
 	}
 
-	if !strings.Contains(out, `"Name"`) {
-		t.Errorf("expected JSON with Name key, got: %q", out)
+	// The key comes from the row type's json tag, not from the "Name" heading
+	// the pretty table prints.
+	if !strings.Contains(out, `"name"`) {
+		t.Errorf("expected JSON with a name key, got: %q", out)
 	}
 
 	if !strings.Contains(out, "my-tpl") {
@@ -141,8 +144,14 @@ func TestList_UpdatedColumn(t *testing.T) {
 		t.Fatalf("template list --output=json: %v", err)
 	}
 
-	if !strings.Contains(jsonOut, `"Updated"`) {
-		t.Errorf("expected JSON to contain 'Updated' key, got: %q", jsonOut)
+	if !strings.Contains(jsonOut, `"updated"`) {
+		t.Errorf("expected JSON to contain an updated key, got: %q", jsonOut)
+	}
+
+	// The timestamp itself, not the "2 days ago" the table shows: a relative
+	// phrase is a reading aid, not something a script can compute with.
+	if !strings.Contains(jsonOut, updated.Format(time.RFC3339)) {
+		t.Errorf("expected JSON to carry the timestamp %s, got: %q", updated.Format(time.RFC3339), jsonOut)
 	}
 }
 
@@ -164,7 +173,7 @@ func TestList_StatusColumn_LocalNoStatus(t *testing.T) {
 		t.Fatalf("template list: %v", err)
 	}
 
-	if !strings.Contains(out, `"Status":"-"`) {
+	if !strings.Contains(out, `"status":"-"`) {
 		t.Errorf("expected '-' status for local template, got: %q", out)
 	}
 }

@@ -13,7 +13,7 @@ narration and belongs on stderr. That split is what keeps `2>/dev/null` meaningf
 pipeline composable:
 
 ```console
-$ specs template list --output json 2>/dev/null | jq '.[].Name'
+$ specs template list --output json 2>/dev/null | jq -r .name
 $ specs version --output json 2>/dev/null
 {"version":"v0.0.13"}
 ```
@@ -34,23 +34,24 @@ type Writer interface {
     Error(format string, args ...any)
     // WriteErr renders err as an error message; JSON output includes error_kind when known.
     WriteErr(err error)
-    // Table renders rows under headers. A Cell's Value is what JSON emits and
-    // its Text what the pretty writer displays. Wrap plain rows with Rows.
-    Table(headers []string, rows [][]Cell)
+    // WriteTable renders a table: the pretty writer draws its cells, the JSON
+    // writer marshals its records one per line. Build the TableData with the
+    // generic Table function rather than calling this directly.
+    WriteTable(data TableData)
     // WriteResult renders a single-line result on stdout: the product of a command
     // whose answer is not a table.
     WriteResult(record any, format string, args ...any)
 }
 ```
 
-| Method        | Stream | Role      | Pretty                                      | JSON                                         |
-|---------------|--------|-----------|---------------------------------------------|----------------------------------------------|
-| `Table`       | stdout | Product   | Styled table of each cell's `Text`          | One array of objects, of each cell's `Value` |
-| `WriteResult` | stdout | Product   | The formatted text, unstyled and unprefixed | The marshalled record; the text is dropped   |
-| `Info`        | stderr | Narration | `info …`                                    | `{"level":"info","message":…}`               |
-| `Warn`        | stderr | Narration | `warn …`                                    | `{"level":"warn","message":…}`               |
-| `Error`       | stderr | Narration | `error …`                                   | `{"level":"error","message":…}`              |
-| `WriteErr`    | stderr | Narration | `error …`                                   | Adds `"error_kind"` for known sentinels      |
+| Method        | Stream | Role      | Pretty                                      | JSON                                           |
+|---------------|--------|-----------|---------------------------------------------|------------------------------------------------|
+| `WriteTable`  | stdout | Product   | Styled table of each cell's `Text`          | One JSON object per line, of each row's record |
+| `WriteResult` | stdout | Product   | The formatted text, unstyled and unprefixed | The marshalled record; the text is dropped     |
+| `Info`        | stderr | Narration | `info …`                                    | `{"level":"info","message":…}`                 |
+| `Warn`        | stderr | Narration | `warn …`                                    | `{"level":"warn","message":…}`                 |
+| `Error`       | stderr | Narration | `error …`                                   | `{"level":"error","message":…}`                |
+| `WriteErr`    | stderr | Narration | `error …`                                   | Adds `"error_kind"` for known sentinels        |
 
 `WriteResult` exists so a result that is not a table still leaves a *typed* line on stdout: a
 consumer reads `.version` instead of regexing a version out of an English sentence. The pretty
@@ -66,10 +67,10 @@ cannot represent writes nothing rather than a broken line.
 Two implementations are selected at startup via `--output`, whose accepted values are the
 `output.Format` constants rather than bare string literals:
 
-| `Format`       | Flag value         | Writer         | Behaviour                                                    |
-|----------------|--------------------|----------------|--------------------------------------------------------------|
-| `FormatPretty` | `pretty` (default) | `PrettyWriter` | Lipgloss-styled text, one line (or table) per call           |
-| `FormatJSON`   | `json`             | `JSONWriter`   | NDJSON: one bare JSON object per line, one array per `Table` |
+| `Format`       | Flag value         | Writer         | Behaviour                                               |
+|----------------|--------------------|----------------|---------------------------------------------------------|
+| `FormatPretty` | `pretty` (default) | `PrettyWriter` | Lipgloss-styled text, one line (or table) per call      |
+| `FormatJSON`   | `json`             | `JSONWriter`   | NDJSON: one bare JSON object per line, for every method |
 
 `Format.Valid()` is what `PersistentPreRunE` rejects an unknown value with; there is no fallback
 arm that quietly renders a typo as pretty.
@@ -85,9 +86,10 @@ nothing, because the next line rejects it.
   answer).
 - Is it about *what the command is doing to the system* — cloning, running a hook, saving,
   deleting? → `Info`.
-- Is it an empty answer? Write the empty **product** anyway — `template list` writes an empty table
-  when nothing is registered, so a consumer parses one document either way — and narrate the
-  explanation with `Info`.
+- Is it an empty answer? Write the **product** anyway and narrate the explanation with `Info`.
+  `template list` calls `Table` with no rows when nothing is registered: the pretty writer draws
+  the headers, so a reader sees the shape of the answer, and the JSON writer writes nothing, which
+  is what an empty NDJSON document is.
 
 `slog` is a third channel and not part of this contract: a debug-only diagnostic stream on stderr.
 `SetupLogger` in `log.go` is the only place its handler is built, and its default level is
@@ -128,7 +130,7 @@ the widest columns first (by median non-whitespace length) and wraps **data** ce
 lines. Headers are never wrapped, so a very narrow window truncates header text; that is preferable
 to the previous behaviour, where the *border* wrapped and the table fell apart into fragments.
 
-`PrettyWriter.Table` resolves the width **per call**, so a terminal resized between two commands is
+`PrettyWriter.WriteTable` resolves the width **per call**, so a terminal resized between two commands is
 honoured:
 
 | Order | Source                                           | Applies to                            |
@@ -177,9 +179,10 @@ That last row is the same trade colour already makes, and the third is why `Rend
 the sequences unconditionally: the per-stream `colorprofile.Writer` that strips colour for a
 non-terminal stream strips OSC 8 with it, so `specs template list > out.txt` writes a clean file.
 
-Linking lives in `RenderTable`, **not** at the call site that builds the rows. `JSONWriter` copies
-a cell's `Value` straight into a JSON value, so a cell linkified upstream would put escape bytes
-inside `"Repository"` and corrupt `specs template list -o json`.
+Linking lives in `RenderTable`, **not** at the call site that builds the rows. A cell linkified
+upstream would carry escape bytes into whatever else reads it, and it would be doing terminal work
+in a place that knows nothing about terminals. `JSONWriter` never sees a cell at all — it reads the
+records — so `specs template list -o json` is safe either way.
 
 ---
 
@@ -193,8 +196,9 @@ inside `"Repository"` and corrupt `specs template list -o json`.
 | `Text`  | `PrettyWriter` | What a reader sees; falls back to `Value` via `Cell.Label()` |
 | `Link`  | `PrettyWriter` | The URL `Text` is hyperlinked to; overrides auto-detection   |
 
-`Cell{Value: x}` is the ordinary cell where the two coincide, and `output.Rows` wraps plain
-`[][]string` for a table that needs nothing more — `template update` uses it.
+`Cell{Value: x}` is the ordinary cell where the two coincide, and `output.Col` builds one from a
+row without the caller naming the type. `output.Rows` wraps plain `[][]string` for a direct
+`RenderTable` call.
 
 This is the same split `WriteResult(record, format, args…)` already makes: one machine form, one
 human form, each writer taking what it needs.
@@ -214,6 +218,65 @@ colour, that `http(s)://` is openable — while every shortening rule is knowled
 
 So `output` renders and `cmd` decides what a value means. `Cell` is the seam, and it is what keeps
 the shortened label out of `--output json`.
+
+---
+
+## Building a table: two audiences, two inputs
+
+A column heading and a JSON key look like the same string and are not. A heading is prose for a
+reader and may be reworded freely; a key is what a consumer's `jq` filter matches on. While one
+string did both jobs, `Table` could only take `[][]string` — so every value reached JSON as a
+display string, `12` arrived as `"12"`, and rewording `Name` would have silently started returning
+`null` downstream.
+
+Giving the two audiences separate inputs answers the key-naming question by itself:
+
+```go
+type templateRow struct {
+    Name    string `json:"name"`
+    Version string `json:"version"`
+    Updates int    `json:"updates_available"`
+}
+
+output.Table(w, rows,
+    output.Col("Name", func(r templateRow) string { return r.Name }),
+    output.Col("Version", func(r templateRow) string { return r.Version }),
+    output.Col("Updates available", func(r templateRow) string { return strconv.Itoa(r.Updates) }),
+)
+```
+
+| Type              | Role                                                                        |
+|-------------------|-----------------------------------------------------------------------------|
+| `Column[T]`       | One column: the `Header` a reader sees, and a `Cell` function for a row     |
+| `Col` / `ColCell` | Build a column from a plain value, or from a `Cell` with its own label/link |
+| `TableData`       | `Headers` + `Cells` for the reader, `Records` for the consumer              |
+| `Table[T]`        | The entry point — derives both forms from the same rows                     |
+
+`Table` is a free function rather than a `Writer` method because Go has no generic methods; the
+interface carries `WriteTable(TableData)` underneath. Going through it is also what guarantees
+every row has exactly one cell per header — alignment a raw `[][]Cell` can silently get wrong.
+
+The keys are the row type's `json` tags, so `Updates available` can be reworded without touching
+`updates_available`, and a number stays a number:
+
+```console
+specs template list -o json 2>/dev/null | jq 'select(.updates_available > 0)'
+```
+
+### The breaking part
+
+`-o json` table output changed shape in three ways at once, because none of them could be fixed
+alone:
+
+| Before                             | After                                      |
+|------------------------------------|--------------------------------------------|
+| One JSON array for the whole table | One object per line — genuinely NDJSON     |
+| Keys from headings (`Name`)        | Keys from `json` tags (`name`)             |
+| Every value a string (`"12"`)      | The row's own types (`12`, `true`, a time) |
+
+A pipeline reading `jq '.[].Name'` becomes `jq -r .name`. `template list` also now emits the
+timestamps themselves rather than the `3 days ago` the table shows, and omits a field it has no
+value for instead of writing the `-` placeholder, which is a display convention.
 
 ---
 
@@ -247,6 +310,5 @@ wrapped URL where the shared `id=` is the whole point. `table_shortened_labels` 
 `template list` produces: a short label carrying the full URL as its target, beside an unlinked
 path.
 
-One assertion freezes behaviour that is known to be wrong, so the issue that fixes it produces a
-reviewable diff: `Table` emitting one JSON array rather than NDJSON (#109). It is marked as such in
-the tests.
+`json_table` pins the shape a row type produces: snake_case keys from its `json` tags and a count
+that is a number, not `"3"`. `json_table_empty` pins the empty NDJSON document — no bytes at all.

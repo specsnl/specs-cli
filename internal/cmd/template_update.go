@@ -41,7 +41,7 @@ func newTemplateUpdateCmd(app *App) *cobra.Command {
 			networkErrorSeen := false
 			checkedCount := 0
 
-			var rows [][]string
+			var rows []updateRow
 
 			for _, name := range names {
 				root := specs.TemplatePath(name)
@@ -111,7 +111,12 @@ func newTemplateUpdateCmd(app *App) *cobra.Command {
 					app.Output.Warn("template %q: status check failed", name)
 				}
 
-				rows = append(rows, []string{name, updateStatusLabel(result), latestOrDash(result.LatestVersion)})
+				rows = append(rows, updateRow{
+					Name:          name,
+					Status:        updateStatusLabel(result),
+					UpToDate:      result.IsUpToDate,
+					LatestVersion: result.LatestVersion,
+				})
 			}
 
 			if networkErrorSeen {
@@ -120,7 +125,11 @@ func newTemplateUpdateCmd(app *App) *cobra.Command {
 
 			// The table is the answer, empty or not; the hint that explains an
 			// empty one is narration.
-			app.Output.Table([]string{"Name", "Status", "Latest"}, output.Rows(rows))
+			output.Table(app.Output, rows,
+				output.Col("Name", func(r updateRow) string { return r.Name }),
+				output.Col("Status", func(r updateRow) string { return r.Status }),
+				output.Col("Latest", func(r updateRow) string { return orDash(r.LatestVersion) }),
+			)
 
 			if checkedCount == 0 {
 				app.Output.Info("no trackable templates — nothing to check")
@@ -148,10 +157,14 @@ func updateStatusLabel(result pkggit.RemoteCheckResult) string {
 	return "update available"
 }
 
-func latestOrDash(version string) string {
-	if version == "" {
-		return "-"
-	}
-
-	return version
+// updateRow is one row of `template update`.
+//
+// up_to_date is the fact; status is the sentence a reader gets. A consumer
+// filtering on the phrase "update available" would break the moment it were
+// reworded, so the boolean it stands for is emitted alongside it.
+type updateRow struct {
+	Name          string `json:"name"`
+	Status        string `json:"status"`
+	UpToDate      bool   `json:"up_to_date"`
+	LatestVersion string `json:"latest_version,omitempty"`
 }

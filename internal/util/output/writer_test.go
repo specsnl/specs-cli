@@ -3,6 +3,7 @@ package output_test
 import (
 	"bytes"
 	"errors"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -30,6 +31,12 @@ func (s stream) String() string {
 	}
 
 	return "stderr"
+}
+
+// plainTable builds the TableData a table of plain strings produces. Records
+// are left empty: these cases exercise the pretty writer, which reads the cells.
+func plainTable(headers []string, rows [][]string) output.TableData {
+	return output.TableData{Headers: headers, Cells: output.Rows(rows)}
 }
 
 // capture runs call against a fresh writer and returns what landed on want,
@@ -77,20 +84,20 @@ func TestPrettyWriter_Golden(t *testing.T) {
 		{
 			"pretty_table_plain", goldenPlain, streamStdout,
 			func(w *output.PrettyWriter) {
-				w.Table([]string{"Name", "Version"}, output.Rows([][]string{{"my-tpl", "1.0.0"}, {"other", "2.0.0"}}))
+				w.WriteTable(plainTable([]string{"Name", "Version"}, [][]string{{"my-tpl", "1.0.0"}, {"other", "2.0.0"}}))
 			},
 		},
 		{
 			"pretty_table_colour", goldenColour, streamStdout,
 			func(w *output.PrettyWriter) {
-				w.Table([]string{"Name", "Version"}, output.Rows([][]string{{"my-tpl", "1.0.0"}, {"other", "2.0.0"}}))
+				w.WriteTable(plainTable([]string{"Name", "Version"}, [][]string{{"my-tpl", "1.0.0"}, {"other", "2.0.0"}}))
 			},
 		},
 		{
 			// The empty answer a command like `template list` writes when it has
 			// nothing to report: headers only, same shape as a filled table.
 			"pretty_table_empty", goldenPlain, streamStdout,
-			func(w *output.PrettyWriter) { w.Table([]string{"Name", "Version"}, nil) },
+			func(w *output.PrettyWriter) { w.WriteTable(plainTable([]string{"Name", "Version"}, nil)) },
 		},
 		{
 			// A result carries no level prefix and no styling: it is the product,
@@ -118,6 +125,19 @@ func TestPrettyWriter_Golden(t *testing.T) {
 	}
 }
 
+// goldenRow pins the shape a command's row type has: json tags for the keys, a
+// number that stays a number.
+type goldenRow struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+	Updates int    `json:"updates_available"`
+}
+
+var goldenRows = []goldenRow{
+	{Name: "my-tpl", Version: "1.0.0", Updates: 3},
+	{Name: "other", Version: "2.0.0"},
+}
+
 func TestJSONWriter_Golden(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -136,22 +156,24 @@ func TestJSONWriter_Golden(t *testing.T) {
 			func(w *output.JSONWriter) { w.WriteErr(errors.New("something unexpected")) },
 		},
 		{
-			// Emitting one array rather than one object per line is what issue
-			// #109 will change.
+			// One object per line, keyed by the row type's json tags rather than
+			// by the headings above them.
 			"json_table", streamStdout,
 			func(w *output.JSONWriter) {
-				w.Table([]string{"Name", "Version"}, output.Rows([][]string{{"my-tpl", "1.0.0"}, {"other", "2.0.0"}}))
+				output.Table(w, goldenRows,
+					output.Col("Name", func(r goldenRow) string { return r.Name }),
+					output.Col("Version", func(r goldenRow) string { return r.Version }),
+					output.Col("Updates available", func(r goldenRow) string { return strconv.Itoa(r.Updates) }),
+				)
 			},
 		},
 		{
+			// No rows is no lines: the empty NDJSON document.
 			"json_table_empty", streamStdout,
-			func(w *output.JSONWriter) { w.Table([]string{"Name", "Version"}, nil) },
-		},
-		{
-			// A row shorter than the headers leaves the missing keys out.
-			"json_table_ragged", streamStdout,
 			func(w *output.JSONWriter) {
-				w.Table([]string{"Name", "Version"}, output.Rows([][]string{{"my-tpl"}, {"other", "2.0.0", "extra"}}))
+				output.Table(w, []goldenRow(nil),
+					output.Col("Name", func(r goldenRow) string { return r.Name }),
+				)
 			},
 		},
 		{
@@ -316,7 +338,7 @@ func TestPrettyWriter_TableWidthFollowsColumns(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var out, errOut bytes.Buffer
 
-			output.NewPrettyWriter(&out, &errOut, tt.environ).Table(headers, output.Rows(rows))
+			output.NewPrettyWriter(&out, &errOut, tt.environ).WriteTable(plainTable(headers, rows))
 
 			got := lipgloss.Width(capture(t, &out, &errOut, streamStdout))
 
@@ -362,7 +384,7 @@ func TestPrettyWriter_HyperlinksFollowTheStream(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var out, errOut bytes.Buffer
 
-			output.NewPrettyWriter(&out, &errOut, tt.environ).Table(headers, output.Rows(rows))
+			output.NewPrettyWriter(&out, &errOut, tt.environ).WriteTable(plainTable(headers, rows))
 
 			got := capture(t, &out, &errOut, streamStdout)
 			if strings.Contains(got, "\x1b]8;") != tt.want {
@@ -382,18 +404,20 @@ func TestPrettyWriter_HyperlinksFollowTheStream(t *testing.T) {
 func TestJSONWriter_TableNeverHyperlinks(t *testing.T) {
 	var out, errOut bytes.Buffer
 
-	// A cell with a shortened label and an explicit link: JSON must emit the
-	// Value and ignore both, which is the whole point of the split.
-	output.NewJSONWriter(&out, &errOut).Table(
-		[]string{"Name", "Repository"},
-		[][]output.Cell{{
-			{Value: "my-tpl"},
-			{
-				Value: "https://github.com/specsnl/specs-cli.git",
-				Text:  "specsnl/specs-cli",
-				Link:  "https://github.com/specsnl/specs-cli.git",
-			},
-		}},
+	// A cell with a shortened label and an explicit link: JSON reads the record
+	// and ignores the cell entirely, which is the whole point of the split.
+	type repoRow struct {
+		Name       string `json:"name"`
+		Repository string `json:"repository"`
+	}
+
+	rows := []repoRow{{Name: "my-tpl", Repository: "https://github.com/specsnl/specs-cli.git"}}
+
+	output.Table(output.NewJSONWriter(&out, &errOut), rows,
+		output.Col("Name", func(r repoRow) string { return r.Name }),
+		output.ColCell("Repository", func(r repoRow) output.Cell {
+			return output.Cell{Value: r.Repository, Text: "specsnl/specs-cli", Link: r.Repository}
+		}),
 	)
 
 	got := capture(t, &out, &errOut, streamStdout)
@@ -422,7 +446,7 @@ func TestPrettyWriter_StreamsAreWrappedIndependently(t *testing.T) {
 	var out, errOut bytes.Buffer
 
 	w := output.NewPrettyWriter(&out, &errOut, goldenColour)
-	w.Table([]string{"Name"}, output.Rows([][]string{{"my-tpl"}}))
+	w.WriteTable(plainTable([]string{"Name"}, [][]string{{"my-tpl"}}))
 	w.Warn("warn")
 
 	if !strings.Contains(out.String(), esc) {

@@ -278,7 +278,8 @@ All user-facing output goes through the `output.Writer` interface, on the rule t
 the product and stderr the narration**: `Table` and `WriteResult` write the answer a caller would
 redirect or pipe, while `Info`, `Warn`, `Error` and `WriteErr` narrate on stderr. Two
 implementations are selected at startup via `--output`: `PrettyWriter` (lipgloss-styled text) and
-`JSONWriter` (NDJSON, useful for scripting or CI pipelines).
+`JSONWriter` (NDJSON, useful for scripting or CI pipelines) — genuinely NDJSON, one object per
+line, for a table as much as for a single result.
 
 See [Output](output) for the full contract, the colour and width decisions and the golden-file tests.
 

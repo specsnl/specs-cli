@@ -4,13 +4,13 @@ weight: 3
 next: /docs/template-structure
 ---
 
-| Flag                | Description                                                                 |
-|---------------------|-----------------------------------------------------------------------------|
-| `--output` / `-o`   | Output format: `pretty` (default, styled) or `json` (NDJSON, for scripting) |
-| `--debug`           | Enable debug-level logging                                                  |
-| `--safe-mode`       | Disable env/filesystem functions and skip hooks                             |
-| `--no-env-prefix`   | Remove the `SPECS_` prefix from hook environment variables                  |
-| `--non-interactive` | Never prompt; fail naming the missing values instead of asking for them     |
+| Flag                | Description                                                                       |
+|---------------------|-----------------------------------------------------------------------------------|
+| `--output` / `-o`   | Output format: `pretty` (default, styled) or `json` (NDJSON, one object per line) |
+| `--debug`           | Enable debug-level logging                                                        |
+| `--safe-mode`       | Disable env/filesystem functions and skip hooks                                   |
+| `--no-env-prefix`   | Remove the `SPECS_` prefix from hook environment variables                        |
+| `--non-interactive` | Never prompt; fail naming the missing values instead of asking for them           |
 
 `--output` accepts `pretty` and `json` and nothing else. Any other value is an error, so a typo
 fails at the flag rather than several lines later in the pipeline that consumes the output:
@@ -33,7 +33,7 @@ stderr carries the **narration**: progress, confirmations, warnings and errors. 
 leaves exactly the data behind, in both formats:
 
 ```console
-$ specs template list --output json 2>/dev/null | jq '.[].Name'
+$ specs template list --output json 2>/dev/null | jq -r .name
 $ specs version --output json 2>/dev/null
 {"version":"v0.0.13"}
 ```
