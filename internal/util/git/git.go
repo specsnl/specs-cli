@@ -468,12 +468,14 @@ func CheckRemote(dir, url, branch string) RemoteCheckResult {
 }
 
 // CheckLocalSource determines whether a template registered from a local path
-// (a "local:<path>" repository) is behind the current state of that path. Unlike
+// is behind the current state of that path. Unlike
 // CheckRemoteContext, it never touches the network or the template's git origin —
 // the "source of truth" for a local template is the directory it was saved from.
 //
-// sourcePath is the on-disk path the template was saved from (the "local:" prefix
-// already stripped). savedCommit/savedVersion are the metadata recorded at save
+// sourcePath is the on-disk path the template was saved from, as
+// template.LocalSourcePath resolves it — any legacy "local:" prefix stripped
+// and a leading ~ already expanded. savedCommit/savedVersion are the metadata
+// recorded at save
 // time. The path's current git-describe output is compared against them:
 //
 //   - path missing or not a git repository → ErrorKind CheckErrorSourceMissing.

@@ -105,6 +105,11 @@ plain text.
 specs template list -o json 2>/dev/null | jq -r '.[].Repository'
 ```
 
+For a template registered with `template save`, that value is the source path, with your home
+directory written as `~` (e.g. `~/code/my-template`). Templates saved by versions before this
+change carry a `local:` prefix instead; that form is still read, and migrates on the next
+`template upgrade`.
+
 ---
 
 ## The project file

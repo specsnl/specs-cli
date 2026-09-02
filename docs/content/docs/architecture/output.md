@@ -191,13 +191,13 @@ human form, each writer taking what it needs.
 
 ### Why the shortening is not in this package
 
-`specs template list` renders `https://github.com/specsnl/specs-cli` as `specsnl/specs-cli` and a
-saved path as `~/code/proto-template`. Those rules live in `internal/cmd/repo_display.go`, not here,
+`specs template list` renders `https://github.com/specsnl/specs-cli` as `specsnl/specs-cli` and
+normalises a saved path to `~/code/proto-template`, whichever form the metadata carries. Those rules live in `internal/cmd/repo_display.go`, not here,
 because this package encodes only what is true of *terminals* — rune width, whether a stream renders
 colour, that `http(s)://` is openable — while every shortening rule is knowledge about what a
 `Repository` value *means*:
 
-- `local:` is a marker this CLI invented for `__metadata.json`; nothing else would recognise it.
+- Telling a stored path from a git URL is a fact about `__metadata.json`, not about terminals.
 - Dropping `github.com` is a product decision — GitHub is this CLI's default host.
 - The `~` collapse reads `$HOME`, and a renderer that reads the environment could not have a
   deterministic golden. That is the same reason `maxWidth` is a parameter.

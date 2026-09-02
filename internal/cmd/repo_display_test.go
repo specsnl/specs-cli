@@ -5,6 +5,10 @@ import (
 	"testing"
 )
 
+// legacyLocalPrefix mirrors the marker older metadata carries; the production
+// constant lives in internal/template and is unexported there.
+const legacyLocalPrefix = "local:"
+
 // repoCell decides three things per value — the label, the machine value and
 // the link target — so every case names all three. The value is never allowed
 // to change: it is what --output json emits and what the registry clones from.
@@ -89,26 +93,44 @@ func TestRepoCell(t *testing.T) {
 			wantText: "ssh://git@git.example.com:2222/owner/repo",
 		},
 		{
-			name:     "local path under home collapses to tilde",
-			repo:     localRepoPrefix + filepath.Join(home, "code", "proto-template"),
+			// The form template save now stores: already ~-collapsed, no marker.
+			name:     "stored tilde path is shown as stored",
+			repo:     "~/code/proto-template",
+			wantText: "~/code/proto-template",
+		},
+		{
+			name:     "stored absolute path outside home is kept whole",
+			repo:     "/opt/shared/templates/go",
+			wantText: "/opt/shared/templates/go",
+		},
+		{
+			// A legacy value normalises to the same label as the new form, so
+			// an install predating the change reads identically.
+			name:     "legacy prefixed path under home collapses to tilde",
+			repo:     legacyLocalPrefix + filepath.Join(home, "code", "proto-template"),
 			wantText: "~" + string(filepath.Separator) + filepath.Join("code", "proto-template"),
 		},
 		{
-			name:     "local path that is exactly home",
-			repo:     localRepoPrefix + home,
+			name:     "legacy prefixed path that is exactly home",
+			repo:     legacyLocalPrefix + home,
 			wantText: "~",
 		},
 		{
-			name:     "local path outside home is kept whole",
-			repo:     localRepoPrefix + "/opt/shared/templates/go",
+			name:     "legacy prefixed path outside home is kept whole",
+			repo:     legacyLocalPrefix + "/opt/shared/templates/go",
 			wantText: "/opt/shared/templates/go",
 		},
 		{
 			// A sibling directory whose name merely starts with $HOME must not
 			// be reported as living inside it.
 			name:     "sibling of home is not inside it",
-			repo:     localRepoPrefix + home + "-backup/tpl",
+			repo:     legacyLocalPrefix + home + "-backup/tpl",
 			wantText: home + "-backup/tpl",
+		},
+		{
+			name:     "relative stored path",
+			repo:     "./templates/go",
+			wantText: "./templates/go",
 		},
 		{
 			// The placeholder a missing __metadata.json produces arrives already
@@ -151,8 +173,8 @@ func TestRepoCell(t *testing.T) {
 	}
 }
 
-// The label is only ever shorter. A rule that lengthened it would defeat the
-// purpose, and a rule that emptied a non-empty value would hide a row.
+// The label is never longer than the value. A rule that lengthened it would
+// defeat the purpose, and one that emptied a non-empty value would hide a row.
 func TestRepoCell_LabelNeverGrows(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 
@@ -160,7 +182,8 @@ func TestRepoCell_LabelNeverGrows(t *testing.T) {
 		"https://github.com/specsnl/specs-cli",
 		"https://gitlab.com/acme/platform/go-service",
 		"git@github.com:user/repo",
-		localRepoPrefix + "/opt/shared/templates/go",
+		"~/code/proto-template",
+		legacyLocalPrefix + "/opt/shared/templates/go",
 		"user/repo",
 		"-",
 	}
@@ -182,8 +205,10 @@ func TestRepoCell_LabelNeverGrows(t *testing.T) {
 func TestRepoCell_OnlyRemotesAreLinked(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 
-	if cell := repoCell(localRepoPrefix + "/opt/x"); cell.Link != "" {
-		t.Errorf("a local path was linked to %q", cell.Link)
+	for _, local := range []string{"~/x", "/opt/x", "./x", legacyLocalPrefix + "/opt/x"} {
+		if cell := repoCell(local); cell.Link != "" {
+			t.Errorf("local path %q was linked to %q", local, cell.Link)
+		}
 	}
 
 	if cell := repoCell("https://github.com/a/b"); cell.Link == "" {

@@ -3,7 +3,6 @@ package cmd
 import (
 	"log/slog"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/specsnl/specs-cli/internal/specs"
@@ -58,7 +57,7 @@ func newTemplateUpdateCmd(app *App) *cobra.Command {
 
 				var result pkggit.RemoteCheckResult
 
-				if isLocalRepo(meta.Repository) {
+				if pkgtemplate.IsLocalRepository(meta.Repository) {
 					if meta.Commit == "" {
 						// Nothing recorded to compare the source path against.
 						continue
@@ -66,7 +65,7 @@ func newTemplateUpdateCmd(app *App) *cobra.Command {
 
 					checkedCount++
 					// git layer logs the check-local start/result
-					result = pkggit.CheckLocalSource(strings.TrimPrefix(meta.Repository, localRepoPrefix), meta.Commit, meta.Version)
+					result = pkggit.CheckLocalSource(pkgtemplate.LocalSourcePath(meta.Repository), meta.Commit, meta.Version)
 				} else {
 					branch := meta.Branch
 					if branch == "" {

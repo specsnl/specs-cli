@@ -534,7 +534,7 @@ The source of truth depends on how the template was registered:
 
 - **Remote templates** (`Repository` is a git URL) are checked against the remote via
   `CheckRemoteContext`, which lists the remote refs without modifying the local checkout.
-- **Local templates** (`Repository` is `local:<path>`, from `specs template save`) are checked
+- **Local templates** (`Repository` is a path, from `specs template save`) are checked
   against the **source directory on disk** via `CheckLocalSource` — never a git remote. The
   template is behind when the source path's current `git describe` (commit + version) differs
   from the commit/version recorded in metadata at save time. The trailing `-dirty` marker is
@@ -543,6 +543,15 @@ The source of truth depends on how the template was registered:
   verbatim would report a phantom update to the same commit (issue #97). When the source path no
   longer exists (or is no longer a git repository) the status is `source-missing`. A local
   template saved from a non-git directory has no recorded commit and is not tracked.
+
+A path is told from a git URL by its first character — `/`, `.` or `~` — via
+`template.IsLocalRepository`. `$HOME` is stored as `~`, so the value reads the same as the label
+`template list` shows; `template.LocalSourcePath` expands it back before anything touches the
+filesystem, and every caller that does must go through it.
+
+Older versions wrote a `local:` prefix instead. It is still recognised on read, indefinitely: a
+template nobody upgrades keeps it forever. An upgrade is the one moment the metadata is rewritten
+anyway, so that is where a legacy value migrates to the current form.
 
 ### How a newer version is determined (remote templates)
 

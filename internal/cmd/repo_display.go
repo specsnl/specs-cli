@@ -1,25 +1,15 @@
 package cmd
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 
+	pkgtemplate "github.com/specsnl/specs-cli/internal/template"
 	"github.com/specsnl/specs-cli/internal/util/output"
 )
-
-// localRepoPrefix marks a Repository value that refers to a directory on disk
-// (registered via 'specs template save') rather than a remote git URL.
-const localRepoPrefix = "local:"
 
 // defaultHost is the host a bare owner/repo label means. GitHub is the default
 // for this CLI, so its name is noise in a table and is dropped from the label.
 const defaultHost = "github.com"
-
-// isLocalRepo reports whether repo refers to a local source path.
-func isLocalRepo(repo string) bool {
-	return strings.HasPrefix(repo, localRepoPrefix)
-}
 
 // repoCell builds the Repository cell: a label short enough to read, carrying
 // the stored value for --output json and, for a remote, the URL to open.
@@ -27,7 +17,7 @@ func isLocalRepo(repo string) bool {
 // The label drops what a reader does not need. A remote loses its scheme, and
 // a GitHub remote loses the host as well, because a bare owner/repo means
 // GitHub here — the same shorthand the source parser accepts. A local path
-// loses the local: marker and collapses $HOME to ~. Everything else is left
+// shows $HOME as ~. Everything else is left
 // verbatim: an SSH remote and a legacy hand-written value are shown as stored,
 // and neither is linked, being nothing a terminal can open.
 //
@@ -36,8 +26,11 @@ func isLocalRepo(repo string) bool {
 // collapse reads the environment — which RenderTable deliberately does not.
 func repoCell(repo string) output.Cell {
 	switch {
-	case isLocalRepo(repo):
-		return output.Cell{Value: repo, Text: shortenPath(strings.TrimPrefix(repo, localRepoPrefix))}
+	case pkgtemplate.IsLocalRepository(repo):
+		// Round-tripping through the real path normalises both forms to one
+		// label: a newly stored "~/x" and a legacy "local:/home/me/x" both
+		// read as "~/x".
+		return output.Cell{Value: repo, Text: pkgtemplate.CollapseHome(pkgtemplate.LocalSourcePath(repo))}
 
 	case strings.HasPrefix(repo, "https://"), strings.HasPrefix(repo, "http://"):
 		return output.Cell{Value: repo, Text: shortenURL(repo), Link: repo}
@@ -67,24 +60,4 @@ func shortenURL(rawURL string) string {
 	}
 
 	return rest
-}
-
-// shortenPath collapses $HOME to ~, leaving a path outside it alone.
-func shortenPath(path string) string {
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
-		return path
-	}
-
-	if path == home {
-		return "~"
-	}
-
-	// filepath.Separator rather than a bare prefix check, so /home/bobby is not
-	// reported as living inside /home/bob.
-	if rest, ok := strings.CutPrefix(path, home+string(filepath.Separator)); ok {
-		return "~" + string(filepath.Separator) + rest
-	}
-
-	return path
 }

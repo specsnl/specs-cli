@@ -4,7 +4,6 @@ import (
 	"context"
 	"log/slog"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -24,7 +23,7 @@ func isTrackable(meta *pkgtemplate.Metadata) bool {
 		return false
 	}
 
-	if isLocalRepo(meta.Repository) {
+	if pkgtemplate.IsLocalRepository(meta.Repository) {
 		return meta.Commit != ""
 	}
 
@@ -116,7 +115,7 @@ func newTemplateListCmd(app *App) *cobra.Command {
 				i, name := i, entry.name
 				repo, branch := entry.meta.Repository, entry.meta.Branch
 				commit, version := entry.meta.Commit, entry.meta.Version
-				local := isLocalRepo(repo)
+				local := pkgtemplate.IsLocalRepository(repo)
 
 				eg.Go(func() error {
 					root := specs.TemplatePath(name)
@@ -125,7 +124,7 @@ func newTemplateListCmd(app *App) *cobra.Command {
 					if local {
 						// Local templates compare against the source path on disk, not a
 						// git remote. The git layer logs the check-local start/result.
-						result = pkggit.CheckLocalSource(strings.TrimPrefix(repo, localRepoPrefix), commit, version)
+						result = pkggit.CheckLocalSource(pkgtemplate.LocalSourcePath(repo), commit, version)
 					} else {
 						checkCtx, cancelCheck := context.WithTimeout(egCtx, app.checkTimeout)
 						defer cancelCheck()
