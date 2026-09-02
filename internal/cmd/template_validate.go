@@ -3,7 +3,6 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -21,8 +20,6 @@ func newTemplateValidateCmd(app *App) *cobra.Command {
 		Short: "Validate a template directory",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			app.level.Set(slog.LevelDebug)
-
 			templateRoot := args[0]
 
 			templateDir := filepath.Join(templateRoot, specs.TemplateDirFile)

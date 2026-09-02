@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"log/slog"
 	"os"
 	"time"
 
@@ -11,45 +10,9 @@ import (
 	"github.com/specsnl/specs-cli/internal/util/output"
 )
 
-// HandlerFactory creates a slog.Handler wired to the given LevelVar.
-// The LevelVar is passed so that WithDebug can adjust the level at runtime
-// regardless of which handler is in use.
-type HandlerFactory func(level *slog.LevelVar) slog.Handler
-
-// Option is a functional option for configuring an App.
-type Option func(*App)
-
-// WithDebug returns an Option that sets the log level to debug when enabled,
-// or back to info when false.
-func WithDebug(enabled bool) Option {
-	return func(a *App) {
-		if enabled {
-			a.level.Set(slog.LevelDebug)
-		} else {
-			a.level.Set(slog.LevelInfo)
-		}
-	}
-}
-
-// WithHandler returns an Option that replaces the global default logger with one
-// built by the provided factory. The factory receives the App's LevelVar so the
-// handler can honour runtime level changes from WithDebug.
-//
-// Example — switch to JSON output:
-//
-//	app := NewApp(WithHandler(func(level *slog.LevelVar) slog.Handler {
-//	    return slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level})
-//	}))
-func WithHandler(factory HandlerFactory) Option {
-	return func(a *App) {
-		slog.SetDefault(slog.New(factory(a.level)))
-	}
-}
-
 // App holds application-wide dependencies shared across all commands.
 type App struct {
 	Output        output.Writer
-	level         *slog.LevelVar
 	SafeMode      bool
 	HookEnvPrefix string // prefix for context keys injected as env vars into hooks
 
@@ -62,29 +25,22 @@ type App struct {
 	refreshTimeout time.Duration
 }
 
-// NewApp creates an App. The default logger writes text to stderr at info level and
-// is registered as the global slog default. Use WithHandler to substitute a different
-// handler; use WithDebug to raise the level.
-// Options are applied in order after the default logger is initialised.
-func NewApp(opts ...Option) *App {
-	level := new(slog.LevelVar)
-	level.Set(slog.LevelInfo)
+// NewApp creates an App.
+//
+// The logger it installs is silent: nothing is emitted until PersistentPreRunE
+// calls output.SetupLogger again with the resolved --debug and --output flags.
+// This first call exists only so that a failure before flag parsing has a
+// default logger to reach, and it writes to os.Stderr because no command — and
+// therefore no cmd.ErrOrStderr() — exists yet.
+func NewApp() *App {
+	output.SetupLogger(os.Stderr, output.FormatPretty, false)
 
-	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})))
-
-	app := &App{
+	return &App{
 		Output:         output.NewDefaultPrettyWriter(),
-		level:          level,
 		checkRemoteFn:  pkggit.CheckRemoteContext,
 		checkTimeout:   10 * time.Second,
 		refreshTimeout: 30 * time.Second,
 	}
-
-	for _, opt := range opts {
-		opt(app)
-	}
-
-	return app
 }
 
 // templateConfig translates App-level flags into a template.Config.

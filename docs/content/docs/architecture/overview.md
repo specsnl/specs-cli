@@ -29,7 +29,7 @@ specs-cli/
     │   └── errors.go             # sentinel errors
     ├── cmd/                      # one file per Cobra command
     │   ├── root.go
-    │   ├── app.go                # App struct, --debug/--safe-mode flags
+    │   ├── app.go                # App struct, shared dependencies
     │   ├── use.go                # specs use <source> <target-dir>
     │   ├── template.go           # specs template subcommand group
     │   ├── template_download.go
@@ -63,7 +63,7 @@ specs-cli/
         ├── exit/                 # exit codes
         ├── git/                  # go-git wrapper, SSH auth, remote check
         ├── osutil/               # file operations (CopyDir, etc.)
-        ├── output/               # lipgloss-based logger + table renderer
+        ├── output/               # Writer implementations, table renderer, slog setup
         ├── validate/             # Name() validator and argument validators
         └── values/               # --values file (JSON/YAML) + --arg flag parsing
 ```
@@ -286,20 +286,36 @@ See [Output](output) for the full contract, the colour and width decisions and t
 
 `specs` uses `log/slog` for structured diagnostic output. All packages emit logs via the
 package-level `slog.Debug/Info/Warn/Error` functions, which route through the global default
-logger. `NewApp()` calls `slog.SetDefault` to install a text handler at `Info` level;
-`PersistentPreRunE` re-sets it when `--debug --output=json` swaps the handler to JSON.
+logger.
 
-`slog` is a **debug-only diagnostic channel** on **stderr** — it is silent on a normal run (every
-log point is `Debug`, suppressed at the default `Info` level) and is distinct from the two
-`output.Writer` formats (`pretty`/`json`) that produce user-facing output on stdout. Do not use
-`slog` for user-facing reporting; use `output.Writer`.
+`slog` is a **debug-only diagnostic channel** on **stderr** — silent on a normal run, and distinct
+from the two `output.Writer` formats (`pretty`/`json`) that produce user-facing output on stdout.
+Do not use `slog` for user-facing reporting; use `output.Writer`.
+
+That silence is **enforced, not conventional**. `output.LevelSilent` is `slog.LevelError + 1`, above
+every level slog defines, and it is the level a run without `--debug` gets — so a `slog.Info` or
+`slog.Warn` added anywhere in the tree still writes nothing. It does not depend on every log point
+happening to be `Debug`.
+
+### One constructor, called twice
+
+`output.SetupLogger(w io.Writer, format Format, debug bool) *slog.LevelVar` is the only place a
+handler is built. It installs the process-wide default and returns the `LevelVar` gating it:
+
+| Caller              | Stream              | Why                                                                                                                          |
+|---------------------|---------------------|------------------------------------------------------------------------------------------------------------------------------|
+| `NewApp()`          | `os.Stderr`         | Cobra parses persistent flags only after the tree is built, so a failure before that still needs a logger. Silent, `pretty`. |
+| `PersistentPreRunE` | `cmd.ErrOrStderr()` | The flags are now resolved. Writing to the command's own stderr is what lets a test assert on `--debug` output.              |
 
 ### Flags
 
-| Flag                        | Effect                                                                                                                        |
-|-----------------------------|-------------------------------------------------------------------------------------------------------------------------------|
-| `--debug`                   | Raises the slog level from `Info` to `Debug`; all debug logs become visible                                                   |
-| `--output=json` + `--debug` | Swaps the slog handler to `slog.NewJSONHandler` writing to stderr; debug logs are emitted as NDJSON distinct from stdout data |
+| Flag                        | Effect                                                                         |
+|-----------------------------|--------------------------------------------------------------------------------|
+| *(neither)*                 | Level `LevelSilent` — nothing is emitted at any level                          |
+| `--debug`                   | Level `Debug`, text records on stderr                                          |
+| `--debug` + `--output=json` | Level `Debug`, JSON records on stderr, so that stream is JSON all the way down |
+
+`--output` alone does not change logging: without `--debug` there is nothing to format.
 
 ### Log points
 
@@ -345,8 +361,7 @@ specs --debug --output=json template ls 2>debug.ndjson
 ```
 
 `--output=json` controls the **data** format on stdout; `--debug` + `--output=json` controls
-the **log** format on stderr. The two streams are independent. `slog.SetDefault` is called
-by `NewApp()` and re-set in `PersistentPreRunE` when `--debug --output=json` swaps the handler.
+the **log** format on stderr. The two streams are independent.
 
 ---
 

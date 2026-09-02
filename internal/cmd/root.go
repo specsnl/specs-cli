@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"log/slog"
 
 	"github.com/spf13/cobra"
 
@@ -60,17 +59,10 @@ Use "specs <command> --help" for more information about a command.`,
 					outputFlag, output.FormatPretty, output.FormatJSON)
 			}
 
-			// Configure the slog logger level; swap to JSON handler when both
-			// --debug and --output=json are set.
-			if debug {
-				app.level.Set(slog.LevelDebug)
-
-				if format == output.FormatJSON {
-					slog.SetDefault(slog.New(slog.NewJSONHandler(cmd.ErrOrStderr(), &slog.HandlerOptions{Level: app.level})))
-				}
-			} else {
-				app.level.Set(slog.LevelInfo)
-			}
+			// Re-install the logger now the flags are known: on the command's own
+			// stderr, so a test can read what --debug wrote, and in the format
+			// --output selected. Without --debug it is silent.
+			output.SetupLogger(cmd.ErrOrStderr(), format, debug)
 
 			return nil
 		},

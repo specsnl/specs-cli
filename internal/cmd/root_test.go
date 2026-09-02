@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"log/slog"
 	"strings"
 	"testing"
 
@@ -41,6 +42,25 @@ func executeCmdStreams(args ...string) (stdout, stderr string, err error) {
 	cmd.SetErr(errOut)
 	cmd.SetArgs(args)
 	err = cmd.Execute()
+
+	return out.String(), errOut.String(), err
+}
+
+// executeCmdStreamsWith runs the command and then calls emit, which stands in
+// for a log point somewhere in the tree. It runs after Execute rather than
+// during it because the logger PersistentPreRunE installed is process-wide and
+// still in place — so whatever emit writes lands wherever a real log point
+// would have, without needing a command that happens to log.
+func executeCmdStreamsWith(emit func(), args ...string) (stdout, stderr string, err error) {
+	app := NewApp()
+	cmd := newRootCmd(app)
+	out, errOut := new(bytes.Buffer), new(bytes.Buffer)
+	cmd.SetOut(out)
+	cmd.SetErr(errOut)
+	cmd.SetArgs(args)
+	err = cmd.Execute()
+
+	emit()
 
 	return out.String(), errOut.String(), err
 }
@@ -105,6 +125,65 @@ func TestOutputFlag_InvalidIsRejected(t *testing.T) {
 	// rejection through it.
 	if app.Output == nil {
 		t.Error("app.Output is nil; the rejection would have nowhere to go")
+	}
+}
+
+// The logger PersistentPreRunE installs writes to the command's own stderr, so
+// a test can read what --debug produced instead of it escaping to os.Stderr.
+func TestDebugFlag_Logging(t *testing.T) {
+	tests := []struct {
+		name   string
+		args   []string
+		assert func(t *testing.T, stderr string)
+	}{
+		{
+			name: "silent without --debug",
+			args: []string{"version"},
+			assert: func(t *testing.T, stderr string) {
+				t.Helper()
+
+				if strings.Contains(stderr, "level=") || strings.Contains(stderr, `"level":"DEBUG"`) {
+					t.Errorf("stderr = %q, want no log records without --debug", stderr)
+				}
+			},
+		},
+		{
+			name: "--debug emits text records",
+			args: []string{"--debug", "version"},
+			assert: func(t *testing.T, stderr string) {
+				t.Helper()
+
+				if !strings.Contains(stderr, "level=DEBUG") {
+					t.Errorf("stderr = %q, want a text record", stderr)
+				}
+			},
+		},
+		{
+			name: "--debug -o json emits JSON records",
+			args: []string{"--debug", "-o", "json", "version"},
+			assert: func(t *testing.T, stderr string) {
+				t.Helper()
+
+				if !strings.Contains(stderr, `"level":"DEBUG"`) {
+					t.Errorf("stderr = %q, want a JSON record", stderr)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			previous := slog.Default()
+
+			t.Cleanup(func() { slog.SetDefault(previous) })
+
+			_, stderr, err := executeCmdStreamsWith(func() { slog.Debug("a diagnostic") }, tt.args...)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			tt.assert(t, stderr)
+		})
 	}
 }
 

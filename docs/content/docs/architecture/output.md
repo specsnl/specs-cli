@@ -90,7 +90,8 @@ nothing, because the next line rejects it.
   explanation with `Info`.
 
 `slog` is a third channel and not part of this contract: a debug-only diagnostic stream on stderr.
-See [Logging](overview#logging).
+`SetupLogger` in `log.go` is the only place its handler is built, and its default level is
+`LevelSilent`, so nothing reaches a user who did not ask for it. See [Logging](overview#logging).
 
 ---
 
