@@ -9,7 +9,7 @@ next: /docs/commands
 Use a template directly without registering it first:
 
 ```sh
-specs use github:specsnl/my-template ./my-project
+specs use specsnl/my-template ./my-project
 ```
 
 ## Registry-based usage
@@ -17,6 +17,6 @@ specs use github:specsnl/my-template ./my-project
 Register a template for repeated use:
 
 ```sh
-specs template download github:specsnl/my-template my-template
+specs template download specsnl/my-template my-template
 specs template use my-template ./my-project
 ```

@@ -424,7 +424,7 @@ Hooks run arbitrary shell commands on the host. Before running any template with
 
 **`--safe-mode` implies `--no-hooks`** in the command layer. Pass `--allow-hooks` alongside `--safe-mode` to disable only the env/filesystem template functions while still allowing hooks to execute.
 
-When running a remote template interactively (`specs use github:user/repo ./out`), specs prints all pre-use and post-use hook commands (rendered against the resolved context) and asks for confirmation before executing any of them. Passing `--yes` suppresses this prompt for scripted or CI use.
+When running a remote template interactively (`specs use user/repo ./out`), specs prints all pre-use and post-use hook commands (rendered against the resolved context) and asks for confirmation before executing any of them. Passing `--yes` suppresses this prompt for scripted or CI use.
 
 If `bash` is not on `PATH`, hook execution returns an actionable error identifying the missing shell rather than a confusing process-not-found failure.
 
@@ -549,7 +549,7 @@ The source of truth depends on how the template was registered:
 `resolveStatus` compares the remote refs against the local checkout using two modes:
 
 - **Tag-tracked** — the tracked ref is itself a semver tag (e.g. the template was downloaded
-  with `github:owner/repo:1.1.0`). A newer version is the **highest semver tag strictly
+  with `owner/repo:1.1.0`). A newer version is the **highest semver tag strictly
   greater** than the current one. A lower-numbered tag published later (e.g. `1.0.1` after
   `1.1.0`) is never treated as an update.
 - **Branch-tracked** — the tracked ref is a branch (the default when no ref is given). If the

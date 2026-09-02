@@ -42,13 +42,13 @@ go install github.com/specsnl/specs-cli@latest
 Use a template directly without registering it first:
 
 ```sh
-specs use github:specsnl/my-template ./my-project
+specs use specsnl/my-template ./my-project
 ```
 
 Or register a template and reuse it later:
 
 ```sh
-specs template download github:specsnl/my-template my-template
+specs template download specsnl/my-template my-template
 specs template use my-template ./my-project
 ```
 
