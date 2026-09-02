@@ -83,6 +83,9 @@ specs version -o json 2>/dev/null          # {"version":"v0.0.13"}
 specs template validate ./my-template -o json 2>/dev/null   # {"valid":true}
 ```
 
+`pretty` and `json` are the only accepted values; anything else exits non-zero naming the flag,
+rather than being silently treated as `pretty`.
+
 Commands that only change the filesystem (`use`, `template save`, `template download`, …) narrate
 what they did on stderr and write nothing to stdout.
 

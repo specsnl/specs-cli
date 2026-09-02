@@ -63,12 +63,21 @@ cannot represent writes nothing rather than a broken line.
 {"level":"error","message":"template not found: mytemplate","error_kind":"template_not_found"}
 ```
 
-Two implementations are selected at startup via `--output`:
+Two implementations are selected at startup via `--output`, whose accepted values are the
+`output.Format` constants rather than bare string literals:
 
-| Flag value         | Writer         | Behaviour                                                    |
-|--------------------|----------------|--------------------------------------------------------------|
-| `pretty` (default) | `PrettyWriter` | Lipgloss-styled text, one line (or table) per call           |
-| `json`             | `JSONWriter`   | NDJSON: one bare JSON object per line, one array per `Table` |
+| `Format`       | Flag value         | Writer         | Behaviour                                                    |
+|----------------|--------------------|----------------|--------------------------------------------------------------|
+| `FormatPretty` | `pretty` (default) | `PrettyWriter` | Lipgloss-styled text, one line (or table) per call           |
+| `FormatJSON`   | `json`             | `JSONWriter`   | NDJSON: one bare JSON object per line, one array per `Table` |
+
+`Format.Valid()` is what `PersistentPreRunE` rejects an unknown value with; there is no fallback
+arm that quietly renders a typo as pretty.
+
+The writer is wired **before** the format is validated. That ordering reads backwards, and is
+deliberate: `main` reports the returned error through `app.Output`, so a rejection raised while
+`app.Output` is still nil would have nowhere to go. Wiring an invalid format as pretty costs
+nothing, because the next line rejects it.
 
 ### Deciding which method a command needs
 

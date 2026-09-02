@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/spf13/cobra"
@@ -43,12 +44,20 @@ Use "specs <command> --help" for more information about a command.`,
 				app.HookEnvPrefix = specs.HookEnvPrefix
 			}
 
-			// Wire the output writer based on the --output flag.
-			switch outputFlag {
-			case "json":
+			format := output.Format(outputFlag)
+
+			// The writer is wired before the format is validated, counter-intuitive
+			// as that reads: the rejection below is reported through app.Output, so
+			// it needs somewhere to go. Anything that is not json is wired as
+			// pretty and then rejected on the next line, which costs nothing.
+			app.Output = output.NewPrettyWriter(cmd.OutOrStdout(), cmd.ErrOrStderr(), nil)
+			if format == output.FormatJSON {
 				app.Output = output.NewJSONWriter(cmd.OutOrStdout(), cmd.ErrOrStderr())
-			default:
-				app.Output = output.NewPrettyWriter(cmd.OutOrStdout(), cmd.ErrOrStderr(), nil)
+			}
+
+			if !format.Valid() {
+				return fmt.Errorf("invalid --output %q: want %q or %q",
+					outputFlag, output.FormatPretty, output.FormatJSON)
 			}
 
 			// Configure the slog logger level; swap to JSON handler when both
@@ -56,7 +65,7 @@ Use "specs <command> --help" for more information about a command.`,
 			if debug {
 				app.level.Set(slog.LevelDebug)
 
-				if outputFlag == "json" {
+				if format == output.FormatJSON {
 					slog.SetDefault(slog.New(slog.NewJSONHandler(cmd.ErrOrStderr(), &slog.HandlerOptions{Level: app.level})))
 				}
 			} else {
@@ -73,7 +82,8 @@ Use "specs <command> --help" for more information about a command.`,
 	cmd.PersistentFlags().Bool("debug", false, "Enable debug output")
 	cmd.PersistentFlags().Bool("safe-mode", false, "Disable env/filesystem template functions; implies --no-hooks (override with --allow-hooks)")
 	cmd.PersistentFlags().Bool("no-env-prefix", false, "Disable the SPECS_ prefix on hook environment variables")
-	cmd.PersistentFlags().StringP("output", "o", "pretty", `Output format: "pretty" or "json"`)
+	cmd.PersistentFlags().StringP("output", "o", string(output.FormatPretty),
+		fmt.Sprintf("Output format: %q or %q", output.FormatPretty, output.FormatJSON))
 
 	cmd.AddCommand(newResetRegistryCmd(app))
 	cmd.AddCommand(newTemplateCmd(app))

@@ -20,6 +20,23 @@ var (
 	styleError = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.ANSIColor(9))  // bright red
 )
 
+// Format names an --output value. The constants are the flag values themselves,
+// so the flag default, the writer selection and the help text all read from one
+// place rather than repeating a bare string literal.
+type Format string
+
+const (
+	// FormatPretty is the default: lipgloss-styled text for a reader.
+	FormatPretty Format = "pretty"
+	// FormatJSON is NDJSON for a consumer.
+	FormatJSON Format = "json"
+)
+
+// Valid reports whether f is a format the CLI accepts.
+func (f Format) Valid() bool {
+	return f == FormatPretty || f == FormatJSON
+}
+
 // Writer is the interface for all user-facing output.
 //
 // stdout carries the product — what a caller would redirect to a file or pipe

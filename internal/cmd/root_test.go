@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/specsnl/specs-cli/internal/specs"
+	"github.com/specsnl/specs-cli/internal/util/output"
 )
 
 // executeCmd creates a fresh App and root command, executes it with the given
@@ -58,6 +60,51 @@ func TestUnknownCommand_ReturnsError(t *testing.T) {
 	_, err := executeCmd("nonexistent")
 	if err == nil {
 		t.Fatal("expected error for unknown command, got nil")
+	}
+}
+
+func TestOutputFlag_SelectsWriter(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want output.Writer
+	}{
+		{"default is pretty", []string{"version"}, (*output.PrettyWriter)(nil)},
+		{"explicit pretty", []string{"-o", "pretty", "version"}, (*output.PrettyWriter)(nil)},
+		{"json", []string{"-o", "json", "version"}, (*output.JSONWriter)(nil)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app, _, err := executeCmdWithApp(tt.args...)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if got, want := fmt.Sprintf("%T", app.Output), fmt.Sprintf("%T", tt.want); got != want {
+				t.Errorf("Output = %s, want %s", got, want)
+			}
+		})
+	}
+}
+
+// An unrecognised format is rejected rather than silently treated as pretty:
+// a typo in a pipeline should fail at the flag, not several lines later at jq.
+func TestOutputFlag_InvalidIsRejected(t *testing.T) {
+	app, _, err := executeCmdWithApp("-o", "josn", "version")
+	if err == nil {
+		t.Fatal("expected an error for an unknown --output value, got nil")
+	}
+
+	const want = `invalid --output "josn": want "pretty" or "json"`
+	if err.Error() != want {
+		t.Errorf("error = %q, want %q", err, want)
+	}
+
+	// The writer is wired even for an invalid format, because main reports the
+	// rejection through it.
+	if app.Output == nil {
+		t.Error("app.Output is nil; the rejection would have nowhere to go")
 	}
 }
 

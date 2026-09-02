@@ -433,3 +433,24 @@ func TestPrettyWriter_StreamsAreWrappedIndependently(t *testing.T) {
 		t.Errorf("stderr not styled: %q", errOut.String())
 	}
 }
+
+func TestFormat_Valid(t *testing.T) {
+	tests := []struct {
+		format output.Format
+		want   bool
+	}{
+		{output.FormatPretty, true},
+		{output.FormatJSON, true},
+		{output.Format("josn"), false},
+		{output.Format(""), false},
+		{output.Format("JSON"), false},
+	}
+
+	for _, tt := range tests {
+		t.Run(string(tt.format), func(t *testing.T) {
+			if got := tt.format.Valid(); got != tt.want {
+				t.Errorf("Format(%q).Valid() = %v, want %v", string(tt.format), got, tt.want)
+			}
+		})
+	}
+}

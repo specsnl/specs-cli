@@ -11,6 +11,16 @@ next: /docs/template-structure
 | `--safe-mode`     | Disable env/filesystem functions and skip hooks                             |
 | `--no-env-prefix` | Remove the `SPECS_` prefix from hook environment variables                  |
 
+`--output` accepts `pretty` and `json` and nothing else. Any other value is an error, so a typo
+fails at the flag rather than several lines later in the pipeline that consumes the output:
+
+```console
+$ specs --output josn version
+error invalid --output "josn": want "pretty" or "json"
+$ echo $?
+1
+```
+
 ## Which stream output lands on
 
 stdout carries the **product** — the answer to the command, in whichever format `--output` selects.
