@@ -42,13 +42,13 @@ go install github.com/specsnl/specs-cli@latest
 Use a template directly without registering it first:
 
 ```sh
-specs use github:specsnl/my-template ./my-project
+specs use specsnl/my-template ./my-project
 ```
 
 Or register a template and reuse it later:
 
 ```sh
-specs template download github:specsnl/my-template my-template
+specs template download specsnl/my-template my-template
 specs template use my-template ./my-project
 ```
 
@@ -85,6 +85,30 @@ specs template validate ./my-template -o json 2>/dev/null   # {"valid":true}
 
 Commands that only change the filesystem (`use`, `template save`, `template download`, …) narrate
 what they did on stderr and write nothing to stdout.
+
+Pretty tables are capped to the width of your terminal: when a table does not fit, its widest
+columns shrink and their cells wrap onto extra lines rather than the table breaking apart. Redirect
+stdout to a file or a pipe and the full natural width is written instead; set `COLUMNS` to pin a
+width there (`COLUMNS=100 specs template list | less -R`).
+
+The `Repository` column shows a **label**, not the raw value: a GitHub URL reads as
+`specsnl/specs-cli` since GitHub is the default host, another host keeps its name
+(`gitlab.com/acme/tpl`), and a saved path collapses `$HOME` to `~`. The label is clickable in
+terminals that support hyperlinks (iTerm2, WezTerm, kitty, Ghostty, GNOME Terminal, Windows
+Terminal, …) and opens the full URL, staying one link even when the column wraps it over several
+lines. Terminals without support simply show the label, and a redirect to a file or a pipe writes
+plain text.
+
+`--output json` always carries the value as stored, never the label — so scripts read the full URL:
+
+```sh
+specs template list -o json 2>/dev/null | jq -r '.[].Repository'
+```
+
+For a template registered with `template save`, that value is the source path, with your home
+directory written as `~` (e.g. `~/code/my-template`). Templates saved by versions before this
+change carry a `local:` prefix instead; that form is still read, and migrates on the next
+`template upgrade`.
 
 ---
 

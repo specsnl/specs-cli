@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/specsnl/specs-cli/internal/specs"
@@ -81,7 +80,7 @@ func Upgrade(name string) (UpgradeResult, error) {
 		return UpgradeResult{IsLocal: true}, nil
 	}
 
-	if strings.HasPrefix(meta.Repository, "local:") {
+	if pkgtemplate.IsLocalRepository(meta.Repository) {
 		return upgradeLocal(name, root, meta)
 	}
 
@@ -158,7 +157,7 @@ func upgradeLocal(name, root string, meta *pkgtemplate.Metadata) (UpgradeResult,
 		return UpgradeResult{IsLocal: true}, nil
 	}
 
-	src := strings.TrimPrefix(meta.Repository, "local:")
+	src := pkgtemplate.LocalSourcePath(meta.Repository)
 	check := pkggit.CheckLocalSource(src, meta.Commit, meta.Version)
 
 	if check.ErrorKind == pkggit.CheckErrorSourceMissing {
@@ -179,8 +178,14 @@ func upgradeLocal(name, root string, meta *pkgtemplate.Metadata) (UpgradeResult,
 		return UpgradeResult{}, err
 	}
 
+	// An upgrade is the one moment the metadata is rewritten anyway, so it is
+	// where a value written by an older version migrates to the current form.
+	// Reading the legacy form still has to work indefinitely — a template
+	// nobody upgrades keeps its prefix forever.
+	repository := pkgtemplate.StorableSourcePath(src)
+
 	desc, _ := pkggit.Describe(root) // errors are logged by the git layer
-	if err := pkgtemplate.SaveMetadata(root, name, meta.Repository, meta.Branch, desc.Commit, desc.Version, meta.Created.Time, time.Now().UTC()); err != nil {
+	if err := pkgtemplate.SaveMetadata(root, name, repository, meta.Branch, desc.Commit, desc.Version, meta.Created.Time, time.Now().UTC()); err != nil {
 		return UpgradeResult{}, err
 	}
 
@@ -191,5 +196,5 @@ func upgradeLocal(name, root string, meta *pkgtemplate.Metadata) (UpgradeResult,
 
 	slog.Debug("upgrade local complete", "template", name, "source", src)
 
-	return UpgradeResult{Repository: meta.Repository, TargetRef: src}, nil
+	return UpgradeResult{Repository: repository, TargetRef: src}, nil
 }

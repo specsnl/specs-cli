@@ -88,13 +88,15 @@ The `<source>` argument in `specs use` and `specs template download` accepts:
 
 | Format           | Example                          |
 |------------------|----------------------------------|
-| GitHub shorthand | `github:user/repo`               |
-| GitHub + branch  | `github:user/repo:main`          |
+| GitHub shorthand | `user/repo`                      |
+| GitHub + branch  | `user/repo:main`                 |
 | HTTPS URL        | `https://github.com/user/repo`   |
 | SSH (SCP-style)  | `git@github.com:user/repo`       |
 | SSH URL          | `ssh://git@github.com/user/repo` |
 | Local path       | `./path/to/template`             |
 | Local (explicit) | `file:./path/to/template`        |
+
+GitHub is the default host, so a bare `owner/repo` needs no prefix; the older `github:user/repo` form is still accepted as a deprecated alias. Because the shorthand is matched after every URL and path form, a relative path needs its leading `./` — a bare `templates/go` is read as a repository.
 
 Local paths are only accepted by `specs use`. To register a local directory as a named template, use `specs template save` instead.
 

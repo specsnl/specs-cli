@@ -36,18 +36,29 @@ func (s *Source) IsSSH() bool {
 
 // Parse parses a source string into a Source.
 //
+// GitHub is the default host, so a bare owner/repo needs no prefix. Any other
+// host is named in full.
+//
 // Accepted formats:
-//   - github:user/repo              GitHub shorthand
-//   - github:user/repo:branch       GitHub shorthand with branch
+//   - user/repo                     GitHub shorthand
+//   - user/repo:branch              GitHub shorthand with branch
+//   - github:user/repo              Deprecated alias for the above
 //   - https://github.com/user/repo  Full HTTPS URL (optional .git suffix is stripped)
 //   - git@github.com:user/repo      SCP-style SSH URL (optional .git suffix is stripped)
 //   - ssh://git@github.com/user/repo Explicit SSH URL
 //   - file:./path                   Explicit local-path prefix
 //   - ./path  ../path  /path        Implicit local path (relative or absolute)
+//
+// The shorthand is tried last, so every other form wins first and only a string
+// that is nothing else is read as owner/repo. One consequence: a relative path
+// must be written with a leading ./ — a bare "templates/go" is a repository, not
+// a directory.
 func Parse(input string) (*Source, error) {
 	switch {
 	case strings.HasPrefix(input, "github:"):
-		return parseGitHub(input)
+		// Deprecated: GitHub is the default host, so the prefix is redundant.
+		// Still accepted so existing scripts and saved commands keep working.
+		return parseGitHub(strings.TrimPrefix(input, "github:"), input)
 	case strings.HasPrefix(input, "https://") || strings.HasPrefix(input, "http://"):
 		return parseHTTPS(input)
 	case strings.HasPrefix(input, "ssh://"):
@@ -59,13 +70,31 @@ func Parse(input string) (*Source, error) {
 	case strings.HasPrefix(input, "./") || strings.HasPrefix(input, "../") || strings.HasPrefix(input, "/"):
 		return &Source{LocalPath: input}, nil
 	default:
-		return nil, fmt.Errorf("unrecognised source format %q — use github:user/repo, an HTTPS URL, an SSH URL, or a local path", input)
+		// A scheme that reached here is one we do not support, and is plainly
+		// not a shorthand. Saying so beats letting the shorthand parser report
+		// a missing owner/repo separator in a string full of slashes.
+		if strings.Contains(input, "://") {
+			return nil, fmt.Errorf("unsupported scheme in source %q — use https://, http:// or ssh://", input)
+		}
+
+		// Anything left is either a shorthand or a typo. Frame the shorthand's
+		// own error with the accepted forms, so the reader learns what was
+		// expected and not only which rule the input broke.
+		src, err := parseGitHub(input, input)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unrecognised source %q — expected owner/repo, an HTTPS or SSH URL, or a local path (./x, ../x, /x): %w",
+				input, err)
+		}
+
+		return src, nil
 	}
 }
 
-// parseGitHub handles the "github:user/repo" and "github:user/repo:branch" forms.
-func parseGitHub(input string) (*Source, error) {
-	rest := strings.TrimPrefix(input, "github:")
+// parseGitHub handles the owner/repo and owner/repo:branch shorthands. rest is
+// the source with any github: prefix already stripped; input is the string the
+// user typed, used in error messages.
+func parseGitHub(rest, input string) (*Source, error) {
 	parts := strings.SplitN(rest, ":", 2)
 
 	repoPart := parts[0]

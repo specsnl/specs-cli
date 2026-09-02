@@ -4,25 +4,16 @@ import (
 	"context"
 	"log/slog"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/specsnl/specs-cli/internal/specs"
 	pkgtemplate "github.com/specsnl/specs-cli/internal/template"
 	pkggit "github.com/specsnl/specs-cli/internal/util/git"
+	"github.com/specsnl/specs-cli/internal/util/output"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 )
-
-// localRepoPrefix marks a Repository value that refers to a directory on disk
-// (registered via 'specs template save') rather than a remote git URL.
-const localRepoPrefix = "local:"
-
-// isLocalRepo reports whether repo refers to a local source path.
-func isLocalRepo(repo string) bool {
-	return strings.HasPrefix(repo, localRepoPrefix)
-}
 
 // isTrackable reports whether a template carries enough metadata for a status
 // check. A remote template needs a repository and a branch; a local template
@@ -32,7 +23,7 @@ func isTrackable(meta *pkgtemplate.Metadata) bool {
 		return false
 	}
 
-	if isLocalRepo(meta.Repository) {
+	if pkgtemplate.IsLocalRepository(meta.Repository) {
 		return meta.Commit != ""
 	}
 
@@ -124,7 +115,7 @@ func newTemplateListCmd(app *App) *cobra.Command {
 				i, name := i, entry.name
 				repo, branch := entry.meta.Repository, entry.meta.Branch
 				commit, version := entry.meta.Commit, entry.meta.Version
-				local := isLocalRepo(repo)
+				local := pkgtemplate.IsLocalRepository(repo)
 
 				eg.Go(func() error {
 					root := specs.TemplatePath(name)
@@ -133,7 +124,7 @@ func newTemplateListCmd(app *App) *cobra.Command {
 					if local {
 						// Local templates compare against the source path on disk, not a
 						// git remote. The git layer logs the check-local start/result.
-						result = pkggit.CheckLocalSource(strings.TrimPrefix(repo, localRepoPrefix), commit, version)
+						result = pkggit.CheckLocalSource(pkgtemplate.LocalSourcePath(repo), commit, version)
 					} else {
 						checkCtx, cancelCheck := context.WithTimeout(egCtx, app.checkTimeout)
 						defer cancelCheck()
@@ -168,7 +159,7 @@ func newTemplateListCmd(app *App) *cobra.Command {
 
 			headers := []string{"Name", "Repository", "Version", "Status", "Created", "Updated"}
 
-			var rows [][]string
+			var rows [][]output.Cell
 
 			for _, entry := range tmplEntries {
 				repo, version, created, updated := "-", "-", "-", "-"
@@ -183,7 +174,14 @@ func newTemplateListCmd(app *App) *cobra.Command {
 				}
 
 				statusStr := statusLabel(entry.status, isTrackable(entry.meta))
-				rows = append(rows, []string{entry.name, repo, version, statusStr, created, updated})
+				rows = append(rows, []output.Cell{
+					{Value: entry.name},
+					repoCell(repo),
+					{Value: version},
+					{Value: statusStr},
+					{Value: created},
+					{Value: updated},
+				})
 			}
 
 			// The empty answer keeps the shape of the non-empty one — an empty

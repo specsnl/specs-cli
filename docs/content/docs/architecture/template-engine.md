@@ -424,7 +424,7 @@ Hooks run arbitrary shell commands on the host. Before running any template with
 
 **`--safe-mode` implies `--no-hooks`** in the command layer. Pass `--allow-hooks` alongside `--safe-mode` to disable only the env/filesystem template functions while still allowing hooks to execute.
 
-When running a remote template interactively (`specs use github:user/repo ./out`), specs prints all pre-use and post-use hook commands (rendered against the resolved context) and asks for confirmation before executing any of them. Passing `--yes` suppresses this prompt for scripted or CI use.
+When running a remote template interactively (`specs use user/repo ./out`), specs prints all pre-use and post-use hook commands (rendered against the resolved context) and asks for confirmation before executing any of them. Passing `--yes` suppresses this prompt for scripted or CI use.
 
 If `bash` is not on `PATH`, hook execution returns an actionable error identifying the missing shell rather than a confusing process-not-found failure.
 
@@ -534,7 +534,7 @@ The source of truth depends on how the template was registered:
 
 - **Remote templates** (`Repository` is a git URL) are checked against the remote via
   `CheckRemoteContext`, which lists the remote refs without modifying the local checkout.
-- **Local templates** (`Repository` is `local:<path>`, from `specs template save`) are checked
+- **Local templates** (`Repository` is a path, from `specs template save`) are checked
   against the **source directory on disk** via `CheckLocalSource` — never a git remote. The
   template is behind when the source path's current `git describe` (commit + version) differs
   from the commit/version recorded in metadata at save time. The trailing `-dirty` marker is
@@ -544,12 +544,21 @@ The source of truth depends on how the template was registered:
   longer exists (or is no longer a git repository) the status is `source-missing`. A local
   template saved from a non-git directory has no recorded commit and is not tracked.
 
+A path is told from a git URL by its first character — `/`, `.` or `~` — via
+`template.IsLocalRepository`. `$HOME` is stored as `~`, so the value reads the same as the label
+`template list` shows; `template.LocalSourcePath` expands it back before anything touches the
+filesystem, and every caller that does must go through it.
+
+Older versions wrote a `local:` prefix instead. It is still recognised on read, indefinitely: a
+template nobody upgrades keeps it forever. An upgrade is the one moment the metadata is rewritten
+anyway, so that is where a legacy value migrates to the current form.
+
 ### How a newer version is determined (remote templates)
 
 `resolveStatus` compares the remote refs against the local checkout using two modes:
 
 - **Tag-tracked** — the tracked ref is itself a semver tag (e.g. the template was downloaded
-  with `github:owner/repo:1.1.0`). A newer version is the **highest semver tag strictly
+  with `owner/repo:1.1.0`). A newer version is the **highest semver tag strictly
   greater** than the current one. A lower-numbered tag published later (e.g. `1.0.1` after
   `1.1.0`) is never treated as an update.
 - **Branch-tracked** — the tracked ref is a branch (the default when no ref is given). If the

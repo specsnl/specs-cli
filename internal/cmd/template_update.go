@@ -3,12 +3,12 @@ package cmd
 import (
 	"log/slog"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/specsnl/specs-cli/internal/specs"
 	pkgtemplate "github.com/specsnl/specs-cli/internal/template"
 	pkggit "github.com/specsnl/specs-cli/internal/util/git"
+	"github.com/specsnl/specs-cli/internal/util/output"
 	"github.com/spf13/cobra"
 )
 
@@ -57,7 +57,7 @@ func newTemplateUpdateCmd(app *App) *cobra.Command {
 
 				var result pkggit.RemoteCheckResult
 
-				if isLocalRepo(meta.Repository) {
+				if pkgtemplate.IsLocalRepository(meta.Repository) {
 					if meta.Commit == "" {
 						// Nothing recorded to compare the source path against.
 						continue
@@ -65,7 +65,7 @@ func newTemplateUpdateCmd(app *App) *cobra.Command {
 
 					checkedCount++
 					// git layer logs the check-local start/result
-					result = pkggit.CheckLocalSource(strings.TrimPrefix(meta.Repository, localRepoPrefix), meta.Commit, meta.Version)
+					result = pkggit.CheckLocalSource(pkgtemplate.LocalSourcePath(meta.Repository), meta.Commit, meta.Version)
 				} else {
 					branch := meta.Branch
 					if branch == "" {
@@ -120,7 +120,7 @@ func newTemplateUpdateCmd(app *App) *cobra.Command {
 
 			// The table is the answer, empty or not; the hint that explains an
 			// empty one is narration.
-			app.Output.Table([]string{"Name", "Status", "Latest"}, rows)
+			app.Output.Table([]string{"Name", "Status", "Latest"}, output.Rows(rows))
 
 			if checkedCount == 0 {
 				app.Output.Info("no trackable templates — nothing to check")

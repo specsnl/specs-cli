@@ -52,8 +52,14 @@ func newTemplateSaveCmd(app *App) *cobra.Command {
 
 			desc, _ := pkggit.Describe(srcPath)
 
+			// Stored with the home directory as ~ and no marker: a path is
+			// recognisable from its first character, and ~ keeps the value
+			// readable as-is. Readers go through localSourcePath to get back a
+			// path a syscall understands.
+			source := pkgtemplate.StorableSourcePath(absPath)
+
 			now := time.Now().UTC()
-			if err := pkgtemplate.SaveMetadata(dest, name, "local:"+absPath, "", desc.Commit, desc.Version, now, now); err != nil {
+			if err := pkgtemplate.SaveMetadata(dest, name, source, "", desc.Commit, desc.Version, now, now); err != nil {
 				return err
 			}
 

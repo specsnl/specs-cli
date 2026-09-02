@@ -20,11 +20,12 @@ func newUseCmd(app *App) *cobra.Command {
 		Long: `Download a template from a remote repository (or copy a local path) and
 execute it directly into <target-dir>. No entry is added to the local registry.
 
-Source formats:
-  github:user/repo            GitHub shorthand (default branch)
-  github:user/repo:branch     GitHub shorthand with specific branch
+Source formats (GitHub is the default host, so it needs no prefix):
+  user/repo                   GitHub shorthand (default branch)
+  user/repo:ref               GitHub shorthand with a branch, tag or SHA
   https://github.com/user/repo  Full HTTPS URL
-  ./path  ../path  /path      Local path
+  git@github.com:user/repo    SSH URL
+  ./path  ../path  /path      Local path — the leading ./ is required
   file:./path                 Local path with explicit prefix`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {

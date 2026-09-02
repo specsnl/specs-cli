@@ -58,7 +58,7 @@ specs-cli/
     ├── hooks/                    # hook execution
     │   └── hooks.go              # Load(), Run(), context → env vars
     ├── host/                     # source URL parsing
-    │   └── source.go             # github:user/repo, HTTPS URL, local path
+    │   └── source.go             # owner/repo, HTTPS URL, SSH URL, local path
     └── util/
         ├── exit/                 # exit codes
         ├── git/                  # go-git wrapper, SSH auth, remote check
@@ -110,8 +110,8 @@ One-step command — downloads, executes, discards. No registry entry created.
 
 | Format                | Example                                               |
 |-----------------------|-------------------------------------------------------|
-| GitHub shorthand      | `github:Ilyes512/boilr-laravel-project`               |
-| GitHub with branch    | `github:Ilyes512/boilr-laravel-project:main`          |
+| GitHub shorthand      | `Ilyes512/boilr-laravel-project`                      |
+| GitHub with branch    | `Ilyes512/boilr-laravel-project:main`                 |
 | Full HTTPS URL        | `https://github.com/Ilyes512/boilr-laravel-project`   |
 | SCP-style SSH         | `git@github.com:Ilyes512/boilr-laravel-project`       |
 | SSH URL               | `ssh://git@github.com/Ilyes512/boilr-laravel-project` |
@@ -278,7 +278,7 @@ redirect or pipe, while `Info`, `Warn`, `Error` and `WriteErr` narrate on stderr
 implementations are selected at startup via `--output`: `PrettyWriter` (lipgloss-styled text) and
 `JSONWriter` (NDJSON, useful for scripting or CI pipelines).
 
-See [Output](output) for the full contract, the colour decision and the golden-file tests.
+See [Output](output) for the full contract, the colour and width decisions and the golden-file tests.
 
 ---
 
@@ -387,7 +387,7 @@ func (h *Hooks) Run(trigger, cwd string, ctx map[string]any, funcMap template.Fu
 | `internal/hooks`         | **new**     | hook loading and execution                                                                                                                                                            |
 | `internal/util/output`   | updated     | lipgloss-based logger + table renderer; `WriteErr` with JSON `error_kind` for known sentinels (replaces tlog + tabular)                                                               |
 | `internal/util/values`   | **new**     | `--values` file (JSON/YAML) and `--arg` flag parsing                                                                                                                                  |
-| `internal/host`          | updated     | source format parsing (github:, HTTPS, SSH, local path)                                                                                                                               |
+| `internal/host`          | updated     | source format parsing (owner/repo, HTTPS, SSH, local path)                                                                                                                            |
 | `pkg/prompt`             | **removed** | replaced by `huh`                                                                                                                                                                     |
 | `pkg/util/tlog`          | **removed** | replaced by `internal/util/output`                                                                                                                                                    |
 | `pkg/util/tabular`       | **removed** | replaced by `internal/util/output`                                                                                                                                                    |
