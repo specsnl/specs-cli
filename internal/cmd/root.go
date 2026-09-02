@@ -35,6 +35,12 @@ Use "specs <command> --help" for more information about a command.`,
 			safeMode, _ := cmd.Flags().GetBool("safe-mode")
 			noEnvPrefix, _ := cmd.Flags().GetBool("no-env-prefix")
 			outputFlag, _ := cmd.Flags().GetString("output")
+			nonInteractive, _ := cmd.Flags().GetBool("non-interactive")
+
+			app.Stdin = cmd.InOrStdin()
+			app.Stdout = cmd.OutOrStdout()
+			app.Stderr = cmd.ErrOrStderr()
+			app.NonInteractive = nonInteractive
 
 			app.SafeMode = safeMode
 			if noEnvPrefix {
@@ -74,6 +80,7 @@ Use "specs <command> --help" for more information about a command.`,
 	cmd.PersistentFlags().Bool("debug", false, "Enable debug output")
 	cmd.PersistentFlags().Bool("safe-mode", false, "Disable env/filesystem template functions; implies --no-hooks (override with --allow-hooks)")
 	cmd.PersistentFlags().Bool("no-env-prefix", false, "Disable the SPECS_ prefix on hook environment variables")
+	cmd.PersistentFlags().Bool("non-interactive", false, "Never prompt; fail instead of asking for a missing value")
 	cmd.PersistentFlags().StringP("output", "o", string(output.FormatPretty),
 		fmt.Sprintf("Output format: %q or %q", output.FormatPretty, output.FormatJSON))
 

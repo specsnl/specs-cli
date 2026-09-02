@@ -160,7 +160,7 @@ func (w *PrettyWriter) Table(headers []string, rows [][]Cell) {
 // escape hatch for pipes and tests — else 0 for unconstrained, which is what a
 // file or a pipe wants.
 func (w *PrettyWriter) tableWidth() int {
-	if f, ok := w.rawStdout.(interface{ Fd() uintptr }); ok {
+	if f, ok := w.rawStdout.(fileDescriptor); ok {
 		fd := f.Fd()
 		if term.IsTerminal(fd) {
 			if width, _, err := term.GetSize(fd); err == nil && width > 0 {

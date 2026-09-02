@@ -40,3 +40,27 @@ The older `github:owner/repo` form is still accepted as a deprecated alias.
 | `--arg <key=value>` | Set a single variable (repeatable)                                                    |
 | `--use-defaults`    | Accept all defaults without prompting                                                 |
 | `--no-hooks`        | Skip pre/post-use hooks                                                               |
+
+## Running without a terminal
+
+A prompt needs someone to answer it. When stdin is not a terminal — a CI job, a cron entry, or
+`specs use … < /dev/null` — specs refuses to prompt instead of blocking on a read nobody will
+answer, and says which values it could not ask for:
+
+```console
+$ specs use specsnl/go-service ./out < /dev/null
+error cannot prompt for values: stdin is not a terminal
+missing values for: license, project_name
+provide them with --arg Key=Value, with --values, or take the schema defaults with --use-defaults
+```
+
+Supply every variable the template needs and the command never reaches a prompt, so it runs
+unattended. `--non-interactive` forces the same refusal at a terminal, which is how you check
+that a command will survive CI before pushing it.
+
+A remote template's **hook confirmation** is treated differently: with nothing to confirm it,
+the answer is taken as "no". The template is still applied and only its hooks are skipped, with a
+warning saying so. Pass `--yes` to run them unattended.
+
+The form itself is drawn on **stderr**, never on stdout — so a prompt never lands in the file
+`specs use … > out.txt` writes, and never corrupts `--output json`.

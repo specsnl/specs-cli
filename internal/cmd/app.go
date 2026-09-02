@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"io"
 	"os"
 	"time"
 
@@ -15,6 +16,20 @@ type App struct {
 	Output        output.Writer
 	SafeMode      bool
 	HookEnvPrefix string // prefix for context keys injected as env vars into hooks
+
+	// Stdin, Stdout and Stderr are the process streams as the running command
+	// sees them, populated in PersistentPreRunE from cmd.InOrStdin() and friends.
+	// An interactive form is drawn through these rather than through os.Stdin and
+	// os.Stdout, so a test can drive a prompt with buffers it controls — and so
+	// the form never lands on stdout, which carries the product.
+	Stdin  io.Reader
+	Stdout io.Writer
+	Stderr io.Writer
+
+	// NonInteractive refuses every prompt even at a terminal, so a developer can
+	// reproduce what CI will do. A missing terminal on Stdin has the same effect
+	// on its own; see App.canPrompt.
+	NonInteractive bool
 
 	// checkRemoteFn is the function used by template list to query remote status.
 	// Defaults to pkggit.CheckRemoteContext; tests may substitute a fake.
@@ -37,10 +52,33 @@ func NewApp() *App {
 
 	return &App{
 		Output:         output.NewDefaultPrettyWriter(),
+		Stdin:          os.Stdin,
+		Stdout:         os.Stdout,
+		Stderr:         os.Stderr,
 		checkRemoteFn:  pkggit.CheckRemoteContext,
 		checkTimeout:   10 * time.Second,
 		refreshTimeout: 30 * time.Second,
 	}
+}
+
+// canPrompt reports whether an interactive form may be drawn: --non-interactive
+// forbids it outright, and otherwise there has to be a terminal to answer it.
+//
+// Stdin is the stream that decides. A job with a terminal on stderr but its
+// stdin closed would otherwise block on a read nobody can answer — the hang this
+// check exists to turn into an error.
+func (a *App) canPrompt() bool {
+	return !a.NonInteractive && output.IsTTY(a.Stdin)
+}
+
+// promptRefusal explains why prompting is off, for the error naming what could
+// not be asked for.
+func (a *App) promptRefusal() string {
+	if a.NonInteractive {
+		return "--non-interactive is set"
+	}
+
+	return "stdin is not a terminal"
 }
 
 // templateConfig translates App-level flags into a template.Config.

@@ -59,6 +59,12 @@ var (
 	// prefix. That namespace is reserved for specs configuration keys such as
 	// __delimiters.
 	ErrReservedVariableName = errors.New(`variable names starting with "__" are reserved for specs configuration`)
+
+	// ErrCannotPrompt is returned when a command needs an answer it is not allowed
+	// to ask for: stdin is not a terminal, or --non-interactive was given. It is a
+	// distinct kind because it is the one a CI job hits, and the fix is to supply
+	// the value rather than to retry.
+	ErrCannotPrompt = errors.New("cannot prompt for values")
 )
 
 // KindOf returns a stable, machine-readable string identifier for the sentinel
@@ -94,6 +100,8 @@ func KindOf(err error) string {
 		return "specs_version_unsatisfied"
 	case errors.Is(err, ErrReservedVariableName):
 		return "reserved_variable_name"
+	case errors.Is(err, ErrCannotPrompt):
+		return "cannot_prompt"
 	default:
 		return ""
 	}

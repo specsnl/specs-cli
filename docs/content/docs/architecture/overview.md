@@ -63,7 +63,7 @@ specs-cli/
         ├── exit/                 # exit codes
         ├── git/                  # go-git wrapper, SSH auth, remote check
         ├── osutil/               # file operations (CopyDir, etc.)
-        ├── output/               # Writer implementations, table renderer, slog setup
+        ├── output/               # Writer implementations, table renderer, slog setup, IsTTY
         ├── validate/             # Name() validator and argument validators
         └── values/               # --values file (JSON/YAML) + --arg flag parsing
 ```
@@ -77,6 +77,7 @@ specs [--version|-v]
       [--debug]                             enable debug output
       [--safe-mode]                         disable env/filesystem template functions + hooks
       [--no-env-prefix]                     disable SPECS_ prefix on hook env vars
+      [--non-interactive]                   never prompt; fail naming the missing values
       [--output/-o pretty|json]             output format (default: pretty)
 │
 ├── use <source> <target-dir>               one-step, no registry entry
@@ -264,6 +265,7 @@ so that callers can use `errors.Is` to distinguish them:
 | `ErrInvalidSpecsVersion`     | `invalid_specs_version`     | `__specs__version` in `project.yaml` is not a string or not a parseable semver constraint              |
 | `ErrSpecsVersionUnsatisfied` | `specs_version_unsatisfied` | Running CLI version does not satisfy the template's `__specs__version` constraint                      |
 | `ErrReservedVariableName`    | `reserved_variable_name`    | A variable or computed name uses the reserved `__` prefix without being a recognised configuration key |
+| `ErrCannotPrompt`            | `cannot_prompt`             | A value is missing and cannot be asked for: stdin is not a terminal, or `--non-interactive` is set     |
 
 `specs.KindOf(err error) string` returns the stable kind string for any error in the chain,
 or `""` when no known sentinel is wrapped.

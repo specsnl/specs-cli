@@ -86,6 +86,22 @@ specs template validate ./my-template -o json 2>/dev/null   # {"valid":true}
 `pretty` and `json` are the only accepted values; anything else exits non-zero naming the flag,
 rather than being silently treated as `pretty`.
 
+Prompts only happen where something can answer them. With stdin not a terminal — a CI job, or
+`< /dev/null` — a template still missing a value fails immediately and names it, instead of
+blocking until the runner times out:
+
+```console
+$ specs use specsnl/go-service ./out < /dev/null
+error cannot prompt for values: stdin is not a terminal
+missing values for: project_name
+provide them with --arg Key=Value, with --values, or take the schema defaults with --use-defaults
+```
+
+Supply every variable and the command runs unattended. `--non-interactive` forces the same
+refusal at a terminal, so you can check a command before CI does. A remote template's hook
+confirmation is taken as "no" rather than an error: the template applies, the hooks are skipped,
+and `--yes` opts in.
+
 Commands that only change the filesystem (`use`, `template save`, `template download`, …) narrate
 what they did on stderr and write nothing to stdout.
 
