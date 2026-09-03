@@ -2,7 +2,7 @@
 # check=error=true
 
 # Latest version: https://hub.docker.com/_/golang/tags
-FROM golang:1.27.0-trixie AS base
+FROM golang:1.27.1-trixie AS base
 
 WORKDIR /src
 
