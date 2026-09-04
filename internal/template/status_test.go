@@ -6,6 +6,23 @@ import (
 	"time"
 )
 
+// mustLoadStatus fails the test when dir has no status: LoadStatus reports a
+// missing or unreadable file as (nil, nil).
+func mustLoadStatus(t *testing.T, dir string) *TemplateStatus {
+	t.Helper()
+
+	status, err := LoadStatus(dir)
+	if err != nil {
+		t.Fatalf("LoadStatus: %v", err)
+	}
+
+	if status == nil {
+		t.Fatal("LoadStatus returned no status")
+	}
+
+	return status
+}
+
 func TestIsStale_Fresh(t *testing.T) {
 	s := &TemplateStatus{
 		CheckedAt: JSONTime{Time: time.Now().Add(-1 * time.Hour)},
@@ -100,15 +117,7 @@ func TestStatusRoundtrip(t *testing.T) {
 		t.Fatalf("SaveStatus: %v", err)
 	}
 
-	loaded, err := LoadStatus(dir)
-	if err != nil {
-		t.Fatalf("LoadStatus: %v", err)
-	}
-
-	if loaded == nil {
-		t.Fatal("LoadStatus: expected non-nil status")
-	}
-
+	loaded := mustLoadStatus(t, dir)
 	if loaded.IsUpToDate != original.IsUpToDate {
 		t.Errorf("IsUpToDate: got %v, want %v", loaded.IsUpToDate, original.IsUpToDate)
 	}

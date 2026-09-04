@@ -23,6 +23,22 @@ func loadNoPrefix(templateRoot string, projectConfig map[string]any) (*Hooks, er
 	return Load(templateRoot, projectConfig, "")
 }
 
+// mustLoadNoPrefix is loadNoPrefix for the cases that only read the result.
+func mustLoadNoPrefix(t *testing.T, templateRoot string, projectConfig map[string]any) *Hooks {
+	t.Helper()
+
+	h, err := loadNoPrefix(templateRoot, projectConfig)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	if h == nil {
+		t.Fatal("Load returned no hooks")
+	}
+
+	return h
+}
+
 // --- Load: inline hooks ---
 
 func TestLoad_InlinePreUse(t *testing.T) {
@@ -76,15 +92,7 @@ func TestLoad_InlineBothTriggers(t *testing.T) {
 }
 
 func TestLoad_NoHooks(t *testing.T) {
-	h, err := loadNoPrefix(t.TempDir(), map[string]any{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if h == nil {
-		t.Fatal("expected non-nil *Hooks")
-	}
-
+	h := mustLoadNoPrefix(t, t.TempDir(), map[string]any{})
 	if len(h.PreUse) != 0 || len(h.PostUse) != 0 {
 		t.Errorf("expected empty hooks, got %+v", h)
 	}

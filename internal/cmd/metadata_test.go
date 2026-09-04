@@ -7,6 +7,23 @@ import (
 	pkgtemplate "github.com/specsnl/specs-cli/internal/template"
 )
 
+// mustLoadMetadata fails the test when dir has no metadata: LoadMetadata
+// reports a missing or unreadable file as (nil, nil).
+func mustLoadMetadata(t *testing.T, dir string) *pkgtemplate.Metadata {
+	t.Helper()
+
+	meta, err := pkgtemplate.LoadMetadata(dir)
+	if err != nil {
+		t.Fatalf("LoadMetadata: %v", err)
+	}
+
+	if meta == nil {
+		t.Fatal("LoadMetadata returned no metadata")
+	}
+
+	return meta
+}
+
 func TestWriteMetadata_PreservesSuppliedCreated(t *testing.T) {
 	dir := t.TempDir()
 
@@ -17,15 +34,7 @@ func TestWriteMetadata_PreservesSuppliedCreated(t *testing.T) {
 		t.Fatalf("SaveMetadata: %v", err)
 	}
 
-	got, err := pkgtemplate.LoadMetadata(dir)
-	if err != nil {
-		t.Fatalf("LoadMetadata: %v", err)
-	}
-
-	if got == nil {
-		t.Fatal("LoadMetadata returned nil metadata")
-	}
-
+	got := mustLoadMetadata(t, dir)
 	if !got.Created.Equal(want) {
 		t.Errorf("Created = %s, want %s", got.Created.Time, want)
 	}
@@ -47,14 +56,7 @@ func TestWriteMetadata_UpgradeRoundTripPreservesCreated(t *testing.T) {
 		t.Fatalf("SaveMetadata (install): %v", err)
 	}
 
-	meta, err := pkgtemplate.LoadMetadata(dir)
-	if err != nil {
-		t.Fatalf("LoadMetadata: %v", err)
-	}
-
-	if meta == nil {
-		t.Fatal("LoadMetadata returned nil metadata")
-	}
+	meta := mustLoadMetadata(t, dir)
 
 	// Simulate an upgrade: re-write metadata with new commit/version and a fresh
 	// Updated timestamp but the original Created threaded through, the same way
@@ -64,15 +66,7 @@ func TestWriteMetadata_UpgradeRoundTripPreservesCreated(t *testing.T) {
 		t.Fatalf("SaveMetadata (upgrade): %v", err)
 	}
 
-	upgraded, err := pkgtemplate.LoadMetadata(dir)
-	if err != nil {
-		t.Fatalf("LoadMetadata after upgrade: %v", err)
-	}
-
-	if upgraded == nil {
-		t.Fatal("LoadMetadata returned nil metadata after upgrade")
-	}
-
+	upgraded := mustLoadMetadata(t, dir)
 	if !upgraded.Created.Equal(original) {
 		t.Errorf("Created after upgrade = %s, want %s", upgraded.Created.Time, original)
 	}

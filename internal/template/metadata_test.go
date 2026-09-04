@@ -12,6 +12,23 @@ import (
 	pkgtemplate "github.com/specsnl/specs-cli/internal/template"
 )
 
+// mustLoadMetadata fails the test when dir has no metadata: LoadMetadata
+// reports a missing or unreadable file as (nil, nil).
+func mustLoadMetadata(t *testing.T, dir string) *pkgtemplate.Metadata {
+	t.Helper()
+
+	m, err := pkgtemplate.LoadMetadata(dir)
+	if err != nil {
+		t.Fatalf("LoadMetadata: %v", err)
+	}
+
+	if m == nil {
+		t.Fatal("LoadMetadata returned no metadata")
+	}
+
+	return m
+}
+
 // --- JSONTime.MarshalJSON / UnmarshalJSON ---
 
 func TestJSONTime_RoundTrip(t *testing.T) {
@@ -218,15 +235,7 @@ func TestSaveMetadata_RoundTrip(t *testing.T) {
 		t.Fatalf("SaveMetadata: %v", err)
 	}
 
-	m, err := pkgtemplate.LoadMetadata(dir)
-	if err != nil {
-		t.Fatalf("LoadMetadata: %v", err)
-	}
-
-	if m == nil {
-		t.Fatal("LoadMetadata returned nil after SaveMetadata")
-	}
-
+	m := mustLoadMetadata(t, dir)
 	if m.Name != "my-tpl" {
 		t.Errorf("Name = %q, want %q", m.Name, "my-tpl")
 	}
@@ -264,10 +273,7 @@ func TestSaveMetadata_PreservesCreatedOnUpgrade(t *testing.T) {
 		t.Fatalf("SaveMetadata (install): %v", err)
 	}
 
-	m, _ := pkgtemplate.LoadMetadata(dir)
-	if m == nil {
-		t.Fatal("LoadMetadata returned nil")
-	}
+	m := mustLoadMetadata(t, dir)
 
 	// Simulate upgrade: re-write with new sha/version, original created preserved
 	// but a fresh updated timestamp.
@@ -276,11 +282,7 @@ func TestSaveMetadata_PreservesCreatedOnUpgrade(t *testing.T) {
 		t.Fatalf("SaveMetadata (upgrade): %v", err)
 	}
 
-	upgraded, _ := pkgtemplate.LoadMetadata(dir)
-	if upgraded == nil {
-		t.Fatal("LoadMetadata returned nil after upgrade")
-	}
-
+	upgraded := mustLoadMetadata(t, dir)
 	if !upgraded.Created.Equal(original) {
 		t.Errorf("Created after upgrade = %v, want %v", upgraded.Created.Time, original)
 	}
@@ -313,15 +315,7 @@ func TestLoadMetadata_MissingUpdated_FallsBackToCreated(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	m, err := pkgtemplate.LoadMetadata(dir)
-	if err != nil {
-		t.Fatalf("LoadMetadata: %v", err)
-	}
-
-	if m == nil {
-		t.Fatal("LoadMetadata returned nil")
-	}
-
+	m := mustLoadMetadata(t, dir)
 	if !m.Updated.Equal(created) {
 		t.Errorf("Updated = %v, want fallback to Created %v", m.Updated.Time, created)
 	}
