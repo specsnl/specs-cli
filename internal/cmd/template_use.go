@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -64,8 +65,8 @@ func newTemplateUseCmd(app *App) *cobra.Command {
 	return cmd
 }
 
-// executeTemplate is the shared execution logic reused by specs template use (Phase 7)
-// and specs use (Phase 8).
+// executeTemplate is the shared execution logic reused by `specs template use`
+// and `specs use`.
 func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) error {
 	cfg := a.templateConfig()
 	cfg.ContinueOnRenderError = opts.continueOnError
@@ -129,7 +130,7 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 	}
 
 	if !opts.useDefaults {
-		if err := promptContext(ctx, tmpl.Context, tmpl.Conditionals, tmpl.Referenced, provided, finalSource); err != nil {
+		if err := promptContext(a.prompter(), ctx, tmpl.Context, tmpl.Conditionals, tmpl.Referenced, provided, finalSource); err != nil {
 			return err
 		}
 	} else {
@@ -142,7 +143,6 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 		}
 	}
 
-	// Emit one log line per key in alphabetical order with its final resolved source.
 	for _, k := range sortedKeys(finalSource) {
 		slog.Debug("context key resolved", "key", k, "source", finalSource[k])
 	}
@@ -243,14 +243,67 @@ func (a *App) confirmRemoteHooks(h *hooks.Hooks, ctx map[string]any, tmpl *pkgte
 		return true, nil
 	}
 
+	p := a.prompter()
+
+	// Declining is the safe answer to a question that cannot be asked: the
+	// template is still applied, only its hooks are skipped. Failing here would
+	// break every CI job using a remote template that happens to define one.
+	if !p.canPrompt() {
+		a.Output.Warn("cannot ask for confirmation: %s — skipping hooks (pass --yes to run them)", p.refusal)
+
+		return false, nil
+	}
+
 	var proceed bool
-	if err := huh.NewForm(huh.NewGroup(
+	if err := p.run(huh.NewForm(huh.NewGroup(
 		huh.NewConfirm().Title("Allow hook execution?").Value(&proceed),
-	)).Run(); err != nil {
+	))); err != nil {
 		return false, fmt.Errorf("hook confirmation: %w", err)
 	}
 
 	return proceed, nil
+}
+
+// prompter carries what an interactive form needs: the streams it is drawn
+// through, and whether it may be drawn at all.
+//
+// It is a value rather than a reference to the App because promptContext and
+// runPromptPass are pure functions over a template's schema — the streams are
+// the only thing they need from the command.
+type prompter struct {
+	stdin  io.Reader
+	stderr io.Writer
+	// allowed is false when there is nothing that could answer a form; refusal
+	// says why, for the error.
+	allowed bool
+	refusal string
+}
+
+func (a *App) prompter() prompter {
+	return prompter{
+		stdin:   a.Stdin,
+		stderr:  a.Stderr,
+		allowed: a.canPrompt(),
+		refusal: a.promptRefusal(),
+	}
+}
+
+func (p prompter) canPrompt() bool { return p.allowed }
+
+// run draws form reading from stdin and writing to stderr — never stdout, which
+// carries the product. A form is narration by any reading: nobody wants its
+// cursor movement in `specs template use … > out.txt`, and it would corrupt
+// -o json.
+func (p prompter) run(form *huh.Form) error {
+	return form.WithInput(p.stdin).WithOutput(p.stderr).Run()
+}
+
+// cannotPrompt reports that keys could not be asked for, naming them and how to
+// supply them instead. This is what turns a silent hang in CI into an immediate
+// failure whose log says what to do.
+func (p prompter) cannotPrompt(keys []string) error {
+	return fmt.Errorf("%w: %s\nmissing values for: %s\nprovide them with --arg Key=Value, with --values, or take the schema defaults with --use-defaults",
+		specs.ErrCannotPrompt, p.refusal, strings.Join(keys, ", "))
 }
 
 // promptContext prompts the user for schema variables not already in provided.
@@ -264,6 +317,7 @@ func (a *App) confirmRemoteHooks(h *hooks.Hooks, ctx map[string]any, tmpl *pkgte
 // now-final ctx, and prompts those that are needed. This correctly handles
 // nested eq/ne gates where the gate variable is itself conditional.
 func promptContext(
+	p prompter,
 	ctx map[string]any,
 	schema map[string]any,
 	conds pkgtemplate.Conditionals,
@@ -293,7 +347,7 @@ func promptContext(
 	}
 
 	// Pass 1: always-needed variables.
-	if err := runPromptPass(ctx, schema, alwaysKeys, provided, finalSource); err != nil {
+	if err := runPromptPass(p, ctx, schema, alwaysKeys, provided, finalSource); err != nil {
 		return err
 	}
 
@@ -309,7 +363,6 @@ func promptContext(
 
 	// Iterative conditional passes: each round handles one dependency layer.
 	for len(remaining) > 0 {
-		// Find keys whose gate variables are all resolved (or not in schema).
 		var ready []string
 
 		for k := range remaining {
@@ -341,7 +394,7 @@ func promptContext(
 			}
 		}
 
-		if err := runPromptPass(ctx, schema, toPrompt, provided, finalSource); err != nil {
+		if err := runPromptPass(p, ctx, schema, toPrompt, provided, finalSource); err != nil {
 			return err
 		}
 
@@ -357,14 +410,24 @@ func promptContext(
 
 // runPromptPass builds a huh form for the given keys and runs it.
 // Results are written back into ctx and finalSource is updated with source="prompt".
+//
+// When there is nothing that could answer the form, it returns an error naming
+// every key it would have asked for rather than blocking on a read nobody will
+// answer. See prompter.cannotPrompt.
 func runPromptPass(
+	p prompter,
 	ctx map[string]any,
 	schema map[string]any,
 	keys []string,
 	provided map[string]bool,
 	finalSource map[string]string,
 ) error {
-	var fields []huh.Field
+	var (
+		fields []huh.Field
+		// asked names the keys fields were built for, in the order keys arrives —
+		// already alphabetical — so the refusal below can list them.
+		asked []string
+	)
 
 	stringResults := make(map[string]*string)
 	boolResults := make(map[string]*bool)
@@ -374,6 +437,7 @@ func runPromptPass(
 			continue
 		}
 
+		before := len(fields)
 		defaultVal := schema[key]
 
 		switch v := defaultVal.(type) {
@@ -426,23 +490,31 @@ func runPromptPass(
 				Value(ptr),
 			)
 		}
+
+		if len(fields) > before {
+			asked = append(asked, key)
+		}
 	}
 
 	if len(fields) == 0 {
 		return nil
 	}
 
-	if err := huh.NewForm(huh.NewGroup(fields...)).Run(); err != nil {
+	if !p.canPrompt() {
+		return p.cannotPrompt(asked)
+	}
+
+	if err := p.run(huh.NewForm(huh.NewGroup(fields...))); err != nil {
 		return err
 	}
 
-	for k, p := range stringResults {
-		ctx[k] = *p
+	for k, ptr := range stringResults {
+		ctx[k] = *ptr
 		finalSource[k] = "prompt"
 	}
 
-	for k, p := range boolResults {
-		ctx[k] = *p
+	for k, ptr := range boolResults {
+		ctx[k] = *ptr
 		finalSource[k] = "prompt"
 	}
 

@@ -154,7 +154,8 @@ Backwards compatibility layer is **not** used.
 
 - Zero additional dependency.
 - Structured key-value fields give context to debug messages.
-- Silent by default; activated by `--debug` on the root command.
+- Silent by default — `output.LevelSilent` sits above every level slog defines, so the silence
+  holds regardless of what level a new log point uses; activated by `--debug` on the root command.
 
 ---
 

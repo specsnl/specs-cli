@@ -135,7 +135,6 @@ func parseGitHub(rest, input string) (*Source, error) {
 	return s, nil
 }
 
-// validateGitHubName checks that a GitHub owner or repo name is valid.
 func validateGitHubName(kind, name string, maxLen int) error {
 	if name == "" {
 		return fmt.Errorf("%s is empty", kind)

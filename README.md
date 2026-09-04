@@ -78,10 +78,35 @@ stdout carries the answer, stderr the narration — so discarding stderr leaves 
 in either format (`--output` / `-o` selects `pretty` or `json`):
 
 ```sh
-specs template list -o json 2>/dev/null | jq '.[].Name'
+specs template list -o json 2>/dev/null | jq -r .name
 specs version -o json 2>/dev/null          # {"version":"v0.0.13"}
 specs template validate ./my-template -o json 2>/dev/null   # {"valid":true}
 ```
+
+`pretty` and `json` are the only accepted values; anything else exits non-zero naming the flag,
+rather than being silently treated as `pretty`.
+
+`json` is NDJSON throughout: **one object per line**, a table row included, so a killed or failed
+run still leaves every completed row readable. The keys are snake_case and independent of the
+column headings the pretty table prints, and each value keeps its own type — a count is a number,
+a timestamp is a timestamp, and a field with no value is absent rather than the `-` the table
+shows.
+
+Prompts only happen where something can answer them. With stdin not a terminal — a CI job, or
+`< /dev/null` — a template still missing a value fails immediately and names it, instead of
+blocking until the runner times out:
+
+```console
+$ specs use specsnl/go-service ./out < /dev/null
+error cannot prompt for values: stdin is not a terminal
+missing values for: project_name
+provide them with --arg Key=Value, with --values, or take the schema defaults with --use-defaults
+```
+
+Supply every variable and the command runs unattended. `--non-interactive` forces the same
+refusal at a terminal, so you can check a command before CI does. A remote template's hook
+confirmation is taken as "no" rather than an error: the template applies, the hooks are skipped,
+and `--yes` opts in.
 
 Commands that only change the filesystem (`use`, `template save`, `template download`, …) narrate
 what they did on stderr and write nothing to stdout.
@@ -102,7 +127,7 @@ plain text.
 `--output json` always carries the value as stored, never the label — so scripts read the full URL:
 
 ```sh
-specs template list -o json 2>/dev/null | jq -r '.[].Repository'
+specs template list -o json 2>/dev/null | jq -r .repository
 ```
 
 For a template registered with `template save`, that value is the source path, with your home

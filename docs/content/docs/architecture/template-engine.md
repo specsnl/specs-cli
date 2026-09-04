@@ -366,6 +366,24 @@ The condition types recognised by the AST analyser are:
 Unrecognised condition forms fall back to treating the variable as always-needed
 (conservative: over-prompt rather than under-prompt).
 
+### When a prompt cannot be answered
+
+Each pass first asks whether it is allowed to prompt at all. `App.canPrompt` says no when
+`--non-interactive` is set, and otherwise when `output.IsTTY(App.Stdin)` reports that stdin is not
+a terminal. The check is on **stdin** rather than on an output stream because the failure being
+prevented is a read with nobody to answer it: a job with a terminal on stderr and its stdin closed
+must still refuse.
+
+A pass that has fields to draw and no way to draw them returns `specs.ErrCannotPrompt`, naming
+every key it would have asked for and how to supply them. That turns a silent hang — a CI job
+blocking until the runner's timeout kills it, with nothing in the log explaining why — into an
+immediate, actionable failure.
+
+The form is drawn through `App.Stdin` and `App.Stderr`, populated in `PersistentPreRunE` from
+`cmd.InOrStdin()` and `cmd.ErrOrStderr()`. Never stdout: a prompt is narration, and its redraws
+would corrupt `--output json` and land in whatever file a caller redirected stdout to. Those seams
+are also what let a test drive a form through buffers it controls.
+
 ---
 
 ## Hooks
@@ -420,11 +438,17 @@ Hooks run arbitrary shell commands on the host. Before running any template with
 | `specs use <remote>` with hooks     | Rendered hook commands are **printed** and **interactive confirmation** is required   |
 | `specs use <remote> --yes`          | Confirmation prompt is skipped; hooks run (CI use)                                    |
 | `specs use <remote> --no-hooks`     | Hooks are **skipped**                                                                 |
+| `specs use <remote>`, no terminal   | Nothing can confirm, so the answer is **no**: hooks are skipped with a warning        |
 | Local template or registry template | No confirmation prompt; hooks run as normal                                           |
 
 **`--safe-mode` implies `--no-hooks`** in the command layer. Pass `--allow-hooks` alongside `--safe-mode` to disable only the env/filesystem template functions while still allowing hooks to execute.
 
 When running a remote template interactively (`specs use user/repo ./out`), specs prints all pre-use and post-use hook commands (rendered against the resolved context) and asks for confirmation before executing any of them. Passing `--yes` suppresses this prompt for scripted or CI use.
+
+Unlike a missing variable, an unanswerable hook confirmation is **not** an error. Declining is the
+safe reading of a question nobody can answer, so the template is still applied and only its hooks
+are skipped — failing instead would break every CI job using a remote template that happens to
+define one. The warning names `--yes` as the way to opt in.
 
 If `bash` is not on `PATH`, hook execution returns an actionable error identifying the missing shell rather than a confusing process-not-found failure.
 

@@ -29,6 +29,36 @@ func withTempRegistry(t *testing.T) string {
 	return specs.TemplateDir()
 }
 
+// mustLoadEntry fails the test when name is not registered: Load reports an
+// unregistered template as (nil, nil).
+func mustLoadEntry(t *testing.T, name string) *registry.Entry {
+	t.Helper()
+
+	entry, err := registry.Load(name)
+	if err != nil {
+		t.Fatalf("Load(%q): %v", name, err)
+	}
+
+	if entry == nil {
+		t.Fatalf("Load(%q) returned no entry", name)
+	}
+
+	return entry
+}
+
+// mustLoadEntryMetadata additionally requires __metadata.json; an entry
+// without one has a nil Metadata.
+func mustLoadEntryMetadata(t *testing.T, name string) *pkgtemplate.Metadata {
+	t.Helper()
+
+	meta := mustLoadEntry(t, name).Metadata
+	if meta == nil {
+		t.Fatalf("Load(%q) returned an entry with no Metadata", name)
+	}
+
+	return meta
+}
+
 func TestLoad_NonExistent(t *testing.T) {
 	withTempRegistry(t)
 
@@ -50,15 +80,7 @@ func TestLoad_ExistsNoMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	entry, err := registry.Load("bare-tpl")
-	if err != nil {
-		t.Fatalf("Load: unexpected error: %v", err)
-	}
-
-	if entry == nil {
-		t.Fatal("expected non-nil entry for existing template")
-	}
-
+	entry := mustLoadEntry(t, "bare-tpl")
 	if entry.Name != "bare-tpl" {
 		t.Errorf("Name = %q, want %q", entry.Name, "bare-tpl")
 	}
@@ -85,25 +107,13 @@ func TestLoad_WithMetadata(t *testing.T) {
 		t.Fatalf("SaveMetadata: %v", err)
 	}
 
-	entry, err := registry.Load("my-tpl")
-	if err != nil {
-		t.Fatalf("Load: %v", err)
+	meta := mustLoadEntryMetadata(t, "my-tpl")
+	if meta.Repository != "https://example.com/repo" {
+		t.Errorf("Repository = %q, want %q", meta.Repository, "https://example.com/repo")
 	}
 
-	if entry == nil {
-		t.Fatal("expected non-nil entry")
-	}
-
-	if entry.Metadata == nil {
-		t.Fatal("expected non-nil Metadata")
-	}
-
-	if entry.Metadata.Repository != "https://example.com/repo" {
-		t.Errorf("Repository = %q, want %q", entry.Metadata.Repository, "https://example.com/repo")
-	}
-
-	if entry.Metadata.Branch != "main" {
-		t.Errorf("Branch = %q, want %q", entry.Metadata.Branch, "main")
+	if meta.Branch != "main" {
+		t.Errorf("Branch = %q, want %q", meta.Branch, "main")
 	}
 }
 

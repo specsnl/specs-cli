@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"context"
-	"log/slog"
+	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -35,6 +35,12 @@ Use "specs <command> --help" for more information about a command.`,
 			safeMode, _ := cmd.Flags().GetBool("safe-mode")
 			noEnvPrefix, _ := cmd.Flags().GetBool("no-env-prefix")
 			outputFlag, _ := cmd.Flags().GetString("output")
+			nonInteractive, _ := cmd.Flags().GetBool("non-interactive")
+
+			app.Stdin = cmd.InOrStdin()
+			app.Stdout = cmd.OutOrStdout()
+			app.Stderr = cmd.ErrOrStderr()
+			app.NonInteractive = nonInteractive
 
 			app.SafeMode = safeMode
 			if noEnvPrefix {
@@ -43,25 +49,26 @@ Use "specs <command> --help" for more information about a command.`,
 				app.HookEnvPrefix = specs.HookEnvPrefix
 			}
 
-			// Wire the output writer based on the --output flag.
-			switch outputFlag {
-			case "json":
+			format := output.Format(outputFlag)
+
+			// The writer is wired before the format is validated, counter-intuitive
+			// as that reads: the rejection below is reported through app.Output, so
+			// it needs somewhere to go. Anything that is not json is wired as
+			// pretty and then rejected on the next line, which costs nothing.
+			app.Output = output.NewPrettyWriter(cmd.OutOrStdout(), cmd.ErrOrStderr(), nil)
+			if format == output.FormatJSON {
 				app.Output = output.NewJSONWriter(cmd.OutOrStdout(), cmd.ErrOrStderr())
-			default:
-				app.Output = output.NewPrettyWriter(cmd.OutOrStdout(), cmd.ErrOrStderr(), nil)
 			}
 
-			// Configure the slog logger level; swap to JSON handler when both
-			// --debug and --output=json are set.
-			if debug {
-				app.level.Set(slog.LevelDebug)
-
-				if outputFlag == "json" {
-					slog.SetDefault(slog.New(slog.NewJSONHandler(cmd.ErrOrStderr(), &slog.HandlerOptions{Level: app.level})))
-				}
-			} else {
-				app.level.Set(slog.LevelInfo)
+			if !format.Valid() {
+				return fmt.Errorf("invalid --output %q: want %q or %q",
+					outputFlag, output.FormatPretty, output.FormatJSON)
 			}
+
+			// Re-install the logger now the flags are known: on the command's own
+			// stderr, so a test can read what --debug wrote, and in the format
+			// --output selected. Without --debug it is silent.
+			output.SetupLogger(cmd.ErrOrStderr(), format, debug)
 
 			return nil
 		},
@@ -73,7 +80,9 @@ Use "specs <command> --help" for more information about a command.`,
 	cmd.PersistentFlags().Bool("debug", false, "Enable debug output")
 	cmd.PersistentFlags().Bool("safe-mode", false, "Disable env/filesystem template functions; implies --no-hooks (override with --allow-hooks)")
 	cmd.PersistentFlags().Bool("no-env-prefix", false, "Disable the SPECS_ prefix on hook environment variables")
-	cmd.PersistentFlags().StringP("output", "o", "pretty", `Output format: "pretty" or "json"`)
+	cmd.PersistentFlags().Bool("non-interactive", false, "Never prompt; fail instead of asking for a missing value")
+	cmd.PersistentFlags().StringP("output", "o", string(output.FormatPretty),
+		fmt.Sprintf("Output format: %q or %q", output.FormatPretty, output.FormatJSON))
 
 	cmd.AddCommand(newResetRegistryCmd(app))
 	cmd.AddCommand(newTemplateCmd(app))

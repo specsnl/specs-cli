@@ -48,13 +48,14 @@ func TestUpdate_TooManyArgs(t *testing.T) {
 	}
 }
 
-// assertNothingChecked asserts the JSON product is an empty record set and that
-// the explanation was narrated on stderr instead of mixed into it.
+// assertNothingChecked asserts the JSON product is an empty record set — no
+// lines, which is what an empty NDJSON document is — and that the explanation
+// was narrated on stderr instead of mixed into it.
 func assertNothingChecked(t *testing.T, stdout, stderr string) {
 	t.Helper()
 
-	if got := strings.TrimSpace(stdout); got != "[]" {
-		t.Errorf("stdout = %q, want an empty record set %q", got, "[]")
+	if stdout != "" {
+		t.Errorf("stdout = %q, want an empty record set", stdout)
 	}
 
 	if !strings.Contains(stderr, "no trackable templates") {
@@ -118,11 +119,14 @@ func TestUpdate_CheckedTemplate_IsARowOnStdout(t *testing.T) {
 		advance bool
 		// The version the check reports is only set once the source moved on, and
 		// it is a `git describe` string, so the advanced case matches a prefix.
-		wantStatus string
-		wantLatest string
+		// Up to date, there is no version at all and the field is absent rather
+		// than the "-" the table shows.
+		wantStatus  string
+		wantLatest  string
+		absentField string
 	}{
-		{"up-to-date", false, `"Status":"up-to-date"`, `"Latest":"-"`},
-		{"advanced source", true, `"Status":"update available"`, `"Latest":"1.0.0-1-g`},
+		{"up-to-date", false, `"status":"up-to-date","up_to_date":true`, "", "latest_version"},
+		{"advanced source", true, `"status":"update available","up_to_date":false`, `"latest_version":"1.0.0-1-g`, ""},
 	}
 
 	for _, tt := range tests {
@@ -140,10 +144,14 @@ func TestUpdate_CheckedTemplate_IsARowOnStdout(t *testing.T) {
 			}
 
 			got := strings.TrimSpace(stdout)
-			for _, want := range []string{`"Name":"loc"`, tt.wantStatus, tt.wantLatest} {
-				if !strings.Contains(got, want) {
+			for _, want := range []string{`"name":"loc"`, tt.wantStatus, tt.wantLatest} {
+				if want != "" && !strings.Contains(got, want) {
 					t.Errorf("stdout = %q, want it to contain %q", got, want)
 				}
+			}
+
+			if tt.absentField != "" && strings.Contains(got, tt.absentField) {
+				t.Errorf("stdout = %q, want no %q field", got, tt.absentField)
 			}
 
 			if stderr != "" {

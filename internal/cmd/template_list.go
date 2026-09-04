@@ -30,6 +30,52 @@ func isTrackable(meta *pkgtemplate.Metadata) bool {
 	return meta.Branch != ""
 }
 
+// templateRow is one row of `template list`.
+//
+// Created and Updated carry the timestamps themselves rather than the "3 days
+// ago" the table shows — a relative phrase is a reading aid, not something a
+// script can compute with. A field with no value is absent rather than "-",
+// which is likewise a display convention.
+type templateRow struct {
+	Name       string     `json:"name"`
+	Repository string     `json:"repository,omitempty"`
+	Version    string     `json:"version,omitempty"`
+	Status     string     `json:"status"`
+	Created    *time.Time `json:"created,omitempty"`
+	Updated    *time.Time `json:"updated,omitempty"`
+}
+
+// dash is the placeholder a table shows for a value a template does not have.
+// It never reaches JSON, where the field is simply absent.
+const dash = "-"
+
+func orDash(value string) string {
+	if value == "" {
+		return dash
+	}
+
+	return value
+}
+
+// relativeOrDash renders a timestamp the way a reader wants it — "3 days ago".
+func relativeOrDash(t *time.Time) string {
+	if t == nil {
+		return dash
+	}
+
+	return pkgtemplate.JSONTime{Time: *t}.String()
+}
+
+// repositoryCell keeps the dash out of the repository label without letting it
+// into the cell's Value, which is what --output json would have read.
+func repositoryCell(repo string) output.Cell {
+	if repo == "" {
+		return output.Cell{Text: dash}
+	}
+
+	return repoCell(repo)
+}
+
 func newTemplateListCmd(app *App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "list",
@@ -157,43 +203,46 @@ func newTemplateListCmd(app *App) *cobra.Command {
 
 			_ = eg.Wait()
 
-			headers := []string{"Name", "Repository", "Version", "Status", "Created", "Updated"}
-
-			var rows [][]output.Cell
+			rows := make([]templateRow, 0, len(tmplEntries))
 
 			for _, entry := range tmplEntries {
-				repo, version, created, updated := "-", "-", "-", "-"
+				row := templateRow{
+					Name:   entry.name,
+					Status: statusLabel(entry.status, isTrackable(entry.meta)),
+				}
 				if entry.meta != nil {
-					repo = entry.meta.Repository
-					created = entry.meta.Created.String()
+					row.Repository = entry.meta.Repository
+					row.Version = entry.meta.Version
 
-					updated = entry.meta.Updated.String()
-					if entry.meta.Version != "" {
-						version = entry.meta.Version
+					if !entry.meta.Created.IsZero() {
+						row.Created = &entry.meta.Created.Time
+					}
+
+					if !entry.meta.Updated.IsZero() {
+						row.Updated = &entry.meta.Updated.Time
 					}
 				}
 
-				statusStr := statusLabel(entry.status, isTrackable(entry.meta))
-				rows = append(rows, []output.Cell{
-					{Value: entry.name},
-					repoCell(repo),
-					{Value: version},
-					{Value: statusStr},
-					{Value: created},
-					{Value: updated},
-				})
+				rows = append(rows, row)
 			}
 
-			// The empty answer keeps the shape of the non-empty one — an empty
-			// table on stdout — so a consumer parses one document either way.
+			// The empty answer keeps the shape of the non-empty one — the table
+			// on stdout, whether or not it has rows — and the explanation for it
+			// is narration.
+			output.Table(app.Output, rows,
+				output.Col("Name", func(r templateRow) string { return r.Name }),
+				output.ColCell("Repository", func(r templateRow) output.Cell { return repositoryCell(r.Repository) }),
+				output.Col("Version", func(r templateRow) string { return orDash(r.Version) }),
+				output.Col("Status", func(r templateRow) string { return r.Status }),
+				output.Col("Created", func(r templateRow) string { return relativeOrDash(r.Created) }),
+				output.Col("Updated", func(r templateRow) string { return relativeOrDash(r.Updated) }),
+			)
+
 			if len(rows) == 0 {
-				app.Output.Table(headers, nil)
 				app.Output.Info("no templates registered — run 'specs template download' or 'specs template save'")
 
 				return nil
 			}
-
-			app.Output.Table(headers, rows)
 
 			if networkErrorSeen {
 				app.Output.Warn("could not reach one or more remotes — status may be outdated")

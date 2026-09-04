@@ -40,8 +40,9 @@ func (c Cell) Label() string {
 	return c.Value
 }
 
-// Rows adapts plain string rows into cells that display their own value, for
-// the common table that needs no separate label.
+// Rows adapts plain string rows into cells that display their own value, for a
+// direct RenderTable call that needs no separate label. A command builds its
+// table with the generic Table instead, which derives the cells from its rows.
 func Rows(rows [][]string) [][]Cell {
 	cells := make([][]Cell, len(rows))
 

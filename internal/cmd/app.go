@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"context"
-	"log/slog"
+	"io"
 	"os"
 	"time"
 
@@ -11,47 +11,25 @@ import (
 	"github.com/specsnl/specs-cli/internal/util/output"
 )
 
-// HandlerFactory creates a slog.Handler wired to the given LevelVar.
-// The LevelVar is passed so that WithDebug can adjust the level at runtime
-// regardless of which handler is in use.
-type HandlerFactory func(level *slog.LevelVar) slog.Handler
-
-// Option is a functional option for configuring an App.
-type Option func(*App)
-
-// WithDebug returns an Option that sets the log level to debug when enabled,
-// or back to info when false.
-func WithDebug(enabled bool) Option {
-	return func(a *App) {
-		if enabled {
-			a.level.Set(slog.LevelDebug)
-		} else {
-			a.level.Set(slog.LevelInfo)
-		}
-	}
-}
-
-// WithHandler returns an Option that replaces the global default logger with one
-// built by the provided factory. The factory receives the App's LevelVar so the
-// handler can honour runtime level changes from WithDebug.
-//
-// Example — switch to JSON output:
-//
-//	app := NewApp(WithHandler(func(level *slog.LevelVar) slog.Handler {
-//	    return slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level})
-//	}))
-func WithHandler(factory HandlerFactory) Option {
-	return func(a *App) {
-		slog.SetDefault(slog.New(factory(a.level)))
-	}
-}
-
 // App holds application-wide dependencies shared across all commands.
 type App struct {
 	Output        output.Writer
-	level         *slog.LevelVar
 	SafeMode      bool
 	HookEnvPrefix string // prefix for context keys injected as env vars into hooks
+
+	// Stdin, Stdout and Stderr are the process streams as the running command
+	// sees them, populated in PersistentPreRunE from cmd.InOrStdin() and friends.
+	// An interactive form is drawn through these rather than through os.Stdin and
+	// os.Stdout, so a test can drive a prompt with buffers it controls — and so
+	// the form never lands on stdout, which carries the product.
+	Stdin  io.Reader
+	Stdout io.Writer
+	Stderr io.Writer
+
+	// NonInteractive refuses every prompt even at a terminal, so a developer can
+	// reproduce what CI will do. A missing terminal on Stdin has the same effect
+	// on its own; see App.canPrompt.
+	NonInteractive bool
 
 	// checkRemoteFn is the function used by template list to query remote status.
 	// Defaults to pkggit.CheckRemoteContext; tests may substitute a fake.
@@ -62,29 +40,41 @@ type App struct {
 	refreshTimeout time.Duration
 }
 
-// NewApp creates an App. The default logger writes text to stderr at info level and
-// is registered as the global slog default. Use WithHandler to substitute a different
-// handler; use WithDebug to raise the level.
-// Options are applied in order after the default logger is initialised.
-func NewApp(opts ...Option) *App {
-	level := new(slog.LevelVar)
-	level.Set(slog.LevelInfo)
+// NewApp creates an App. The silent logger it installs writes to os.Stderr
+// because no command — and therefore no cmd.ErrOrStderr() — exists yet; see
+// output.SetupLogger for why it is installed twice.
+func NewApp() *App {
+	output.SetupLogger(os.Stderr, output.FormatPretty, false)
 
-	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})))
-
-	app := &App{
+	return &App{
 		Output:         output.NewDefaultPrettyWriter(),
-		level:          level,
+		Stdin:          os.Stdin,
+		Stdout:         os.Stdout,
+		Stderr:         os.Stderr,
 		checkRemoteFn:  pkggit.CheckRemoteContext,
 		checkTimeout:   10 * time.Second,
 		refreshTimeout: 30 * time.Second,
 	}
+}
 
-	for _, opt := range opts {
-		opt(app)
+// canPrompt reports whether an interactive form may be drawn: --non-interactive
+// forbids it outright, and otherwise there has to be a terminal to answer it.
+//
+// Stdin is the stream that decides. A job with a terminal on stderr but its
+// stdin closed would otherwise block on a read nobody can answer — the hang this
+// check exists to turn into an error.
+func (a *App) canPrompt() bool {
+	return !a.NonInteractive && output.IsTTY(a.Stdin)
+}
+
+// promptRefusal explains why prompting is off, for the error naming what could
+// not be asked for.
+func (a *App) promptRefusal() string {
+	if a.NonInteractive {
+		return "--non-interactive is set"
 	}
 
-	return app
+	return "stdin is not a terminal"
 }
 
 // templateConfig translates App-level flags into a template.Config.

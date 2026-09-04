@@ -1,12 +1,16 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"charm.land/huh/v2"
 
 	"github.com/specsnl/specs-cli/internal/specs"
 )
@@ -676,8 +680,6 @@ func TestTemplateUse_SafeMode_SkipsHooks(t *testing.T) {
 	}
 }
 
-// TestExecuteTemplate_RemoteHooks_RunsWithYes verifies that when remote=true and yes=true,
-// hooks execute without an interactive prompt.
 func TestExecuteTemplate_RemoteHooks_RunsWithYes(t *testing.T) {
 	dir := t.TempDir()
 	sentinel := filepath.Join(t.TempDir(), "hook-ran")
@@ -701,8 +703,7 @@ func TestExecuteTemplate_RemoteHooks_RunsWithYes(t *testing.T) {
 	}
 }
 
-// TestExecuteTemplate_RemoteHooks_SafeMode verifies that safe-mode skips hooks
-// even for remote sources (no confirmation needed).
+// Safe mode skips hooks before the remote confirmation is ever reached.
 func TestExecuteTemplate_RemoteHooks_SafeMode(t *testing.T) {
 	dir := t.TempDir()
 	sentinel := filepath.Join(t.TempDir(), "hook-ran")
@@ -725,7 +726,6 @@ func TestExecuteTemplate_RemoteHooks_SafeMode(t *testing.T) {
 	}
 }
 
-// TestExecuteTemplate_SafeMode_AllowHooks verifies that --allow-hooks overrides safe-mode.
 func TestExecuteTemplate_SafeMode_AllowHooks(t *testing.T) {
 	dir := t.TempDir()
 	sentinel := filepath.Join(t.TempDir(), "hook-ran")
@@ -772,5 +772,135 @@ func TestTemplateUse_AmbiguousProjectFiles(t *testing.T) {
 	_, err := executeCmd("template", "use", "--use-defaults", "tpl", t.TempDir())
 	if err == nil {
 		t.Fatal("expected error when both project.yaml and project.yml exist, got nil")
+	}
+}
+
+// A run that still needs a value fails immediately, naming the variable, rather
+// than blocking on a form nobody can answer.
+func TestTemplateUse_NoTerminal_NamesTheMissingVariables(t *testing.T) {
+	withTempRegistry(t)
+	src := makeTemplateWithVar(t, "Name", "world")
+
+	err := saveAndUse(t, src, "tpl", t.TempDir())
+	if err == nil {
+		t.Fatal("expected an error when a value is missing and nothing can be prompted")
+	}
+
+	if !errors.Is(err, specs.ErrCannotPrompt) {
+		t.Fatalf("error = %v, want it to wrap ErrCannotPrompt", err)
+	}
+
+	for _, want := range []string{"stdin is not a terminal", "missing values for: Name", "--use-defaults"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q does not mention %q", err, want)
+		}
+	}
+}
+
+// --non-interactive says the same thing for a different reason, so a developer
+// at a terminal can see what CI will do.
+func TestTemplateUse_NonInteractiveFlag_RefusesToPrompt(t *testing.T) {
+	withTempRegistry(t)
+	src := makeTemplateWithVar(t, "Name", "world")
+
+	err := saveAndUse(t, src, "tpl", t.TempDir(), "--non-interactive")
+	if err == nil {
+		t.Fatal("expected an error with --non-interactive and a missing value")
+	}
+
+	if !strings.Contains(err.Error(), "--non-interactive is set") {
+		t.Errorf("error = %q, want it to name the flag as the reason", err)
+	}
+}
+
+// Supplying every value never reaches a prompt, so the guard above cannot fire.
+func TestTemplateUse_ValuesSupplied_NeverPrompts(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"--arg", []string{"--arg", "Name=supplied"}, "hello supplied"},
+		{"--use-defaults", []string{"--use-defaults"}, "hello world"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			withTempRegistry(t)
+
+			src := makeTemplateWithVar(t, "Name", "world")
+			target := t.TempDir()
+
+			if err := saveAndUse(t, src, "tpl", target, tt.args...); err != nil {
+				t.Fatalf("template use: %v", err)
+			}
+
+			got, err := os.ReadFile(filepath.Join(target, "out.txt"))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if string(got) != tt.want {
+				t.Errorf("rendered %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// A remote template's hook confirmation cannot be asked for either, but the
+// answer is to decline rather than to fail: the template still applies, only
+// its hooks are skipped.
+func TestExecuteTemplate_RemoteHooks_NoTerminal_SkipsHooks(t *testing.T) {
+	dir := t.TempDir()
+	sentinel := filepath.Join(t.TempDir(), "hook-ran")
+	project := "Name: x\nhooks:\n  post-use:\n    - touch " + sentinel + "\n"
+	buildMinimalTemplate(t, dir, project, "f.txt", "x")
+
+	app := NewApp()
+
+	if err := app.executeTemplate(dir, t.TempDir(), executeOpts{useDefaults: true, remote: true}); err != nil {
+		t.Fatalf("executeTemplate: %v", err)
+	}
+
+	if _, err := os.Stat(sentinel); err == nil {
+		t.Error("post-use hook ran without a confirmation anyone could give")
+	}
+}
+
+// The form is drawn on stderr, never on stdout: stdout carries the product, and
+// a prompt's redraws would corrupt `-o json` and end up inside the file a
+// caller redirected to.
+func TestPrompter_DrawsOnStderr(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+
+	p := prompter{
+		// A ctrl-c ends the form immediately, which is all this needs: the
+		// question is where the drawing went, not what was answered.
+		stdin:   strings.NewReader("\x03"),
+		stderr:  &stderr,
+		allowed: true,
+	}
+
+	var proceed bool
+
+	done := make(chan error, 1)
+	go func() {
+		done <- p.run(huh.NewForm(huh.NewGroup(
+			huh.NewConfirm().Title("Allow hook execution?").Value(&proceed),
+		)))
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the form did not return; it is reading from something other than the given stdin")
+	}
+
+	if stderr.Len() == 0 {
+		t.Error("nothing was drawn on stderr")
+	}
+
+	if stdout.Len() != 0 {
+		t.Errorf("drew %q on stdout", stdout.String())
 	}
 }

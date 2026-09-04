@@ -20,6 +20,23 @@ var (
 	styleError = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.ANSIColor(9))  // bright red
 )
 
+// Format names an --output value. The constants are the flag values themselves,
+// so the flag default, the writer selection and the help text all read from one
+// place rather than repeating a bare string literal.
+type Format string
+
+const (
+	// FormatPretty is the default: lipgloss-styled text for a reader.
+	FormatPretty Format = "pretty"
+	// FormatJSON is NDJSON for a consumer.
+	FormatJSON Format = "json"
+)
+
+// Valid reports whether f is a format the CLI accepts.
+func (f Format) Valid() bool {
+	return f == FormatPretty || f == FormatJSON
+}
+
 // Writer is the interface for all user-facing output.
 //
 // stdout carries the product — what a caller would redirect to a file or pipe
@@ -32,11 +49,11 @@ type Writer interface {
 	// WriteErr renders err as an error-level message. JSON output includes an
 	// "error_kind" field when err wraps a known specs sentinel.
 	WriteErr(err error)
-	// Table renders rows under headers. A Cell's Value is what JSON emits and
-	// its Text what the pretty writer displays, so a command can shorten a
-	// label without changing what a script reads back. Wrap plain string rows
-	// with Rows.
-	Table(headers []string, rows [][]Cell)
+	// WriteTable renders a table: the pretty writer draws its cells, the JSON
+	// writer marshals its records one per line. Build the TableData with the
+	// generic Table function rather than calling this directly — that is what
+	// keeps the two forms derived from the same rows.
+	WriteTable(data TableData)
 	// WriteResult renders a single-line result on stdout: the product of a command
 	// whose answer is not a table. Pretty writes the formatted text; JSON marshals
 	// record and ignores the text, so every stdout line stays a typed object.
@@ -133,8 +150,9 @@ func (w *PrettyWriter) WriteErr(err error) {
 	w.Error("%v", err)
 }
 
-func (w *PrettyWriter) Table(headers []string, rows [][]Cell) {
-	fmt.Fprintln(w.stdout, RenderTable(headers, rows, w.tableWidth()))
+// The records are ignored: they are the machine form of the same rows.
+func (w *PrettyWriter) WriteTable(data TableData) {
+	fmt.Fprintln(w.stdout, RenderTable(data.Headers, data.Cells, w.tableWidth()))
 }
 
 // tableWidth resolves the width a table may occupy, resolved per call so a
@@ -143,7 +161,7 @@ func (w *PrettyWriter) Table(headers []string, rows [][]Cell) {
 // escape hatch for pipes and tests — else 0 for unconstrained, which is what a
 // file or a pipe wants.
 func (w *PrettyWriter) tableWidth() int {
-	if f, ok := w.rawStdout.(interface{ Fd() uintptr }); ok {
+	if f, ok := w.rawStdout.(fileDescriptor); ok {
 		fd := f.Fd()
 		if term.IsTerminal(fd) {
 			if width, _, err := term.GetSize(fd); err == nil && width > 0 {
@@ -222,27 +240,26 @@ func (w *JSONWriter) WriteErr(err error) {
 	fmt.Fprintln(w.stderr, string(data))
 }
 
-// Table outputs an array of JSON objects, one per row, keyed by column header.
+// WriteTable emits one JSON object per row.
 //
-// Only a cell's Value is emitted: Text is a label for a reader and Link is a
-// terminal capability, neither of which belongs in a stream a consumer parses.
-func (w *JSONWriter) Table(headers []string, rows [][]Cell) {
-	records := make([]map[string]string, len(rows))
-
-	for i, row := range rows {
-		record := make(map[string]string, len(headers))
-
-		for j, header := range headers {
-			if j < len(row) {
-				record[header] = row[j].Value
-			}
+// One object per line, not one array. An array cannot be parsed until its
+// closing bracket arrives, so a run that is killed or fails partway leaves
+// nothing readable — the property NDJSON exists to provide. An empty table is
+// therefore no lines at all, which is the empty NDJSON document.
+//
+// The cells are ignored entirely: a display label and an OSC 8 link are what a
+// terminal needs, and neither belongs in a stream a consumer parses.
+func (w *JSONWriter) WriteTable(data TableData) {
+	for _, record := range data.Records {
+		// A record JSON cannot represent is skipped rather than written as a
+		// broken line into a stream someone is parsing — as WriteResult does.
+		encoded, err := json.Marshal(record)
+		if err != nil {
+			continue
 		}
 
-		records[i] = record
+		fmt.Fprintln(w.stdout, string(encoded))
 	}
-
-	data, _ := json.Marshal(records)
-	fmt.Fprintln(w.stdout, string(data))
 }
 
 // The formatted text is dropped: a consumer reads the record's fields rather

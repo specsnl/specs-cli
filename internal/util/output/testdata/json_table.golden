@@ -1,1 +1,2 @@
-[{"Name":"my-tpl","Version":"1.0.0"},{"Name":"other","Version":"2.0.0"}]
+{"name":"my-tpl","version":"1.0.0","updates_available":3}
+{"name":"other","version":"2.0.0","updates_available":0}
