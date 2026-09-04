@@ -109,6 +109,35 @@ services:
       - .:/src
       - cache:/cache
 
+  vhs:
+    profiles: ["demo"]
+    user: ${FIXUID:-1000}:${FIXGID:-1000}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: vhs
+    working_dir: /src/docs/demo
+    environment:
+      # ttyd writes into HOME, and the container runs under the host uid, which has no
+      # entry in /etc/passwd and therefore no writable home of its own.
+      HOME: /tmp
+    # The mounted socket is root-owned; the host uid needs the root group to reach it.
+    group_add:
+      - "0"
+    volumes:
+      - .:/src
+      # ./dev holds the Linux specs built by `task demo:record:*`; /usr/local/bin is empty
+      # in the image, so this is what puts the recorded binary on PATH.
+      - ./dev:/usr/local/bin:ro
+      # The recorded template's post-use hooks shell out to `docker compose`.
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Those hooks start sibling containers, and the bind mounts they declare
+      # (`./:/var/www/`) are resolved by the *host* daemon — so the tapes scaffold into a
+      # scratch directory mounted at the same path on both sides. Keeping it out of the
+      # checkout also keeps the recorder's own absolute path (`git init` prints one) out of
+      # the recorded frames.
+      - /tmp/specs-demo:/tmp/specs-demo
+
   golangci-lint:
     profiles: ["lint"]
     user: ${FIXUID:-1000}:${FIXGID:-1000}
