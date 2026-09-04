@@ -40,13 +40,9 @@ type App struct {
 	refreshTimeout time.Duration
 }
 
-// NewApp creates an App.
-//
-// The logger it installs is silent: nothing is emitted until PersistentPreRunE
-// calls output.SetupLogger again with the resolved --debug and --output flags.
-// This first call exists only so that a failure before flag parsing has a
-// default logger to reach, and it writes to os.Stderr because no command — and
-// therefore no cmd.ErrOrStderr() — exists yet.
+// NewApp creates an App. The silent logger it installs writes to os.Stderr
+// because no command — and therefore no cmd.ErrOrStderr() — exists yet; see
+// output.SetupLogger for why it is installed twice.
 func NewApp() *App {
 	output.SetupLogger(os.Stderr, output.FormatPretty, false)
 

@@ -98,7 +98,6 @@ func (t *Template) Validate() ([]ValidationIssue, error) {
 		}
 	}
 
-	// Scan template files and path expressions for unknown variable references.
 	srcRoot := filepath.Join(t.Root, specs.TemplateDirFile)
 
 	err := filepath.WalkDir(srcRoot, func(path string, d fs.DirEntry, err error) error {
@@ -113,7 +112,7 @@ func (t *Template) Validate() ([]ValidationIssue, error) {
 
 		reportPath := filepath.ToSlash(relFromRoot)
 
-		// Check the entry's name as a path template expression.
+		// A file or directory name is itself a path template expression.
 		for _, k := range extractRefs(d.Name(), t.funcMap, t.cfg.delims()) {
 			if !allDefined[k] {
 				addIssue(ErrUnknownVariable, k, reportPath)
@@ -124,7 +123,6 @@ func (t *Template) Validate() ([]ValidationIssue, error) {
 			return nil
 		}
 
-		// Check file content.
 		data, readErr := os.ReadFile(path)
 		if readErr != nil {
 			return readErr
@@ -142,15 +140,14 @@ func (t *Template) Validate() ([]ValidationIssue, error) {
 		return nil, err
 	}
 
-	// Unused variables: defined in project.yaml but not referenced anywhere.
-	// Template.Referenced already includes variables used in computed expressions.
+	// Template.Referenced already includes variables used in computed
+	// expressions.
 	for k := range t.Context {
 		if !t.Referenced[k] {
 			addIssue(ErrUnusedVariable, k, "")
 		}
 	}
 
-	// Unused computed: defined under "computed" but not referenced anywhere.
 	for k := range t.ComputedDefs {
 		if !t.Referenced[k] {
 			addIssue(ErrUnusedComputed, k, "")

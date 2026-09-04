@@ -47,8 +47,7 @@ type TableData struct {
 //
 // It is a function rather than a Writer method because Go has no generic
 // methods. Going through it is also what guarantees every row has exactly one
-// cell per header — alignment a raw [][]Cell can silently get wrong — and what
-// keeps the two forms of a row derived from the same value.
+// cell per header — alignment a raw [][]Cell can silently get wrong.
 func Table[T any](w Writer, rows []T, cols ...Column[T]) {
 	data := TableData{
 		Headers: make([]string, len(cols)),

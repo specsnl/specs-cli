@@ -32,11 +32,6 @@ func isTrackable(meta *pkgtemplate.Metadata) bool {
 
 // templateRow is one row of `template list`.
 //
-// The json tags are what a consumer's jq filter matches on; the column headings
-// beside them are prose for a reader and can be reworded without changing a
-// single key. That separation is the point of the type: one string used to do
-// both jobs, and `Name` was a JSON key only because it was also a heading.
-//
 // Created and Updated carry the timestamps themselves rather than the "3 days
 // ago" the table shows — a relative phrase is a reading aid, not something a
 // script can compute with. A field with no value is absent rather than "-",

@@ -134,7 +134,6 @@ func ApplyComputed(ctx map[string]any, defs map[string]string, funcMap texttempl
 		return ctx, nil
 	}
 
-	// Build dependency graph among computed keys.
 	keys := make([]string, 0, len(defs))
 	for k := range defs {
 		keys = append(keys, k)
@@ -150,7 +149,6 @@ func ApplyComputed(ctx map[string]any, defs map[string]string, funcMap texttempl
 		return nil, fmt.Errorf("computed values: %w", err)
 	}
 
-	// Copy the context so we don't mutate the caller's map.
 	result := make(map[string]any, len(ctx)+len(defs))
 	maps.Copy(result, ctx)
 
@@ -299,7 +297,6 @@ func extractComputed(raw map[string]any) (map[string]string, error) {
 // topological order so that each key's pre-fill value is correct before the user is prompted.
 // It returns a new map; the caller's input is never modified.
 func resolveReferencedDefaults(ctx map[string]any, funcMap texttemplate.FuncMap, delims specs.Delimiters) (map[string]any, error) {
-	// Find keys whose string value is a template expression.
 	var refKeys []string
 
 	for k, v := range ctx {
@@ -322,7 +319,6 @@ func resolveReferencedDefaults(ctx map[string]any, funcMap texttemplate.FuncMap,
 		return nil, fmt.Errorf("referenced defaults: %w", err)
 	}
 
-	// Copy the input map so the caller's map is not mutated.
 	result := make(map[string]any, len(ctx))
 	maps.Copy(result, ctx)
 

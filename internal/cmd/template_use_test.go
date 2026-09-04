@@ -680,8 +680,6 @@ func TestTemplateUse_SafeMode_SkipsHooks(t *testing.T) {
 	}
 }
 
-// TestExecuteTemplate_RemoteHooks_RunsWithYes verifies that when remote=true and yes=true,
-// hooks execute without an interactive prompt.
 func TestExecuteTemplate_RemoteHooks_RunsWithYes(t *testing.T) {
 	dir := t.TempDir()
 	sentinel := filepath.Join(t.TempDir(), "hook-ran")
@@ -705,8 +703,7 @@ func TestExecuteTemplate_RemoteHooks_RunsWithYes(t *testing.T) {
 	}
 }
 
-// TestExecuteTemplate_RemoteHooks_SafeMode verifies that safe-mode skips hooks
-// even for remote sources (no confirmation needed).
+// Safe mode skips hooks before the remote confirmation is ever reached.
 func TestExecuteTemplate_RemoteHooks_SafeMode(t *testing.T) {
 	dir := t.TempDir()
 	sentinel := filepath.Join(t.TempDir(), "hook-ran")
@@ -729,7 +726,6 @@ func TestExecuteTemplate_RemoteHooks_SafeMode(t *testing.T) {
 	}
 }
 
-// TestExecuteTemplate_SafeMode_AllowHooks verifies that --allow-hooks overrides safe-mode.
 func TestExecuteTemplate_SafeMode_AllowHooks(t *testing.T) {
 	dir := t.TempDir()
 	sentinel := filepath.Join(t.TempDir(), "hook-ran")
@@ -779,9 +775,8 @@ func TestTemplateUse_AmbiguousProjectFiles(t *testing.T) {
 	}
 }
 
-// A non-interactive run that still needs a value fails immediately, naming the
-// variable, rather than blocking on a form nobody can answer. That hang — with
-// no output explaining it — is what this guard exists to prevent.
+// A run that still needs a value fails immediately, naming the variable, rather
+// than blocking on a form nobody can answer.
 func TestTemplateUse_NoTerminal_NamesTheMissingVariables(t *testing.T) {
 	withTempRegistry(t)
 	src := makeTemplateWithVar(t, "Name", "world")

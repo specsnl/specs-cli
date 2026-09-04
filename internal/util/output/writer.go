@@ -240,9 +240,7 @@ func (w *JSONWriter) WriteErr(err error) {
 	fmt.Fprintln(w.stderr, string(data))
 }
 
-// WriteTable emits one JSON object per row: the row values themselves, so a
-// number stays a number and the keys come from the row type's json tags rather
-// than from a column heading written for a reader.
+// WriteTable emits one JSON object per row.
 //
 // One object per line, not one array. An array cannot be parsed until its
 // closing bracket arrives, so a run that is killed or fails partway leaves

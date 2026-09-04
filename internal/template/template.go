@@ -236,7 +236,6 @@ func (t *Template) Execute(targetDir string) error {
 			return nil // skip the root itself
 		}
 
-		// 1. Skip OS/editor metadata files.
 		if ignoredFiles[d.Name()] {
 			if d.IsDir() {
 				return filepath.SkipDir
@@ -245,7 +244,6 @@ func (t *Template) Execute(targetDir string) error {
 			return nil
 		}
 
-		// 2. Render the relative path as a template to get the destination path.
 		destRel, err := t.renderName(rel, ctx)
 		if err != nil || strings.TrimSpace(destRel) == "" {
 			slog.Debug("skipping path", "path", rel, "error", err)
@@ -261,7 +259,8 @@ func (t *Template) Execute(targetDir string) error {
 			return nil
 		}
 
-		// 3. Skip if any path segment is empty (conditional directory exclusion).
+		// An empty path segment means a conditional rendered away a directory
+		// name, which excludes the whole subtree.
 		if hasEmptySegment(destRel) {
 			if !d.IsDir() {
 				skipped++
@@ -276,12 +275,10 @@ func (t *Template) Execute(targetDir string) error {
 
 		destPath := filepath.Join(targetDir, destRel)
 
-		// 4. Directory: create it.
 		if d.IsDir() {
 			return os.MkdirAll(destPath, 0755)
 		}
 
-		// 5. File: determine copy strategy.
 		relForward := filepath.ToSlash(rel)
 		if t.verbatim.Matches(relForward) || isBinary(srcPath) {
 			slog.Debug("file decision", "path", rel, "dest", destPath, "action", "verbatim")

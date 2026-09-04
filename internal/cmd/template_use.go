@@ -65,8 +65,8 @@ func newTemplateUseCmd(app *App) *cobra.Command {
 	return cmd
 }
 
-// executeTemplate is the shared execution logic reused by specs template use (Phase 7)
-// and specs use (Phase 8).
+// executeTemplate is the shared execution logic reused by `specs template use`
+// and `specs use`.
 func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) error {
 	cfg := a.templateConfig()
 	cfg.ContinueOnRenderError = opts.continueOnError
@@ -143,7 +143,6 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 		}
 	}
 
-	// Emit one log line per key in alphabetical order with its final resolved source.
 	for _, k := range sortedKeys(finalSource) {
 		slog.Debug("context key resolved", "key", k, "source", finalSource[k])
 	}
@@ -364,7 +363,6 @@ func promptContext(
 
 	// Iterative conditional passes: each round handles one dependency layer.
 	for len(remaining) > 0 {
-		// Find keys whose gate variables are all resolved (or not in schema).
 		var ready []string
 
 		for k := range remaining {
@@ -415,7 +413,7 @@ func promptContext(
 //
 // When there is nothing that could answer the form, it returns an error naming
 // every key it would have asked for rather than blocking on a read nobody will
-// answer — the CI hang this guard exists to prevent.
+// answer. See prompter.cannotPrompt.
 func runPromptPass(
 	p prompter,
 	ctx map[string]any,

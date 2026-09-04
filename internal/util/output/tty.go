@@ -10,7 +10,7 @@ type fileDescriptor interface {
 // IsTTY reports whether stream is an interactive terminal.
 //
 // The parameter is any rather than io.Writer deliberately: the question that
-// matters most here is about **stdin**, because the failure being prevented is a
+// matters most here is about stdin, because the failure being prevented is a
 // read with nobody to answer it. A job with a terminal on stderr and its stdin
 // closed must still refuse to prompt, and cmd.InOrStdin() hands back an
 // io.Reader.
