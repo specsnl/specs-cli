@@ -23,6 +23,10 @@ weight: 1
 specs-cli/
 ├── main.go                       # main() — XDG init, cmd.Execute()
 ├── go.mod
+├── docs/
+│   ├── content/                  # the documentation site (Hugo)
+│   ├── demo/                     # VHS tapes — one per documentation GIF
+│   └── static/demo/              # the recorded GIFs, served at /demo/<name>.gif
 └── internal/
     ├── specs/                    # global config & constants
     │   ├── configuration.go      # XDG paths, file name constants
@@ -67,6 +71,10 @@ specs-cli/
         ├── validate/             # Name() validator and argument validators
         └── values/               # --values file (JSON/YAML) + --arg flag parsing
 ```
+
+`docs/demo/` holds the VHS tapes behind the documentation GIFs — see
+[Demo Recordings](demo) for how re-recording works and why the GIFs are snapshots rather
+than tests.
 
 ---
 
