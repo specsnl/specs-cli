@@ -1,0 +1,46 @@
+# https://taskfile.dev
+version: "3"
+
+tasks:
+
+  binary:
+    desc: Build a Linux specs binary into dev/ for the recording container
+    summary: |
+      The tapes run inside the vhs container, so the host binary `task build` leaves at
+      ./specs is not the one that can be recorded. Same bake target, GOOS=linux, and a
+      separate output directory — dev/ is gitignored and never shipped.
+    internal: true
+    vars:
+      SPECS_VERSION:
+        sh: git describe --tags --always --dirty="-dev" 2>/dev/null || echo "dev"
+    cmds:
+      - >-
+        docker buildx bake --file compose.yml
+        --set "go-binary.output=type=local,dest=dev"
+        --set "go-binary.args.GOARCH={{ ARCH }}"
+        --set "go-binary.args.GOOS=linux"
+        --set "go-binary.args.SPECS_VERSION={{ .SPECS_VERSION }}"
+        go-binary
+
+  record:*:
+    desc: Record docs/demo/<name>.tape into docs/static/demo/<name>.gif
+    summary: |
+      One tape per invocation, on purpose: every recording produces different bytes even
+      when nothing it shows has changed, so re-record deliberately.
+
+      Needs network access and the Docker socket — the recorded hooks pull images.
+    vars:
+      TAPE: '{{ index .MATCH 0 }}'
+      AVAILABLE:
+        sh: ls docs/demo/*.tape 2>/dev/null | xargs -n1 basename | sed 's/\.tape$//' | paste -sd' ' -
+    preconditions:
+      - sh: test -f "docs/demo/{{ .TAPE }}.tape"
+        msg: 'No such tape: docs/demo/{{ .TAPE }}.tape (available: {{ .AVAILABLE }})'
+    cmds:
+      # /tmp/specs-demo is the scratch directory the tapes scaffold into; compose would
+      # otherwise create it root-owned. See the vhs service in compose.yml.
+      - mkdir -p docs/static/demo /tmp/specs-demo
+      - task: binary
+      - task: :dc:run:vhs
+        vars:
+          SUB_CMD: '{{ .TAPE }}.tape'
