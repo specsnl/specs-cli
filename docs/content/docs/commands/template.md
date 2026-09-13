@@ -30,6 +30,23 @@ For machine-readable `list` and `update` output, use the global `--output json` 
 still yields `[]`, with the explanation narrated on stderr — while `validate` answers
 `{"valid": true|false}` and `version` answers `{"version": "…"}`.
 
+## The Repository column
+
+`template list` prints a **label** in its `Repository` column, not the raw stored value. A GitHub
+URL reads as `specsnl/specs-cli`, since GitHub is the default host; any other host keeps its name
+(`gitlab.com/acme/tpl`); and a saved path collapses `$HOME` to `~`. The label is clickable in
+terminals that support hyperlinks — see [Pretty tables](global-flags#pretty-tables).
+
+`--output json` carries the value as stored, so scripts read the full URL:
+
+```sh
+specs template list -o json 2>/dev/null | jq -r .repository
+```
+
+For a template registered with `template save`, that value is the source path with your home
+directory written as `~` (e.g. `~/code/my-template`). Templates saved by older versions carry a
+`local:` prefix instead; that form is still read, and migrates on the next `template upgrade`.
+
 ## Update status
 
 The `Status` column reflects where each template's "source of truth" lives:
