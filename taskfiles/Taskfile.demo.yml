@@ -29,6 +29,8 @@ tasks:
       when nothing it shows has changed, so re-record deliberately.
 
       Needs network access and the Docker socket — the recorded hooks pull images.
+      The socket is reached through the docker-socket-proxy service, which is torn down
+      again when the recording ends rather than left running.
     vars:
       TAPE: '{{ index .MATCH 0 }}'
       AVAILABLE:
@@ -39,6 +41,7 @@ tasks:
     cmds:
       - mkdir -p docs/static/demo /tmp/specs-demo
       - task: binary
+      - defer: docker compose --profile demo rm --stop --force docker-socket-proxy
       - task: :dc:run:vhs
         vars:
           SUB_CMD: '{{ .TAPE }}.tape'

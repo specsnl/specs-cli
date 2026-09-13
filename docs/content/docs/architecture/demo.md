@@ -48,7 +48,8 @@ gigabyte of images. Later recordings reuse them and take seconds.
 | Piece                                           | Role                                                                        |
 |-------------------------------------------------|-----------------------------------------------------------------------------|
 | `vhs` target in `Dockerfile`                    | Pinned `ghcr.io/charmbracelet/vhs` plus `git`, `task` and the docker client |
-| `vhs` service in `compose.yml` (`demo` profile) | Mounts, the Docker socket, `HOME`, the host uid                             |
+| `vhs` service in `compose.yml` (`demo` profile) | Mounts, `DOCKER_HOST`, `HOME`, the host uid                                 |
+| `docker-socket-proxy` service (`demo` profile)  | The only container that mounts the Docker socket                            |
 | `demo:binary` in `taskfiles/Taskfile.demo.yml`  | Builds a **Linux** `specs` into `dev/`                                      |
 | `demo:record:<name>`                            | Precondition check, then runs the tape in the container                     |
 | `docs/demo/*.tape`                              | The scripts                                                                 |
@@ -62,7 +63,7 @@ the one that can be recorded. `demo:binary` runs the same `docker buildx bake` i
 deliberately separate from `./specs`; the compose service mounts it over the (empty)
 `/usr/local/bin` in the image, which is what puts the recorded binary on `PATH`.
 
-### The Docker socket, and why the scratch directory is outside the checkout
+### The hooks, and why the scratch directory is outside the checkout
 
 `specs-laravel-project` declares four `post-use` hooks:
 
@@ -75,9 +76,9 @@ git add .
 
 Recording a `specs use` that skips them would skip the single most interesting thing the
 command does, so the image carries `git` and `task`, and `task md:fixstyle` in the generated
-project routes through `docker compose` — which means `task` on `PATH` is not enough. The
-`vhs` service mounts `/var/run/docker.sock` and the image carries a docker client and the
-compose plugin, so the hook drives the **host** daemon.
+project routes through `docker compose` — which means `task` on `PATH` is not enough. The image
+carries a docker client and the compose plugin, and the service points them at the **host**
+daemon (through a proxy, see below), so the hook drives it.
 
 That has a consequence for paths. The sibling containers compose starts declare bind mounts
 like `./:/var/www/`, and the host daemon resolves them — a path that only exists inside the
@@ -86,7 +87,6 @@ tapes scaffold into `/tmp/specs-demo`, mounted at the *same path* on both sides:
 
 ```yaml
 volumes:
-  - /var/run/docker.sock:/var/run/docker.sock
   - /tmp/specs-demo:/tmp/specs-demo
 ```
 
@@ -94,9 +94,60 @@ A fixed path rather than the checkout's own also keeps machine-specific strings 
 frames — `git init` prints the absolute path of the repository it creates, and
 `/tmp/specs-demo/acme/.git/` is the same on anyone's machine.
 
-The socket is root-owned while the service runs under the host uid, hence `group_add: ["0"]`
-on the service. `HOME` is set to `/tmp` for the same reason: the host uid has no entry in the
-image's `/etc/passwd`, and `ttyd` needs a writable home.
+`HOME` is set to `/tmp` because the host uid has no entry in the image's `/etc/passwd`, and
+`ttyd` needs a writable home. It also keeps the registry container-local, so every recording
+starts from an empty one.
+
+### Why the socket is proxied rather than mounted
+
+The `vhs` service runs under the host uid, and the socket is not readable by it: the mount is
+mode `0660` and its group is host-specific — `root:root` under OrbStack and Docker Desktop,
+`root:docker` (an arbitrary gid) under Docker Engine. Granting the recorder `group_add: ["0"]`
+works on the first and silently fails on the second, so the setup would be macOS-only.
+
+Instead the socket is mounted into a [Tecnativa
+docker-socket-proxy](https://github.com/Tecnativa/docker-socket-proxy) and the recorder reaches
+the daemon over TCP:
+
+```yaml
+vhs:
+  environment:
+    DOCKER_HOST: tcp://docker-socket-proxy:2375
+  depends_on:
+    - docker-socket-proxy
+```
+
+The recorder then needs no socket, no supplementary group and no root, and the same compose
+file works on every host. Nothing about mount resolution changes: it is still the host daemon
+that resolves `./:/var/www/`, which is why `/tmp/specs-demo` is still mirrored.
+
+The proxy denies every API endpoint by default. The ones it grants are what a
+`docker compose run --rm` needs — pull an image, create the network and the container, start
+it, wait, remove it:
+
+```yaml
+ALLOW_START: 1
+ALLOW_STOP: 1
+CONTAINERS: 1
+DISTRIBUTION: 1
+IMAGES: 1
+INFO: 1
+NETWORKS: 1
+POST: 1
+VOLUMES: 1
+```
+
+That is a broad grant and not a security boundary — the recorded hooks are third-party
+template code driving the host daemon either way. It buys portability and a narrower blast
+radius, not isolation. A template whose hooks *build* images would additionally need `BUILD`,
+`SESSION` and `GRPC`; `specs-laravel-project`'s do not, because `md:fixstyle` runs the
+`php-exec` and `markdown-linter` services, both of which use a prebuilt `image:`.
+
+`demo:record:<name>` tears the proxy down with a `defer` when the recording ends, so a
+socket-mounted container is not left running afterwards.
+
+On SELinux or AppArmor hosts the proxy may need `privileged: true`, as its upstream
+documentation notes.
 
 ## The tapes
 
