@@ -8,6 +8,8 @@
 
 A general-purpose developer CLI for scaffolding projects from templates. Define variables, write template files, run hooks — `specs` handles the rest.
 
+![specs use — answering the prompts and running the template's hooks](docs/static/demo/use.gif)
+
 ---
 
 ## Installation
