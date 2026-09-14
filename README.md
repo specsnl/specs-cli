@@ -70,6 +70,17 @@ brew install specsnl/tap/specs@rc
 Both casks provide a `specs` command and cannot be installed side by side — `brew uninstall specs`
 before installing `specs@rc`, and the other way round.
 
+Or run it from the official image, published for `linux/amd64` and `linux/arm64`:
+
+```sh
+docker run --rm -it -v "$PWD:/work" ghcr.io/specsnl/specs-cli use specsnl/my-template ./my-project
+```
+
+`-it` is what lets it prompt, and on a host where you are not uid 1000 add
+`--user "$(id -u):$(id -g)" --env HOME=/tmp` so the scaffolded files come out yours. The
+[installation docs](https://cli.specs.dev/docs/installation/) cover the rest — tags, the template
+registry volume, and SSH sources.
+
 ---
 
 ## Getting started
@@ -93,10 +104,17 @@ that pin the Go and tooling versions — so a check runs the same way locally as
 local Go installation needed. Run `task --list` for the full set.
 
 ```sh
-task dc:build   # build the images once
-task build      # build the binary for the current platform
-task test       # run the unit tests
+task dc:build     # build the images once
+task build        # build the binary for the current platform
+task test         # run the unit tests
+task image:smoke  # build the published runtime image and check it
 ```
+
+The `Dockerfile` serves both purposes, and only one of its stages ships. `builder-download`,
+`export` and `vhs` are development tools — they back `task test`, `task build` and
+`task demo:record:*` respectively, and compose selects each by name. `debian` is the image
+published to `ghcr.io/specsnl/specs-cli`, and it is the last stage in the file so a bare
+`docker build .` produces it rather than a dev tool.
 
 With Go 1.26+ installed you can bypass the container entirely — `go build ./...`, `go test ./...` —
 but CI always runs through Docker and the Taskfile, so that is the source of truth.
