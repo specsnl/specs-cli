@@ -82,6 +82,43 @@ RUN set -eux; \
 
 RUN git config --system init.defaultBranch main
 
+# Latest version: https://hub.docker.com/r/bats/bats/tags
+FROM bats/bats:1.14.0 AS bats
+
+ARG TARGETARCH
+
+# Latest version: https://download.docker.com/linux/static/stable/
+ARG DOCKER_VERSION=29.8.0
+# Latest version: https://github.com/bats-core/bats-support/releases/latest
+ARG BATS_SUPPORT_VERSION=0.3.0
+# Latest version: https://github.com/bats-core/bats-assert/releases/latest
+ARG BATS_ASSERT_VERSION=2.2.4
+# Latest version: https://github.com/bats-core/bats-file/releases/latest
+ARG BATS_FILE_VERSION=0.4.0
+
+RUN apk add --no-cache \
+    curl \
+    tar
+
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+        amd64) altarch=x86_64 ;; \
+        arm64) altarch=aarch64 ;; \
+        *) echo "unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    curl --fail --silent --show-error --location \
+        "https://download.docker.com/linux/static/stable/${altarch}/docker-${DOCKER_VERSION}.tgz" \
+        | tar --extract --gzip --directory /usr/bin --strip-components=1 docker/docker; \
+    for spec in "support:${BATS_SUPPORT_VERSION}" "assert:${BATS_ASSERT_VERSION}" "file:${BATS_FILE_VERSION}"; do \
+        name="bats-${spec%%:*}"; \
+        mkdir -p "/usr/lib/bats/${name}"; \
+        curl --fail --silent --show-error --location \
+            "https://github.com/bats-core/${name}/archive/refs/tags/v${spec#*:}.tar.gz" \
+            | tar --extract --gzip --directory "/usr/lib/bats/${name}" --strip-components=1; \
+    done
+
+ENV BATS_LIB_PATH=/usr/lib/bats
+
 # Latest version: https://hub.docker.com/_/debian/tags
 FROM debian:13.6-slim AS debian
 

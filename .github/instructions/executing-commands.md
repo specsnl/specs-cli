@@ -16,6 +16,7 @@ installing host tools) may run locally on the host.
 | Run tests                           | `task test`               |
 | Rewrite the golden files            | `task test:update`        |
 | Build the binary                    | `task build`              |
+| Check the runtime image             | `task image:smoke`        |
 | Check Markdown style                | `task md:check`           |
 | Fix Markdown (tables + autofixable) | `task md:fix`             |
 | Re-record a documentation GIF       | `task demo:record:<tape>` |
@@ -44,6 +45,12 @@ inside the `vhs` Docker Compose service under the `demo` profile. It needs netwo
 the Docker socket, and it always dirties the working tree — the same tape never produces
 identical bytes twice, so only re-record when the recorded output actually changed. See
 [Demo Recordings](../../docs/content/docs/architecture/demo.md).
+
+`task image:smoke` builds the Dockerfile's `debian` stage and runs `test/image.bats` against it,
+inside the `bats` Docker Compose service under the `image` profile. That service drives the host's
+daemon through `docker-socket-proxy`, so the repository and `TMPDIR` are mounted at the same paths
+inside it as on the host — the tests bind-mount those paths, and the daemon resolves them on the
+host. CI runs the same suite, installing bats with `bats-core/bats-action` instead.
 
 `task md:check` and `task md:fix` run `markdownlint-cli2` (and, for fixes,
 `markdown-table-formatter`) inside the `node` Docker Compose service under the `markdown`
