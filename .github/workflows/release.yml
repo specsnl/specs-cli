@@ -5,12 +5,11 @@ on:
     tags:
       - "v*"
 
-permissions:
-  contents: write
-
 jobs:
   release:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7
         with:
@@ -37,3 +36,34 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+
+  image:
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - os: ubuntu-24.04
+            platform: linux/amd64
+          - os: ubuntu-24.04-arm
+            platform: linux/arm64
+    uses: specsnl/github-actions/.github/workflows/build-go-cli.yml@2.4.0
+    with:
+      runs-on: ${{ matrix.runner.os }}
+      platform: ${{ matrix.runner.platform }}
+      image-name: ghcr.io/specsnl/specs-cli
+      target: debian
+      version-build-arg: SPECS_VERSION
+
+  image-manifest:
+    needs: image
+    permissions:
+      contents: read
+      packages: write
+    uses: specsnl/github-actions/.github/workflows/merge-go-cli.yml@2.4.0
+    with:
+      runs-on: ubuntu-24.04
+      image-name: ghcr.io/specsnl/specs-cli
+      target: debian
