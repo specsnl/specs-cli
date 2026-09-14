@@ -67,3 +67,45 @@ jobs:
 
       - name: Integration tests (no network)
         run: go test -tags=integration -race -count=1 ./internal/cmd/...
+
+  image:
+    name: Image (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-24.04
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build the runtime image
+        id: build
+        uses: specsnl/github-actions/build-image@2.4.0
+        with:
+          platform: ${{ matrix.platform }}
+          image-name: ghcr.io/specsnl/specs-cli
+          target: debian
+          load: true
+          raw-tag: ci
+          build-args: SPECS_VERSION=ci-${{ github.sha }}
+
+      - name: Set up bats
+        id: bats
+        uses: bats-core/bats-action@4.0.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Smoke test
+        env:
+          BATS_LIB_PATH: ${{ steps.bats.outputs.lib-path }}
+          IMAGE: ${{ steps.build.outputs.image }}
+          EXPECTED_VERSION: ci-${{ github.sha }}
+        run: bats test/image.bats
