@@ -4,6 +4,7 @@ version: "3"
 includes:
   demo: ./taskfiles/Taskfile.demo.yml
   docs: ./taskfiles/Taskfile.docs.yml
+  image: ./taskfiles/Taskfile.image.yml
   md: ./taskfiles/Taskfile.md.yml
   lint:
     taskfile: ./taskfiles/Taskfile.lint.yml

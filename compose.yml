@@ -127,8 +127,29 @@ services:
       - ./dev:/usr/local/bin:ro
       - /tmp/specs-demo:/tmp/specs-demo
 
+  bats:
+    profiles: ["image"]
+    user: ${FIXUID:-1000}:${FIXGID:-1000}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: bats
+    # Mounted at its own host path, and TMPDIR likewise: the tests run docker
+    # through the proxy, so the daemon resolves their bind mounts on the host.
+    # A container-only path would not exist there.
+    working_dir: ${PWD}
+    environment:
+      HOME: /tmp
+      DOCKER_HOST: tcp://docker-socket-proxy:2375
+      TMPDIR: /tmp/specs-image-smoke
+    depends_on:
+      - docker-socket-proxy
+    volumes:
+      - ${PWD}:${PWD}
+      - /tmp/specs-image-smoke:/tmp/specs-image-smoke
+
   docker-socket-proxy:
-    profiles: ["demo"]
+    profiles: ["demo", "image"]
     # Latest version: https://hub.docker.com/r/tecnativa/docker-socket-proxy/tags
     image: tecnativa/docker-socket-proxy:v0.5.0
     environment:

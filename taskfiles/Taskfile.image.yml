@@ -1,0 +1,35 @@
+# https://taskfile.dev
+version: "3"
+
+silent: true
+
+vars:
+  IMAGE: '{{ .IMAGE | default "specs-cli:dev" }}'
+  SPECS_VERSION:
+    sh: git describe --tags --always --dirty="-dev" 2>/dev/null || echo "dev"
+
+tasks:
+
+  build:
+    desc: Build the published runtime image for the host platform
+    cmds:
+      - >-
+        docker buildx build
+        --target debian
+        --load
+        --build-arg SPECS_VERSION={{ .SPECS_VERSION }}
+        --tag {{ .IMAGE }}
+        .
+
+  smoke:
+    desc: Build the runtime image and run the acceptance checks CI runs
+    deps: [build]
+    cmds:
+      # Shared with the bats container at the same path, so mktemp -d inside it
+      # produces a directory the daemon can bind-mount.
+      - mkdir -p /tmp/specs-image-smoke
+      - defer: docker compose --profile image rm --stop --force docker-socket-proxy
+      - task: :dc:run:bats
+        vars:
+          RUN_FLAGS: '--env IMAGE={{ .IMAGE }} --env EXPECTED_VERSION={{ .SPECS_VERSION }}'
+          SUB_CMD: test/image.bats

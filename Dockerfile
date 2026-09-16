@@ -2,7 +2,7 @@
 # check=error=true
 
 # Latest version: https://hub.docker.com/_/golang/tags
-FROM golang:1.27.1-trixie AS base
+FROM --platform=$BUILDPLATFORM golang:1.27.1-trixie AS base
 
 WORKDIR /src
 
@@ -15,8 +15,6 @@ RUN apt-get update \
 
 FROM base AS builder-download
 
-ARG GOARCH=amd64
-
 COPY go.mod .
 COPY go.sum .
 
@@ -27,33 +25,20 @@ FROM builder-download AS build
 
 COPY . .
 
-ARG GOOS=linux
-ARG GOARCH=amd64
+ARG TARGETOS
+ARG TARGETARCH
+ARG GOOS
+ARG GOARCH
 ARG GO_MODULE=github.com/specsnl/specs-cli
 ARG SPECS_VERSION=dev
 
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     go generate \
-    && CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH go build \
+    && CGO_ENABLED=0 GOOS=${GOOS:-$TARGETOS} GOARCH=${GOARCH:-$TARGETARCH} go build \
         -trimpath \
         -tags netgo \
         -ldflags "-s -w -X ${GO_MODULE}/internal/cmd.Version=${SPECS_VERSION}" -o ./specs
-
-# Latest version: https://hub.docker.com/_/debian/tags
-FROM debian:13.6-slim
-
-COPY --from=build /src/specs /usr/local/bin
-
-CMD ["specs"]
-
-FROM scratch AS binary
-
-COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs
-COPY --from=build /src/specs /
-COPY --from=build /etc/passwd /etc/passwd
-
-CMD ["/specs"]
 
 FROM scratch AS export
 
@@ -96,3 +81,60 @@ RUN set -eux; \
     chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 
 RUN git config --system init.defaultBranch main
+
+# Latest version: https://hub.docker.com/r/bats/bats/tags
+FROM bats/bats:1.14.0 AS bats
+
+ARG TARGETARCH
+
+# Latest version: https://download.docker.com/linux/static/stable/
+ARG DOCKER_VERSION=29.8.0
+# Latest version: https://github.com/bats-core/bats-support/releases/latest
+ARG BATS_SUPPORT_VERSION=0.3.0
+# Latest version: https://github.com/bats-core/bats-assert/releases/latest
+ARG BATS_ASSERT_VERSION=2.2.4
+# Latest version: https://github.com/bats-core/bats-file/releases/latest
+ARG BATS_FILE_VERSION=0.4.0
+
+RUN apk add --no-cache \
+    curl \
+    tar
+
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+        amd64) altarch=x86_64 ;; \
+        arm64) altarch=aarch64 ;; \
+        *) echo "unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    curl --fail --silent --show-error --location \
+        "https://download.docker.com/linux/static/stable/${altarch}/docker-${DOCKER_VERSION}.tgz" \
+        | tar --extract --gzip --directory /usr/bin --strip-components=1 docker/docker; \
+    for spec in "support:${BATS_SUPPORT_VERSION}" "assert:${BATS_ASSERT_VERSION}" "file:${BATS_FILE_VERSION}"; do \
+        name="bats-${spec%%:*}"; \
+        mkdir -p "/usr/lib/bats/${name}"; \
+        curl --fail --silent --show-error --location \
+            "https://github.com/bats-core/${name}/archive/refs/tags/v${spec#*:}.tar.gz" \
+            | tar --extract --gzip --directory "/usr/lib/bats/${name}" --strip-components=1; \
+    done
+
+ENV BATS_LIB_PATH=/usr/lib/bats
+
+# Latest version: https://hub.docker.com/_/debian/tags
+FROM debian:13.6-slim AS debian
+
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=build /src/specs /usr/local/bin/specs
+
+RUN groupadd --gid 1000 specs \
+    && useradd --uid 1000 --gid 1000 --create-home --shell /bin/bash specs \
+    && mkdir -p /config /work \
+    && chown specs:specs /config /work
+
+# Pinned so the registry lands in /config whatever uid the container runs as;
+# xdg would otherwise resolve it below $HOME.
+ENV XDG_CONFIG_HOME=/config
+
+WORKDIR /work
+USER specs
+
+ENTRYPOINT ["specs"]
