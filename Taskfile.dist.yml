@@ -26,6 +26,7 @@ tasks:
       FIXGID:
         sh: echo ${FIXGID:-$(id -g)}
     cmds:
+      - defer: docker compose rm --stop --force volume-init
       - FIXUID={{ .FIXUID }} FIXGID={{ .FIXGID }} docker compose {{ .SUB_CMD }} {{ .CLI_ARGS }}
 
   dc:build:
@@ -111,6 +112,7 @@ tasks:
 
       The following files/dirs are excluded: none
     cmds:
+      - docker compose --profile "*" down --remove-orphans
       - git clean
         -xd
         --force
