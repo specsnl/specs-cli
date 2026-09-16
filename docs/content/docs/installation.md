@@ -118,8 +118,19 @@ A template's hooks are shell commands from whoever wrote the template, and they 
 it does locally, because a container makes it that much easier to run one you have never seen.
 {{< /callout >}}
 
-Hooks are why the image is Debian rather than something minimal: they execute through `bash`, and a
-shell-less image would silently lose every template that defines one.
+Hooks are why the image is Debian rather than something minimal. They execute through `bash`, and a
+hook is only as good as the commands it can reach, so the image ships the ones templates actually
+use:
+
+| Tool                 | Why it is there                                                              |
+|----------------------|------------------------------------------------------------------------------|
+| `bash`               | Every hook runs through it                                                   |
+| `git`                | `git init` / `git add` — the most common closing hook                        |
+| `task`               | Generated projects that use [Task](https://taskfile.dev) as their entrypoint |
+| `docker` + `compose` | Hooks that drive a compose stack to do their work                            |
+
+`git` is configured with `init.defaultBranch main`, so a `git init` hook produces the same branch
+name it would on a host rather than falling back to git's built-in `master`.
 
 For a **remote** template that defines hooks, `specs` prints the commands and asks before running
 them. Without a terminal it cannot ask, so it warns and skips the hooks — a scaffold that looks
@@ -133,6 +144,29 @@ To keep them from running at all:
 |---------------|--------------------------------------------------------|
 | `--no-hooks`  | Skip the hooks, render everything else                 |
 | `--safe-mode` | Also disable the env and filesystem template functions |
+
+### Hooks that start containers
+
+A hook that runs `docker` talks to the host daemon, so whatever it starts is a *sibling* container,
+not a child. That needs two additions — the socket, and an identical path on both sides:
+
+```sh
+docker run --rm -it \
+  --user "$(id -u):$(id -g)" --group-add 0 \
+  --env HOME=/tmp \
+  --volume /var/run/docker.sock:/var/run/docker.sock \
+  --volume "$PWD:$PWD" --workdir "$PWD" \
+  ghcr.io/specsnl/specs-cli use specsnl/my-template ./my-project
+```
+
+`--group-add 0` is what gets a foreign uid past the socket's `root:root 0660`.
+
+The path matters because the daemon resolves a sibling's bind mounts against the *host* filesystem.
+Mounted at `/work`, a hook asks the daemon for `/work/...`, which on the host is some other
+directory or none at all — the sibling starts empty and the hook fails against a tree that looks
+perfectly fine from inside. Mounting `$PWD` at `$PWD` makes the two agree.
+
+Templates whose hooks never invoke `docker` need none of this and can keep using `/work`.
 
 ### Keeping registered templates
 

@@ -122,8 +122,49 @@ ENV BATS_LIB_PATH=/usr/lib/bats
 # Latest version: https://hub.docker.com/_/debian/tags
 FROM debian:13.6-slim AS debian
 
-COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+ARG TARGETARCH
+
+# Latest version: https://github.com/go-task/task/releases/latest
+ARG TASK_VERSION=3.53.1
+# Latest version: https://download.docker.com/linux/static/stable/
+ARG DOCKER_VERSION=29.8.0
+# Latest version: https://github.com/docker/compose/releases/latest
+ARG COMPOSE_VERSION=5.5.1
+
 COPY --from=build /src/specs /usr/local/bin/specs
+
+# The tools a template's hooks actually reach for. bash alone gets a hook as far as
+# `command not found`: `git init` is the most common closing hook there is, and a
+# generated project that is driven by Task expects `task` and the docker CLI to run
+# its own setup. Without these the scaffold lands and the hooks fail on top of it.
+RUN apt-get update \
+    && apt-get install --assume-yes --no-install-recommends \
+        ca-certificates \
+        curl \
+        git \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+        amd64) altarch=x86_64 ;; \
+        arm64) altarch=aarch64 ;; \
+        *) echo "unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    curl --fail --silent --show-error --location \
+        "https://github.com/go-task/task/releases/download/v${TASK_VERSION}/task_linux_${TARGETARCH}.tar.gz" \
+        | tar --extract --gzip --directory /usr/bin task; \
+    curl --fail --silent --show-error --location \
+        "https://download.docker.com/linux/static/stable/${altarch}/docker-${DOCKER_VERSION}.tgz" \
+        | tar --extract --gzip --directory /usr/bin --strip-components=1 docker/docker; \
+    mkdir -p /usr/local/lib/docker/cli-plugins; \
+    curl --fail --silent --show-error --location --output /usr/local/lib/docker/cli-plugins/docker-compose \
+        "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-${altarch}"; \
+    chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+
+# A container carries no user gitconfig, so a `git init` hook would pick git's
+# built-in default and hand back a `master` branch where the same template run on
+# a host produces `main`.
+RUN git config --system init.defaultBranch main
 
 RUN groupadd --gid 1000 specs \
     && useradd --uid 1000 --gid 1000 --create-home --shell /bin/bash specs \

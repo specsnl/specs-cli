@@ -63,6 +63,32 @@ scaffold() {
     assert_success
 }
 
+# A hook is a shell command from the template, so these are the interpreters it
+# gets. Losing one turns a hook into "command not found" after the tree is
+# already on disk, which is the failure the image exists to avoid.
+@test "has the hook toolchain on PATH" {
+    run docker run --rm --entrypoint bash "$IMAGE" -c \
+        'command -v git && command -v task && command -v docker'
+
+    assert_success
+}
+
+@test "has the compose plugin wired into the docker CLI" {
+    run docker run --rm --entrypoint docker "$IMAGE" compose version
+
+    assert_success
+}
+
+@test "git is usable by a foreign uid with HOME redirected" {
+    run docker run --rm \
+        --user "$CALLER" \
+        --env HOME=/tmp \
+        --volume "$WORKDIR:/work" \
+        --entrypoint bash "$IMAGE" -c 'git init -q . && git status --porcelain'
+
+    assert_success
+}
+
 @test "scaffolds into a bind mount and runs the hooks" {
     run scaffold ./out --use-defaults --yes
 
