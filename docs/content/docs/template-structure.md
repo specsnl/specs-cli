@@ -1,6 +1,6 @@
 ---
 title: Template Structure
-weight: 4
+weight: 5
 prev: /docs/commands
 ---
 

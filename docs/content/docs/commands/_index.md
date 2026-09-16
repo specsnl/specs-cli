@@ -1,7 +1,7 @@
 ---
 title: Commands
-weight: 3
-prev: /docs/quick-start
+weight: 4
+prev: /docs/tutorials/laravel-project
 next: /docs/commands/use
 ---
 

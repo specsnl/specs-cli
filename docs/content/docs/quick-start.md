@@ -1,7 +1,7 @@
 ---
 title: Quick Start
 weight: 2
-next: /docs/commands
+next: /docs/tutorials
 ---
 
 ## One-off usage
