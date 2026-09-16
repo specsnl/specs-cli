@@ -111,6 +111,7 @@ tasks:
 
       The following files/dirs are excluded: none
     cmds:
+      - docker compose --profile "*" down --remove-orphans
       - git clean
         -xd
         --force

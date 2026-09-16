@@ -41,7 +41,8 @@ started before use.
 
 Every task routed through `docker compose` removes the `volume-init` container it pulled in
 through `depends_on` when it finishes, so a run leaves no stopped containers behind. The
-teardown is visible in the output; it is not an error.
+teardown is visible in the output; it is not an error. `task cleanup` takes down whatever is
+left of the project — containers and networks, but not the `cache` volume.
 
 `task demo:record:<tape>` re-records `docs/demo/<tape>.tape` into `docs/static/demo/<tape>.gif`
 inside the `vhs` Docker Compose service under the `demo` profile. It needs network access and
