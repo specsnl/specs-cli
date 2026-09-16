@@ -1,6 +1,6 @@
 ---
 title: The project file
-weight: 5
+weight: 6
 ---
 
 The project file is named `project.yml` — this is the preferred name. `project.yaml` and `project.json` are also accepted as fallbacks, but `project.yml` takes precedence.

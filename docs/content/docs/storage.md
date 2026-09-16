@@ -1,6 +1,6 @@
 ---
 title: Storage
-weight: 7
+weight: 8
 next: /docs/architecture
 ---
 

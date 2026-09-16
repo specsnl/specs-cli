@@ -1,6 +1,6 @@
 ---
 title: Template Functions
-weight: 6
+weight: 7
 ---
 
 Templates have access to 200+ functions provided by [Sprout](https://github.com/go-sprout/sprout), plus a set of specs-specific functions.
