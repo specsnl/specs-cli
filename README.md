@@ -92,6 +92,11 @@ Point `specs use` at any template and it will ask you the rest:
 specs use specsnl/my-template ./my-project
 ```
 
+For a worked example, the
+[Laravel project tutorial](https://cli.specs.dev/docs/tutorials/laravel-project/) runs a real
+template end to end — prompts, computed values, conditional files and hooks — and finishes with the
+app running in the browser.
+
 Writing your own starts with a `project.yml`. That file, every command and flag, the template
 functions, scripting and CI, and how it is built are all on the same site:
 **[cli.specs.dev](https://cli.specs.dev)**.
