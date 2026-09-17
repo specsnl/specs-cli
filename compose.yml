@@ -165,6 +165,15 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 
+  hadolint:
+    profiles: ["lint"]
+    user: ${FIXUID:-1000}:${FIXGID:-1000}
+    # Latest version: https://hub.docker.com/r/hadolint/hadolint/tags
+    image: hadolint/hadolint:v2.14.0
+    working_dir: /src
+    volumes:
+      - .:/src
+
   golangci-lint:
     profiles: ["lint"]
     user: ${FIXUID:-1000}:${FIXGID:-1000}

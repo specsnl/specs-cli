@@ -109,6 +109,7 @@ task dc:build     # build the images once
 task build        # build the binary for the current platform
 task test         # run the unit tests
 task image:smoke  # build the published runtime image and check it
+task lint:docker  # lint the Dockerfile with hadolint
 ```
 
 The `Dockerfile` serves both purposes, and only one of its stages ships. `builder-download`,
