@@ -133,10 +133,6 @@ ARG COMPOSE_VERSION=5.5.1
 
 COPY --from=build /src/specs /usr/local/bin/specs
 
-# The tools a template's hooks actually reach for. bash alone gets a hook as far as
-# `command not found`: `git init` is the most common closing hook there is, and a
-# generated project that is driven by Task expects `task` and the docker CLI to run
-# its own setup. Without these the scaffold lands and the hooks fail on top of it.
 RUN apt-get update \
     && apt-get install --assume-yes --no-install-recommends \
         ca-certificates \
