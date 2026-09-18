@@ -17,6 +17,7 @@ installing host tools) may run locally on the host.
 | Rewrite the golden files            | `task test:update`        |
 | Build the binary                    | `task build`              |
 | Check the runtime image             | `task image:smoke`        |
+| Lint the Dockerfile                 | `task lint:docker`        |
 | Check Markdown style                | `task md:check`           |
 | Fix Markdown (tables + autofixable) | `task md:fix`             |
 | Re-record a documentation GIF       | `task demo:record:<tape>` |
@@ -56,6 +57,11 @@ inside the `bats` Docker Compose service under the `image` profile. That service
 daemon through `docker-socket-proxy`, so the repository and `TMPDIR` are mounted at the same paths
 inside it as on the host — the tests bind-mount those paths, and the daemon resolves them on the
 host. CI runs the same suite, installing bats with `bats-core/bats-action` instead.
+
+`task lint:docker` runs hadolint over the `Dockerfile` inside the `hadolint` Docker Compose service
+under the `lint` profile. The rules it skips are in `.hadolint.yml` at the repository root. CI runs
+the task itself in the `dockerfile-lint` job of `.github/workflows/ci.yml`, so the hadolint version
+is pinned once, in `compose.yml`.
 
 `task md:check` and `task md:fix` run `markdownlint-cli2` (and, for fixes,
 `markdown-table-formatter`) inside the `node` Docker Compose service under the `markdown`

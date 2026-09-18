@@ -77,9 +77,10 @@ docker run --rm -it -v "$PWD:/work" ghcr.io/specsnl/specs-cli use specsnl/my-tem
 ```
 
 `-it` is what lets it prompt, and on a host where you are not uid 1000 add
-`--user "$(id -u):$(id -g)" --env HOME=/tmp` so the scaffolded files come out yours. The
+`--user "$(id -u):$(id -g)" --env HOME=/tmp` so the scaffolded files come out yours. The image
+carries `bash`, `git`, `task` and the `docker` CLI so a template's hooks have something to run. The
 [installation docs](https://cli.specs.dev/docs/installation/) cover the rest — tags, the template
-registry volume, and SSH sources.
+registry volume, hooks that start containers, and SSH sources.
 
 ---
 
@@ -108,6 +109,7 @@ task dc:build     # build the images once
 task build        # build the binary for the current platform
 task test         # run the unit tests
 task image:smoke  # build the published runtime image and check it
+task lint:docker  # lint the Dockerfile with hadolint
 ```
 
 The `Dockerfile` serves both purposes, and only one of its stages ships. `builder-download`,
