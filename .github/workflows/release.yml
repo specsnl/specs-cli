@@ -49,7 +49,7 @@ jobs:
             platform: linux/amd64
           - os: ubuntu-24.04-arm
             platform: linux/arm64
-    uses: specsnl/github-actions/.github/workflows/build-go-cli.yml@2.4.0
+    uses: specsnl/github-actions/.github/workflows/build-go-cli.yml@2.4.2
     with:
       runs-on: ${{ matrix.runner.os }}
       platform: ${{ matrix.runner.platform }}
@@ -62,7 +62,7 @@ jobs:
     permissions:
       contents: read
       packages: write
-    uses: specsnl/github-actions/.github/workflows/merge-go-cli.yml@2.4.0
+    uses: specsnl/github-actions/.github/workflows/merge-go-cli.yml@2.4.2
     with:
       runs-on: ubuntu-24.04
       image-name: ghcr.io/specsnl/specs-cli

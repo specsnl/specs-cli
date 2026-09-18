@@ -206,7 +206,7 @@ do.
 | Runs as       | `specs`, uid/gid `1000`                             |
 | Entrypoint    | `specs`                                             |
 | Authenticates | the built-in `GITHUB_TOKEN`, with `packages: write` |
-| Published by  | `specsnl/github-actions@2.4.0`                      |
+| Published by  | `specsnl/github-actions@2.4.2`                      |
 
 ### Dockerfile stages
 
