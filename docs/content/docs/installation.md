@@ -159,7 +159,14 @@ docker run --rm -it \
   ghcr.io/specsnl/specs-cli use specsnl/my-template ./my-project
 ```
 
-`--group-add 0` is what gets a foreign uid past the socket's `root:root 0660`.
+`--group-add` is what gets a foreign uid past the socket's `0660` permissions, but the group to
+add is host-specific. Docker Desktop and OrbStack expose the socket as `root:root`, so `0` is the
+one. Docker Engine on Linux gives it to a `docker` group whose gid differs per machine, where
+adding `0` fails with a permission error on the socket — read the gid off the socket instead:
+
+```sh
+--group-add "$(stat -c '%g' /var/run/docker.sock)"
+```
 
 The path matters because the daemon resolves a sibling's bind mounts against the *host* filesystem.
 Mounted at `/work`, a hook asks the daemon for `/work/...`, which on the host is some other
