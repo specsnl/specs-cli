@@ -4,7 +4,7 @@ version: "3"
 tasks:
 
   build:
-    desc: Build the static documentation site into docs/public/
+    desc: Build the docs site into docs/public/ — needs a server to view, use docs:preview for that
     cmds:
       - task: :dc:run:hugo
         vars:
@@ -23,9 +23,10 @@ tasks:
       - task: :dc:run:hugo
         vars:
           SUB_CMD: --minify --baseURL http://localhost:8080
+      - defer: docker compose --profile docs down --remove-orphans
       - task: :dc
         vars:
-          SUB_CMD: "run --rm --service-ports docs-preview"
+          SUB_CMD: "up docs-preview"
 
   mod:tidy:
     desc: Tidy Hugo module dependencies and regenerate go.sum

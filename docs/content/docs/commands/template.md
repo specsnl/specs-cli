@@ -21,12 +21,12 @@ Manage a local registry of named templates. Unlike `specs use`, downloaded templ
 
 `template use` accepts the same flags as `specs use` (`--values`, `--arg`, `--use-defaults`, `--no-hooks`).
 
-`template download` accepts the same source formats as `specs use` — see [Source formats](use#source-formats).
+`template download` accepts the same source formats as `specs use` — see [Source formats](/docs/commands/use/#source-formats).
 
 `template download` and `template save` accept `-f` / `--force` to overwrite an existing template with the same name.
 
 For machine-readable `list` and `update` output, use the global `--output json` flag (see
-[Global Flags](global-flags)). Their tables are the product and go to stdout — an empty registry
+[Global Flags](/docs/commands/global-flags/)). Their tables are the product and go to stdout — an empty registry
 still yields `[]`, with the explanation narrated on stderr — while `validate` answers
 `{"valid": true|false}` and `version` answers `{"version": "…"}`.
 
@@ -35,7 +35,7 @@ still yields `[]`, with the explanation narrated on stderr — while `validate` 
 `template list` prints a **label** in its `Repository` column, not the raw stored value. A GitHub
 URL reads as `specsnl/specs-cli`, since GitHub is the default host; any other host keeps its name
 (`gitlab.com/acme/tpl`); and a saved path collapses `$HOME` to `~`. The label is clickable in
-terminals that support hyperlinks — see [Pretty tables](global-flags#pretty-tables).
+terminals that support hyperlinks — see [Pretty tables](/docs/commands/global-flags/#pretty-tables).
 
 `--output json` carries the value as stored, so scripts read the full URL:
 

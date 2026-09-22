@@ -50,7 +50,7 @@ weight: 4
 - The `table` sub-package replaced a hand-rolled layout: it measures cells with `ansi.StringWidth`
   rather than in bytes, and its `Width()` + `Wrap()` shrink the widest columns first and wrap data
   cells instead of letting the border overflow a narrow terminal. See
-  [output.md](./output.md#where-the-width-decision-is-made).
+  [output.md](/docs/architecture/output/#where-the-width-decision-is-made).
 
 **Libraries replaced:**
 
@@ -69,7 +69,7 @@ indirect one lipgloss already pulls in.
 - `lipgloss.Fprintln` re-derives a colour profile from `os.Environ()` on every call, so the
   decision is per process and cannot be injected. `PrettyWriter` wraps each stream in a
   `colorprofile.Writer` at construction instead — see
-  [output.md](./output.md#where-the-colour-decision-is-made).
+  [output.md](/docs/architecture/output/#where-the-colour-decision-is-made).
 - Making the environment a constructor parameter is what lets the golden tests in
   `internal/util/output` render identical bytes under a terminal and in CI.
 - No new module: lipgloss depends on it already.
@@ -88,7 +88,7 @@ one lipgloss already pulls in, exactly as `colorprofile` was.
   stdout and stderr be judged separately, as they already are for colour.
 - Resolved per call, so a terminal resized between two commands is honoured. `COLUMNS` from the
   captured `environ` is the fallback for a pipe or a test; see
-  [output.md](./output.md#where-the-width-decision-is-made).
+  [output.md](/docs/architecture/output/#where-the-width-decision-is-made).
 - No new module: lipgloss depends on it already.
 
 ---
@@ -102,7 +102,7 @@ one lipgloss already pulls in, as `colorprofile` and `x/term` were.
 
 - `ansi.SetHyperlink` / `ansi.ResetHyperlink` emit the OSC 8 sequences that make a `Repository` cell
   clickable, including the `id=` parameter that keeps a wrapped URL one logical link. See
-  [output.md](./output.md#hyperlinked-cells).
+  [output.md](/docs/architecture/output/#hyperlinked-cells).
 - Hand-writing `\x1b]8;…` is a poor trade for a sequence with two forms (BEL- and ST-terminated)
   and parameter joining rules.
 - No new module: lipgloss depends on it already.

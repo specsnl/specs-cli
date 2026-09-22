@@ -93,7 +93,7 @@ nothing, because the next line rejects it.
 
 `slog` is a third channel and not part of this contract: a debug-only diagnostic stream on stderr.
 `SetupLogger` in `log.go` is the only place its handler is built, and its default level is
-`LevelSilent`, so nothing reaches a user who did not ask for it. See [Logging](overview#logging).
+`LevelSilent`, so nothing reaches a user who did not ask for it. See [Logging](/docs/architecture/overview/#logging).
 
 ---
 
@@ -119,7 +119,7 @@ the ASCII profile, which drops colour and keeps bold, as [no-color.org](https://
 ## Where the width decision is made
 
 `RenderTable(headers, rows, maxWidth)` renders with
-[`charm.land/lipgloss/v2/table`](library-decisions#output-styling-lipgloss) and takes the width as a
+[`charm.land/lipgloss/v2/table`](/docs/architecture/library-decisions/#output-styling-lipgloss) and takes the width as a
 **parameter** rather than detecting it — the same reasoning as `environ` above: the function stays
 environment-free and its goldens stay deterministic.
 

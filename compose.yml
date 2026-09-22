@@ -87,12 +87,13 @@ services:
   docs-preview:
     profiles: ["docs"]
     user: ${FIXUID:-1000}:${FIXGID:-1000}
-    image: nginx:alpine
+    # Latest version: https://hub.docker.com/r/nginxinc/nginx-unprivileged/tags
+    image: nginxinc/nginx-unprivileged:1.31.6-alpine
     volumes:
       - ./docs/public:/usr/share/nginx/html:ro
       - ./docs/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
-      - "8080:80"
+      - "8080:8080"
 
   node:
     profiles: ["markdown"]

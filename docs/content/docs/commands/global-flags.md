@@ -24,7 +24,7 @@ $ echo $?
 
 `--non-interactive` is the explicit form of something specs infers anyway: a prompt is only drawn
 when stdin is a terminal. The flag exists for the reverse case — checking at a terminal that a
-command will not stall in CI. See [Running without a terminal](use#running-without-a-terminal).
+command will not stall in CI. See [Running without a terminal](/docs/commands/use/#running-without-a-terminal).
 
 ## Which stream output lands on
 

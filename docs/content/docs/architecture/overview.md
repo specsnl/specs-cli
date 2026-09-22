@@ -73,7 +73,7 @@ specs-cli/
 ```
 
 `docs/demo/` holds the VHS tapes behind the documentation GIFs — see
-[Demo Recordings](demo) for how re-recording works and why the GIFs are snapshots rather
+[Demo Recordings](/docs/architecture/demo/) for how re-recording works and why the GIFs are snapshots rather
 than tests.
 
 ---
@@ -289,7 +289,7 @@ implementations are selected at startup via `--output`: `PrettyWriter` (lipgloss
 `JSONWriter` (NDJSON, useful for scripting or CI pipelines) — genuinely NDJSON, one object per
 line, for a table as much as for a single result.
 
-See [Output](output) for the full contract, the colour and width decisions and the golden-file tests.
+See [Output](/docs/architecture/output/) for the full contract, the colour and width decisions and the golden-file tests.
 
 ---
 
