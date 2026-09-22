@@ -104,7 +104,7 @@ jobs:
 
       - name: Build the runtime image
         id: build
-        uses: specsnl/github-actions/build-image@2.4.2
+        uses: specsnl/github-actions/build-image@2.4.3
         with:
           platform: ${{ matrix.platform }}
           image-name: ghcr.io/specsnl/specs-cli
