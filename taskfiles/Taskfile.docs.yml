@@ -4,7 +4,7 @@ version: "3"
 tasks:
 
   build:
-    desc: Build the static documentation site into docs/public/
+    desc: Build the docs site into docs/public/ — needs a server to view, use docs:preview for that
     cmds:
       - task: :dc:run:hugo
         vars:
