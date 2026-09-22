@@ -1,0 +1,26 @@
+{
+  "name": "Tags must have v-prefix",
+  "target": "tag",
+  "source_type": "Repository",
+  "source": "specsnl/specs-cli",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "exclude": [
+        "refs/tags/v*"
+      ],
+      "include": [
+        "~ALL"
+      ]
+    }
+  },
+  "rules": [
+    {
+      "type": "creation"
+    },
+    {
+      "type": "non_fast_forward"
+    }
+  ],
+  "bypass_actors": []
+}
