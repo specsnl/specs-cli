@@ -13,7 +13,7 @@ require (
 	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964
 	github.com/docker/go-units v0.5.0
 	github.com/go-git/go-git/v5 v5.19.2
-	github.com/go-sprout/sprout v1.1.1
+	github.com/go-sprout/sprout v1.1.2
 	github.com/sethvargo/go-password v0.4.0
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/crypto v0.57.0
