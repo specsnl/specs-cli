@@ -53,7 +53,7 @@ FROM scratch AS export
 COPY --from=build /src/specs /specs
 
 # Latest version: https://github.com/charmbracelet/vhs/pkgs/container/vhs
-FROM ghcr.io/charmbracelet/vhs:v0.12.0 AS vhs
+FROM ghcr.io/charmbracelet/vhs:v0.12.1 AS vhs
 
 ARG TARGETARCH
 ARG TASK_VERSION
