@@ -130,7 +130,7 @@ RUN set -eux; \
 ENV BATS_LIB_PATH=/usr/lib/bats
 
 # Latest version: https://hub.docker.com/_/debian/tags
-FROM debian:13.6-slim AS debian
+FROM debian:13.7-slim AS debian
 
 ARG TARGETARCH
 ARG TASK_VERSION
