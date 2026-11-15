@@ -9,7 +9,9 @@ import (
 	"sort"
 	"strings"
 
+	tea "charm.land/bubbletea/v2"
 	"charm.land/huh/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/spf13/cobra"
 
 	"github.com/specsnl/specs-cli/internal/hooks"
@@ -504,7 +506,7 @@ func runPromptPass(
 		return p.cannotPrompt(asked)
 	}
 
-	if err := p.run(huh.NewForm(huh.NewGroup(fields...))); err != nil {
+	if err := p.run(newPromptForm(fields)); err != nil {
 		return err
 	}
 
@@ -519,6 +521,143 @@ func runPromptPass(
 	}
 
 	return nil
+}
+
+// newPromptForm puts each field on a page of its own, drawn by promptLayout.
+//
+// A single group holding every field is not an option: huh fits a group taller
+// than the terminal into a scrolling viewport, but in v2.0.3 it draws that
+// viewport one line taller than the terminal, and the renderer cuts off what
+// does not fit.
+func newPromptForm(fields []huh.Field) *huh.Form {
+	return (&promptLayout{fields: fields}).form()
+}
+
+// promptLayout is a huh.Layout that draws the focused page, the page before it,
+// as many pages after it as fit, and then earlier pages while room is left.
+type promptLayout struct {
+	fields []huh.Field
+	groups []*huh.Group
+	// height is the terminal's, recorded by filter; 0 until it is known.
+	height int
+	// resized is set by filter and cleared once View has fitted the pages.
+	resized bool
+}
+
+func (l *promptLayout) form() *huh.Form {
+	l.groups = make([]*huh.Group, len(l.fields))
+	for i, field := range l.fields {
+		l.groups[i] = huh.NewGroup(field)
+	}
+
+	return huh.NewForm(l.groups...).
+		WithLayout(l).
+		WithProgramOptions(tea.WithFilter(l.filter))
+}
+
+// filter records the terminal height. The message itself must pass unchanged:
+// the renderer sizes its frame from the same message, after the filter.
+func (l *promptLayout) filter(_ tea.Model, msg tea.Msg) tea.Msg {
+	size, ok := msg.(tea.WindowSizeMsg)
+	if !ok {
+		return msg
+	}
+
+	l.height = size.Height
+	l.resized = true
+
+	// huh shrinks a field that does not fit — a long select — but never grows
+	// it back, so a terminal that was briefly short would leave the field cut
+	// off for the rest of the form.
+	for _, field := range l.fields {
+		field.WithHeight(0)
+	}
+
+	return msg
+}
+
+func (l *promptLayout) View(f *huh.Form) string {
+	// huh fits each page and its help line into the terminal height, but View
+	// puts a blank line between the two, so a page that needs all of it — a
+	// long select — is shrunk by one more line. Fields only ever shrink here.
+	if l.resized && l.height > 0 {
+		for _, group := range l.groups {
+			group.WithHeight(max(l.height-1, 1))
+		}
+
+		l.resized = false
+	}
+
+	current := l.focused(f)
+	footer := l.groups[current].Footer()
+
+	pages := make([]string, len(l.groups))
+	heights := make([]int, len(l.groups))
+
+	for i, group := range l.groups {
+		pages[i] = group.Content()
+		heights[i] = lipgloss.Height(pages[i])
+	}
+
+	budget := 0
+	if l.height > 0 {
+		budget = l.height
+		if footer != "" {
+			budget -= lipgloss.Height(footer) + 1
+		}
+	}
+
+	first, last := promptWindow(heights, current, budget)
+	view := strings.Join(pages[first:last+1], "\n\n")
+
+	if footer != "" {
+		view += "\n\n" + footer
+	}
+
+	return view
+}
+
+func (l *promptLayout) GroupWidth(_ *huh.Form, _ *huh.Group, width int) int {
+	return width
+}
+
+func (l *promptLayout) focused(f *huh.Form) int {
+	focused := f.GetFocusedField()
+
+	for i, field := range l.fields {
+		if field == focused {
+			return i
+		}
+	}
+
+	return 0
+}
+
+// promptWindow returns the first and last page to draw around current, given
+// the height of each page and the lines available. Pages are separated by a
+// blank line. The current page is always drawn, even when it does not fit.
+func promptWindow(heights []int, current, budget int) (first, last int) {
+	first, last = current, current
+	used := heights[current]
+
+	fits := func(i int) bool { return used+1+heights[i] <= budget }
+
+	if first > 0 && fits(first-1) {
+		first--
+		used += 1 + heights[first]
+	}
+
+	for last+1 < len(heights) && fits(last+1) {
+		last++
+		used += 1 + heights[last]
+	}
+
+	for first > 0 && fits(first-1) {
+		first--
+		used += 1 + heights[first]
+	}
+
+	return first, last
 }
 
 // sortedKeys returns map keys in alphabetical order.

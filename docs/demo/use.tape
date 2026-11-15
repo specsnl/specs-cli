@@ -19,8 +19,7 @@ Set WindowBar Colorful
 # 1280px ≈ 122 columns. The widest line the recorded run prints is the ProjectDescription
 # default (109 characters); anything narrower wraps it mid-word.
 Set Width 1280
-# The prompt form is a single huh group of 11 fields — ~47 rows including the help line.
-# 1120px ≈ 50 rows, so the whole schema is on screen while it is being answered.
+# 1120px ≈ 50 rows, enough for the hook preview and the hooks' output without scrolling.
 Set Height 1120
 
 Hide
@@ -41,7 +40,7 @@ Show
 Type "specs use specsnl/specs-laravel-project ./acme" Enter
 Sleep 6s
 
-# The form is one group; Enter moves to the next field, Left/Right toggle a confirm.
+# Enter moves to the next question, Left/Right toggle a confirm.
 # AddBugSnag — keep the default No.
 Enter
 Sleep 1s
@@ -77,7 +76,7 @@ Sleep 1s
 # ProjectShortName — keep acme.
 Enter
 Sleep 1s
-# RepoName — last field, so Enter submits the whole form.
+# RepoName — last question, so Enter submits the whole form.
 Ctrl+U
 Type "specsnl/acme-storefront"
 Sleep 1s
