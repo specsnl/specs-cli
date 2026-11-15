@@ -20,7 +20,7 @@ layout: hextra-home
 
 <div style="margin-bottom: 4rem">
 {{< hextra/hero-button text="Get Started" link="docs/installation" >}}
-{{< hextra/hero-button text="GitHub" link="https://github.com/specsnl/specs-cli" style="outline" >}}
+{{< hextra/hero-button text="GitHub" link="https://github.com/specsnl/specs-cli" >}}
 </div>
 
 <div class="hx-mt-6"></div>
