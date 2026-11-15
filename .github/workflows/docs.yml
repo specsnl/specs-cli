@@ -48,7 +48,8 @@ jobs:
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@v3
         with:
-          hugo-version: latest
+          # Keep in step with the hugomods/hugo tag in compose.yml.
+          hugo-version: 0.165.0
           extended: true
 
       - name: Cache Hugo modules
