@@ -552,7 +552,17 @@ func (l *promptLayout) form() *huh.Form {
 
 	return huh.NewForm(l.groups...).
 		WithLayout(l).
-		WithProgramOptions(tea.WithFilter(l.filter))
+		WithProgramOptions(tea.WithFilter(l.filter)).
+		WithViewHook(useAltScreen)
+}
+
+// useAltScreen draws the prompts on the alternate screen. Drawn inline, a resize
+// lets the terminal move lines of the form into its scrollback and back, and
+// every shrink and grow leaves another copy of the top question behind.
+func useAltScreen(v tea.View) tea.View {
+	v.AltScreen = true
+
+	return v
 }
 
 // filter records the terminal height. The message itself must pass unchanged:

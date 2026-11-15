@@ -5,14 +5,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/huh/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/specsnl/specs-cli/internal/specs"
 )
@@ -1049,6 +1052,53 @@ func TestPromptWindow(t *testing.T) {
 					tt.heights, tt.current, tt.budget, first, last, tt.first, tt.last)
 			}
 		})
+	}
+}
+
+// lockedBuffer is a bytes.Buffer a test can read while a form writes to it.
+type lockedBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *lockedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return b.buf.Write(p)
+}
+
+func (b *lockedBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return b.buf.String()
+}
+
+func TestPromptForm_DrawsOnTheAlternateScreen(t *testing.T) {
+	var stderr lockedBuffer
+
+	stdin, typed := io.Pipe()
+	p := prompter{stdin: stdin, stderr: &stderr, allowed: true}
+
+	done := make(chan error, 1)
+	go func() { done <- p.run(newPromptForm(questions(2))) }()
+
+	deadline := time.Now().Add(10 * time.Second)
+	for !strings.Contains(stderr.String(), ansi.SetModeAltScreenSaveCursor) && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	_, _ = typed.Write([]byte("\x03"))
+
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the form did not return")
+	}
+
+	if !strings.Contains(stderr.String(), ansi.SetModeAltScreenSaveCursor) {
+		t.Errorf("the form did not switch to the alternate screen; drew %q", stderr.String())
 	}
 }
 

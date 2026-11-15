@@ -80,6 +80,14 @@ terminal shows all its options once the terminal grows.
 bubbletea must be v2.1.0 or later: earlier versions skip the redraw after a resize when the view
 itself is unchanged.
 
+The prompts are drawn on the alternate screen (`tea.View.AltScreen`, set through huh's view hook).
+Drawn inline, below the shell prompt, a resize lets the terminal move lines between the screen and
+its scrollback: shrinking pushes the top of the form into scrollback, growing pulls it back, and the
+renderer, which only moves relative to its own frame, draws a fresh form below it. Every shrink and
+grow left another copy of the top question behind. The alternate screen has no scrollback, and the
+form erases itself on completion either way, so nothing that used to stay on screen is lost. The
+remote-hook confirmation stays inline: it must stay below the hook commands printed just before it.
+
 ---
 
 ## Configurable Delimiters
