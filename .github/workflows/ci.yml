@@ -115,7 +115,7 @@ jobs:
 
       - name: Set up bats
         id: bats
-        uses: bats-core/bats-action@4.0.0
+        uses: bats-core/bats-action@4.1.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
