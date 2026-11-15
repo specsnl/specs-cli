@@ -20,6 +20,10 @@ published, and what CI workflows are needed.
 
 GoReleaser runs only in the release workflow — not needed for local development or CI tests.
 
+The release workflow sets `GORELEASER_CURRENT_TAG` to the pushed tag. A final is usually tagged on the
+commit of its last release candidate, and with two tags on one commit GoReleaser would otherwise release
+the RC again.
+
 ---
 
 ## Version Injection

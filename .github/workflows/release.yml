@@ -35,6 +35,9 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # A final tagged on the commit of its last RC carries both tags, and
+          # goreleaser would otherwise pick the RC; release the tag that was pushed.
+          GORELEASER_CURRENT_TAG: ${{ github.ref_name }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
 
   image:
