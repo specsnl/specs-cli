@@ -28,6 +28,10 @@ cleanDestinationDir = true
   [params.mermaid]
     enable = true
 
+  [params.footer]
+    displayPoweredBy = false
+    displayCopyright = true
+
 [[menu.main]]
   identifier = "docs"
   name = "Docs"
