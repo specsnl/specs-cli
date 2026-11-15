@@ -115,9 +115,9 @@ homebrew_casks:
     directory: Casks
     hooks:
       post:
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/specs"]
+        install_steps: |
+          on_macos do
+            run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ .StagedPath }}/specs"]
           end
 
   # The stable channel: the same cask under the plain name, skipped whenever the
@@ -127,6 +127,11 @@ homebrew_casks:
     name: specs
     skip_upload: auto
 ```
+
+The post-install hook clears macOS's quarantine attribute, which would otherwise make Gatekeeper
+refuse the unsigned binary on first run. It is written in GoReleaser's declarative `install_steps`
+DSL, which renders into the cask as a `postflight_steps` block; GoReleaser rewrites
+`{{ .StagedPath }}` into Homebrew's `{{staged_path}}` placeholder, resolved at install time.
 
 ### Release channels
 
