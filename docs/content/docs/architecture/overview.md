@@ -26,6 +26,8 @@ specs-cli/
 ├── docs/
 │   ├── content/                  # the documentation site (Hugo)
 │   ├── demo/                     # VHS tapes — one per documentation GIF
+│   ├── i18n/en.yaml              # the footer's "Made by specs.nl" line
+│   ├── layouts/_partials/        # the Hextra theme overrides
 │   └── static/demo/              # the recorded GIFs, served at /demo/<name>.gif
 └── internal/
     ├── specs/                    # global config & constants
@@ -75,6 +77,20 @@ specs-cli/
 `docs/demo/` holds the VHS tapes behind the documentation GIFs — see
 [Demo Recordings](/docs/architecture/demo/) for how re-recording works and why the GIFs are snapshots rather
 than tests.
+
+The site uses the Hextra theme and overrides two of its templates:
+
+- `custom/head-end.html` holds only CSS: the `--primary-*` variables that give the site the
+  specs.nl blue, and an underline on the footer link.
+- `shortcodes/card.html` is Hextra's card with two changes. A page-relative `link` resolves through
+  the page's `GetPage`, so a card with `link="use"` on the commands index points at
+  `/docs/commands/use/`. The card body also uses `hx:mt-0` instead of `hx:mt-auto`, so the title stays
+  at the top of a card that is taller than its content.
+
+Everything else is configuration: `params.footer` in `hugo.toml` turns on Hextra's copyright line
+and turns off "Powered by Hextra", and `i18n/en.yaml` supplies its text. A copied theme template no
+longer follows upstream, so after a Hextra upgrade, diff `card.html` against the new version of
+the theme's file and apply the two changes again.
 
 ---
 

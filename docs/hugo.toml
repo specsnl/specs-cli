@@ -1,5 +1,5 @@
 baseURL = "https://cli.specs.dev/"
-languageCode = "en-us"
+locale = "en-us"
 title = "Specs CLI"
 
 enableRobotsTXT = true
@@ -27,6 +27,10 @@ cleanDestinationDir = true
 
   [params.mermaid]
     enable = true
+
+  [params.footer]
+    displayPoweredBy = false
+    displayCopyright = true
 
 [[menu.main]]
   identifier = "docs"
