@@ -4,13 +4,18 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
 	"charm.land/huh/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/specsnl/specs-cli/internal/specs"
 )
@@ -902,5 +907,209 @@ func TestPrompter_DrawsOnStderr(t *testing.T) {
 
 	if stdout.Len() != 0 {
 		t.Errorf("drew %q on stdout", stdout.String())
+	}
+}
+
+// renderPromptForm draws a prompt form of the given fields in a terminal of the
+// given height, after moving focus forward advance times.
+func renderPromptForm(t *testing.T, fields []huh.Field, height, advance int) string {
+	t.Helper()
+
+	layout := &promptLayout{fields: fields}
+	form := layout.form()
+	form.Init()
+	form.Update(layout.filter(nil, tea.WindowSizeMsg{Width: 80, Height: height}))
+
+	// Enter on a page's only field blurs it, then moves to the next page.
+	for range advance {
+		form.NextField()
+		form.NextGroup()
+	}
+
+	return form.View()
+}
+
+func questions(n int) []huh.Field {
+	fields := make([]huh.Field, n)
+	for i := range fields {
+		fields[i] = huh.NewInput().
+			Title(fmt.Sprintf("Question%02d", i)).
+			Value(new(string)).
+			Description("default: x")
+	}
+
+	return fields
+}
+
+// assertFits checks view fits the terminal: the renderer cuts off the lines of
+// a taller frame.
+func assertFits(t *testing.T, view string, height int) {
+	t.Helper()
+
+	if lines := strings.Count(view, "\n") + 1; lines > height {
+		t.Errorf("drew %d lines in a %d-line terminal:\n%s", lines, height, view)
+	}
+}
+
+func TestPromptForm_ShortTerminal_FirstQuestionStaysOnScreen(t *testing.T) {
+	view := renderPromptForm(t, questions(12), 10, 0)
+
+	assertFits(t, view, 10)
+
+	if !strings.Contains(view, "Question00") {
+		t.Errorf("the first question's title is not on screen:\n%s", view)
+	}
+}
+
+func TestPromptForm_ShowsTheQuestionsAroundTheFocusedOne(t *testing.T) {
+	view := renderPromptForm(t, questions(12), 20, 5)
+
+	assertFits(t, view, 20)
+
+	for _, title := range []string{"Question04", "Question05", "Question06"} {
+		if !strings.Contains(view, title) {
+			t.Errorf("%s is not on screen:\n%s", title, view)
+		}
+	}
+
+	if strings.Contains(view, "Question00") {
+		t.Errorf("drew Question00, which cannot fit alongside Question05:\n%s", view)
+	}
+}
+
+func TestPromptForm_TallTerminal_ShowsEveryQuestion(t *testing.T) {
+	view := renderPromptForm(t, questions(12), 100, 0)
+
+	for i := range 12 {
+		if title := fmt.Sprintf("Question%02d", i); !strings.Contains(view, title) {
+			t.Errorf("%s is not on screen:\n%s", title, view)
+		}
+	}
+}
+
+func TestPromptForm_SelectTallerThanTheTerminal_Fits(t *testing.T) {
+	options := make([]string, 40)
+	for i := range options {
+		options[i] = fmt.Sprintf("option-%02d", i)
+	}
+
+	fields := []huh.Field{huh.NewSelect[string]().
+		Title("License").
+		Options(huh.NewOptions(options...)...).
+		Value(new(string)),
+	}
+
+	view := renderPromptForm(t, fields, 10, 0)
+
+	assertFits(t, view, 10)
+
+	if !strings.Contains(view, "License") {
+		t.Errorf("the select's title is not on screen:\n%s", view)
+	}
+}
+
+func TestPromptForm_SelectGrowsBackAfterAShortTerminal(t *testing.T) {
+	layout := &promptLayout{fields: []huh.Field{huh.NewSelect[string]().
+		Title("License").
+		Options(huh.NewOptions("MIT", "Apache-2.0", "GPL-2.0")...).
+		Value(new(string)),
+	}}
+	form := layout.form()
+	form.Init()
+
+	for _, height := range []int{30, 4, 30} {
+		form.Update(layout.filter(nil, tea.WindowSizeMsg{Width: 80, Height: height}))
+	}
+
+	if view := form.View(); !strings.Contains(view, "GPL-2.0") {
+		t.Errorf("the last option is still cut off after the terminal grew back:\n%s", view)
+	}
+}
+
+func TestPromptWindow(t *testing.T) {
+	tests := []struct {
+		name        string
+		heights     []int
+		current     int
+		budget      int
+		first, last int
+	}{
+		{"everything fits", []int{3, 3, 3}, 1, 100, 0, 2},
+		{"unknown height draws only the current page", []int{3, 3, 3}, 1, 0, 1, 1},
+		{"a page taller than the budget is still drawn", []int{3, 30, 3}, 1, 10, 1, 1},
+		{"the previous page comes before later ones", []int{3, 3, 3, 3}, 1, 7, 0, 1},
+		{"later pages fill the room after the previous one", []int{3, 3, 3, 3, 3}, 1, 15, 0, 3},
+		{"earlier pages fill the room left at the end", []int{3, 3, 3, 3}, 3, 15, 0, 3},
+		{"on the first page the next pages fill the room", []int{3, 3, 3}, 0, 7, 0, 1},
+		{"stops at the first page that does not fit", []int{3, 3, 9, 1}, 0, 8, 0, 1},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			first, last := promptWindow(tt.heights, tt.current, tt.budget)
+			if first != tt.first || last != tt.last {
+				t.Errorf("promptWindow(%v, %d, %d) = %d, %d; want %d, %d",
+					tt.heights, tt.current, tt.budget, first, last, tt.first, tt.last)
+			}
+		})
+	}
+}
+
+// lockedBuffer is a bytes.Buffer a test can read while a form writes to it.
+type lockedBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *lockedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return b.buf.Write(p)
+}
+
+func (b *lockedBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return b.buf.String()
+}
+
+func TestPromptForm_DrawsOnTheAlternateScreen(t *testing.T) {
+	var stderr lockedBuffer
+
+	stdin, typed := io.Pipe()
+	p := prompter{stdin: stdin, stderr: &stderr, allowed: true}
+
+	done := make(chan error, 1)
+	go func() { done <- p.run(newPromptForm(questions(2))) }()
+
+	deadline := time.Now().Add(10 * time.Second)
+	for !strings.Contains(stderr.String(), ansi.SetModeAltScreenSaveCursor) && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	_, _ = typed.Write([]byte("\x03"))
+
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the form did not return")
+	}
+
+	if !strings.Contains(stderr.String(), ansi.SetModeAltScreenSaveCursor) {
+		t.Errorf("the form did not switch to the alternate screen; drew %q", stderr.String())
+	}
+}
+
+// The renderer sizes its frame from the message the filter returns; a smaller
+// height makes it cut off every frame that is taller.
+func TestPromptForm_ResizeReachesTheRendererUnchanged(t *testing.T) {
+	layout := &promptLayout{fields: questions(3)}
+	layout.form()
+
+	size := tea.WindowSizeMsg{Width: 80, Height: 24}
+	if msg := layout.filter(nil, size); msg != size {
+		t.Errorf("the filter turned %#v into %#v", size, msg)
 	}
 }

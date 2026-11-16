@@ -17,6 +17,8 @@ Each variable is a top-level key whose value is the default. The prompt type is 
 
 For select lists, the first option is the default — it is pre-selected when prompting interactively and chosen automatically when using `--use-defaults`.
 
+The prompts show as many questions as fit the terminal: the current one, the one before it, and those after it. When a template has more variables than fit, the list scrolls along as you answer, so the form never outgrows the terminal. `Enter` moves to the next prompt, and `Shift+Tab` goes back to change an earlier answer. The prompts take over the whole terminal while you answer; your earlier output is back once you are done.
+
 ```yaml
 # Variables — value is the default; type is inferred from the YAML value
 projectName: "my-app"

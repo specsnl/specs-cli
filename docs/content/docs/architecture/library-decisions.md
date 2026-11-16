@@ -222,6 +222,7 @@ configDir := filepath.Join(xdg.ConfigHome, "specs")
 |-----------------------------------------|----------------------------------------------------|
 | `github.com/spf13/cobra`                | CLI command tree                                   |
 | `charm.land/huh/v2`                     | Interactive forms & prompts                        |
+| `charm.land/bubbletea/v2`               | Prompt program filter and alternate screen         |
 | `charm.land/lipgloss/v2`                | Output styling (logger + table renderer)           |
 | `github.com/charmbracelet/colorprofile` | Per-stream colour downsampling for `PrettyWriter`  |
 | `github.com/charmbracelet/x/term`       | Terminal size for the table width cap              |

@@ -16,12 +16,12 @@ Set Padding 20
 Set TypingSpeed 45ms
 Set WindowBar Colorful
 
-# 1280px ≈ 122 columns. The widest line the recorded run prints is the ProjectDescription
-# default (109 characters); anything narrower wraps it mid-word.
-Set Width 1280
-# The prompt form is a single huh group of 11 fields — ~47 rows including the help line.
-# 1120px ≈ 50 rows, so the whole schema is on screen while it is being answered.
-Set Height 1120
+# 1000px ≈ 94 columns, so the ProjectDescription default (109 characters) wraps onto a
+# second line.
+Set Width 1000
+# 600px ≈ 24 rows: fewer than the questions need, so the prompts scroll along as they are
+# answered, and the hooks' output scrolls past.
+Set Height 600
 
 Hide
 # Scaffold outside the checkout, at a path mounted identically on host and container:
@@ -41,7 +41,7 @@ Show
 Type "specs use specsnl/specs-laravel-project ./acme" Enter
 Sleep 6s
 
-# The form is one group; Enter moves to the next field, Left/Right toggle a confirm.
+# Enter moves to the next question, Left/Right toggle a confirm, Down moves through a select.
 # AddBugSnag — keep the default No.
 Enter
 Sleep 1s
@@ -56,13 +56,19 @@ Sleep 1s
 # ComposerLicense — MIT is already selected.
 Enter
 Sleep 1s
-# Database — postgres is already selected.
+# Database — Down from postgres to mariadb.
+Down
+Sleep 1s
 Enter
 Sleep 1s
 # IssuePrefix — keep ACME.
 Enter
 Sleep 1s
-# PhpVersion — keep 8.5.
+# PhpVersion — two Downs from 8.5 to 8.3.
+Down
+Sleep 1s
+Down
+Sleep 1s
 Enter
 Sleep 1s
 # ProjectDescription — keep the default.
@@ -77,7 +83,7 @@ Sleep 1s
 # ProjectShortName — keep acme.
 Enter
 Sleep 1s
-# RepoName — last field, so Enter submits the whole form.
+# RepoName — last question, so Enter submits the whole form.
 Ctrl+U
 Type "specsnl/acme-storefront"
 Sleep 1s

@@ -58,6 +58,36 @@ computed:
 | `string` containing `{{` | Referenced default — pre-fill computed, user can override    |
 | `computed:` section      | Never prompted — derived after all user inputs are finalised |
 
+Every prompt is a huh group of its own, drawn by a custom layout (`promptLayout`) that fits as many
+groups around the focused one as the terminal allows: the focused group, the one before it, the
+groups after it, then earlier groups while lines are left. The layout reads the terminal height from
+the `tea.WindowSizeMsg` through a program filter, so it adapts when the window is resized.
+
+A single group holding every field is not used: huh fits a group taller than the terminal into a
+scrolling viewport, but v2.0.3 draws that viewport one line taller than the terminal, and the
+renderer cuts off whatever does not fit.
+
+A group that is taller than the terminal on its own — a select with many options — is still fitted
+by huh, into the full terminal height. The layout puts a blank line above the help, so after each
+resize it shrinks every group by one more line. The filter never changes the `tea.WindowSizeMsg`
+itself: the renderer sizes its frame from the message the filter returns, so a smaller height would
+cut off every frame taller than that.
+
+huh only ever shrinks a field to fit, and never grows it back. On every resize the filter resets each
+field to its natural height before huh fits them again, so a select shrunk in a briefly short
+terminal shows all its options once the terminal grows.
+
+bubbletea must be v2.1.0 or later: earlier versions skip the redraw after a resize when the view
+itself is unchanged.
+
+The prompts are drawn on the alternate screen (`tea.View.AltScreen`, set through huh's view hook).
+Drawn inline, below the shell prompt, a resize lets the terminal move lines between the screen and
+its scrollback: shrinking pushes the top of the form into scrollback, growing pulls it back, and the
+renderer, which only moves relative to its own frame, draws a fresh form below it. Every shrink and
+grow left another copy of the top question behind. The alternate screen has no scrollback, and the
+form erases itself on completion either way, so nothing that used to stay on screen is lost. The
+remote-hook confirmation stays inline: it must stay below the hook commands printed just before it.
+
 ---
 
 ## Configurable Delimiters
