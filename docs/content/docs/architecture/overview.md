@@ -202,7 +202,7 @@ flowchart TD
     A[validate args & flags] --> B[check registry initialised + name exists]
     B --> C["template.Get(registry/name)\nparses project.yml, resolves referenced defaults,\nloads .specsverbatim, analyses AST for conditionals"]
     C --> D["hooks.Load(templateRoot, rawConfig)"]
-    D --> E[merge --values + --arg overrides into context]
+    D --> E["merge --values + --arg overrides into context\n(--arg typed by the schema default)"]
     E --> F["huh form: iterative prompting\n(unconditional vars first, then conditional by dependency layer)"]
     F --> G["ApplyComputed — resolve computed: values post-prompt"]
     G --> H["hooks.Run(pre-use) if defined"]
@@ -428,7 +428,7 @@ func (h *Hooks) Run(trigger, cwd string, ctx map[string]any, funcMap template.Fu
 | `internal/template`      | updated     | configurable delimiters (default `{{ }}`), `context.go`, `verbatim.go`, conditional skip, AST analysis, status; exports `LoadProjectFile()`, `LoadMetadata()`, `SaveMetadata()`       |
 | `internal/hooks`         | **new**     | hook loading and execution                                                                                                                                                            |
 | `internal/util/output`   | updated     | lipgloss-based logger + table renderer; `WriteErr` with JSON `error_kind` for known sentinels (replaces tlog + tabular)                                                               |
-| `internal/util/values`   | **new**     | `--values` file (JSON/YAML) and `--arg` flag parsing                                                                                                                                  |
+| `internal/util/values`   | **new**     | `--values` file (JSON/YAML) and `--arg` flag parsing; `Convert()` types an `--arg` value by the schema default                                                                        |
 | `internal/host`          | updated     | source format parsing (owner/repo, HTTPS, SSH, local path)                                                                                                                            |
 | `pkg/prompt`             | **removed** | replaced by `huh`                                                                                                                                                                     |
 | `pkg/util/tlog`          | **removed** | replaced by `internal/util/output`                                                                                                                                                    |

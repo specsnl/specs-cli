@@ -585,6 +585,72 @@ func TestTemplateUse_UseDefaults_SelectArgOverride(t *testing.T) {
 	}
 }
 
+func TestTemplateUse_ArgTypedBySchemaDefault(t *testing.T) {
+	tests := []struct {
+		name    string
+		project string
+		arg     string
+		want    string
+	}{
+		{"bool false", "Flag: true\n", "Flag=false", "bool false disabled"},
+		{"bool true", "Flag: false\n", "Flag=true", "bool true enabled"},
+		{"int", "Flag: 1\n", "Flag=5432", "int 5432 enabled"},
+		{"float", "Flag: 1.5\n", "Flag=2.5", "float64 2.5 enabled"},
+		{"string", "Flag: \"yes\"\n", "Flag=false", "string false enabled"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			withTempRegistry(t)
+			src := makeValidateTemplate(t, tt.project, map[string]string{
+				"out.txt": "{{ .Flag | kindOf }} {{ .Flag }} {{ if .Flag }}enabled{{ else }}disabled{{ end }}",
+			})
+			target := t.TempDir()
+
+			if err := saveAndUse(t, src, "tpl", target, "--use-defaults", "--arg", tt.arg); err != nil {
+				t.Fatalf("template use: %v", err)
+			}
+
+			got, err := os.ReadFile(filepath.Join(target, "out.txt"))
+			if err != nil {
+				t.Fatalf("output file missing: %v", err)
+			}
+
+			if string(got) != tt.want {
+				t.Errorf("got %q, want %q", string(got), tt.want)
+			}
+		})
+	}
+}
+
+func TestTemplateUse_ArgInvalidForSchemaType(t *testing.T) {
+	tests := []struct {
+		name    string
+		project string
+		arg     string
+	}{
+		{"bool", "Flag: false\n", "Flag=nope"},
+		{"int", "Flag: 1\n", "Flag=many"},
+		{"select", "Flag:\n  - one\n  - two\n", "Flag=three"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			withTempRegistry(t)
+			src := makeValidateTemplate(t, tt.project, map[string]string{"out.txt": "{{ .Flag }}"})
+
+			err := saveAndUse(t, src, "tpl", t.TempDir(), "--use-defaults", "--arg", tt.arg)
+			if err == nil {
+				t.Fatal("expected error")
+			}
+
+			if !strings.Contains(err.Error(), tt.arg) {
+				t.Errorf("error %q does not name the argument %q", err, tt.arg)
+			}
+		})
+	}
+}
+
 func TestTemplateUse_ComputedAvailable(t *testing.T) {
 	withTempRegistry(t)
 
