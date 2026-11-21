@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/specsnl/specs-cli/internal/util/values"
@@ -126,5 +127,63 @@ func TestMerge_DoesNotMutateBase(t *testing.T) {
 
 	if base["A"] != json.Number("1") {
 		t.Errorf("base mutated: A = %v, want 1", base["A"])
+	}
+}
+
+func TestConvert(t *testing.T) {
+	tests := []struct {
+		name  string
+		value string
+		def   any
+		want  any
+	}{
+		{"bool false", "false", true, false},
+		{"bool true", "true", false, true},
+		{"bool numeric", "0", true, false},
+		{"int", "5432", 3306, 5432},
+		{"float", "1.5", 2.0, 1.5},
+		{"select option", "MIT", []any{"Apache-2.0", "MIT"}, "MIT"},
+		{"string", "false", "default", "false"},
+		{"not in schema", "42", nil, "42"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := values.Convert("Key", tt.value, tt.def)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if got != tt.want {
+				t.Errorf("got %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestConvert_Invalid(t *testing.T) {
+	tests := []struct {
+		name  string
+		value string
+		def   any
+	}{
+		{"bool", "nope", false},
+		{"int", "abc", 3306},
+		{"int given a float", "1.5", 3306},
+		{"float", "abc", 2.0},
+		{"select", "GPL", []any{"Apache-2.0", "MIT"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := values.Convert("Key", tt.value, tt.def)
+			if err == nil {
+				t.Fatal("expected error")
+			}
+
+			if !strings.Contains(err.Error(), "Key="+tt.value) {
+				t.Errorf("error %q does not name the argument", err)
+			}
+		})
 	}
 }

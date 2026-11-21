@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"os"
 	"path/filepath"
 	"sort"
@@ -91,7 +92,7 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 		return err
 	}
 
-	ctx := tmpl.Context
+	ctx := maps.Clone(tmpl.Context)
 	provided := make(map[string]bool)
 	// finalSource tracks the winning source for each context key, overwritten as values flow
 	// through values_file → arg_flag → prompt → default. Logged in a single batch before
@@ -126,7 +127,11 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 			return fmt.Errorf("%w: %q (from --arg)", specs.ErrReservedVariableName, k)
 		}
 
-		ctx[k] = v
+		ctx[k], err = values.Convert(k, v, tmpl.Context[k])
+		if err != nil {
+			return err
+		}
+
 		provided[k] = true
 		finalSource[k] = "arg_flag"
 	}

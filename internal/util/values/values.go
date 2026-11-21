@@ -6,6 +6,8 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"slices"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -43,6 +45,53 @@ func ParseArg(arg string) (key, value string, err error) {
 	}
 
 	return parts[0], parts[1], nil
+}
+
+// Convert turns an --arg value into the type of the variable's schema default, so that
+// Flag=false is the bool false rather than a non-empty, and therefore true, string.
+// A select default (a list of options) keeps the value as a string but requires it to be
+// one of the options. A string default, or a key without one, keeps the value as given.
+func Convert(key, value string, def any) (any, error) {
+	switch d := def.(type) {
+	case bool:
+		b, err := strconv.ParseBool(value)
+		if err != nil {
+			return nil, fmt.Errorf("--arg %s=%s: %q is not a boolean (use true or false)", key, value, value)
+		}
+
+		return b, nil
+
+	case int:
+		n, err := strconv.Atoi(value)
+		if err != nil {
+			return nil, fmt.Errorf("--arg %s=%s: %q is not an integer", key, value, value)
+		}
+
+		return n, nil
+
+	case float64:
+		f, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			return nil, fmt.Errorf("--arg %s=%s: %q is not a number", key, value, value)
+		}
+
+		return f, nil
+
+	case []any:
+		var options []string
+
+		for _, item := range d {
+			if s, ok := item.(string); ok {
+				options = append(options, s)
+			}
+		}
+
+		if len(options) > 0 && !slices.Contains(options, value) {
+			return nil, fmt.Errorf("--arg %s=%s: %q is not one of %s", key, value, value, strings.Join(options, ", "))
+		}
+	}
+
+	return value, nil
 }
 
 // Merge applies overrides on top of base, returning a new map.

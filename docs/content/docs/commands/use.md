@@ -37,9 +37,26 @@ The older `github:owner/repo` form is still accepted as a deprecated alias.
 | Flag                | Description                                                                           |
 |---------------------|---------------------------------------------------------------------------------------|
 | `--values <file>`   | Load variable values from a JSON or YAML file (`.yaml`/`.yml` → YAML, otherwise JSON) |
-| `--arg <key=value>` | Set a single variable (repeatable)                                                    |
+| `--arg <key=value>` | Set a single variable (repeatable); typed by the variable's default, see below        |
 | `--use-defaults`    | Accept all defaults without prompting                                                 |
 | `--no-hooks`        | Skip pre/post-use hooks                                                               |
+
+## Typed `--arg` values
+
+A value given with `--arg` takes the type of the variable's default in the project file, so it
+behaves in a template exactly like the default it replaces:
+
+| Default in the project file | `--arg` accepts                                                     | Example                    |
+|-----------------------------|---------------------------------------------------------------------|----------------------------|
+| boolean (`AddE2E: false`)   | `true`, `false`, `1`, `0` (and the other `strconv.ParseBool` forms) | `--arg AddE2E=false`       |
+| integer (`Port: 3306`)      | an integer                                                          | `--arg Port=5432`          |
+| float (`Ratio: 0.5`)        | a number                                                            | `--arg Ratio=0.75`         |
+| list of options (a select)  | one of the options                                                  | `--arg License=MIT`        |
+| string, or no such variable | anything, kept as a string                                          | `--arg ProjectName=my-app` |
+
+A value that does not fit — `--arg AddE2E=nope`, `--arg Port=many`, an option that is not in the
+list — is an error that names the argument, instead of a string that a template would read as
+`true`. A `--values` file needs none of this: JSON and YAML keep their own types.
 
 ## Running without a terminal
 

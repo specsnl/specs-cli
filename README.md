@@ -44,7 +44,8 @@ What it does, in one list:
   copied verbatim, or given explicit permissions.
 - **Prompts only where something can answer.** With stdin not a terminal, a missing value fails
   immediately and names itself instead of hanging a CI job. `--arg`, `--values` and `--use-defaults`
-  make a run unattended.
+  make a run unattended. An `--arg` value takes the type of the variable's default, so
+  `--arg AddE2E=false` turns a boolean off.
 - **Keeps templates current.** `template list` reports each one's status — remote templates against
   their git remote, saved ones against their source directory — and `template upgrade` applies it.
 - **Scripts cleanly.** stdout carries the answer, stderr the narration, so `2>/dev/null` leaves
