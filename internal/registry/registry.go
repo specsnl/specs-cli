@@ -123,11 +123,7 @@ func Upgrade(name string) (UpgradeResult, error) {
 		newBranch = result.LatestVersion
 	}
 
-	if err := os.RemoveAll(root); err != nil {
-		return UpgradeResult{}, err
-	}
-
-	if err := pkggit.Clone(meta.Repository, root, pkggit.CloneOptions{Branch: targetRef}); err != nil {
+	if err := replaceWithClone(root, meta.Repository, targetRef); err != nil {
 		return UpgradeResult{}, err
 	}
 
@@ -200,4 +196,35 @@ func upgradeLocal(name, root string, meta *pkgtemplate.Metadata) (UpgradeResult,
 	slog.Debug("upgrade local complete", "template", name, "source", src)
 
 	return UpgradeResult{Repository: repository, TargetRef: src, SkippedLinks: skipped}, nil
+}
+
+// replaceWithClone clones ref of repository and swaps it in for the template at
+// root. The clone is staged next to the registry, so a clone that fails or is
+// rejected by CheckLinks leaves the registered template untouched.
+func replaceWithClone(root, repository, ref string) error {
+	staging, err := os.MkdirTemp(specs.ConfigDir(), ".upgrade-*")
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if err := os.RemoveAll(staging); err != nil {
+			slog.Debug("removing upgrade staging dir failed", "dir", staging, "error", err)
+		}
+	}()
+
+	cloned, err := pkggit.CloneInto(staging, "repo", repository, pkggit.CloneOptions{Branch: ref})
+	if err != nil {
+		return err
+	}
+
+	if err := pkgtemplate.CheckLinks(cloned); err != nil {
+		return err
+	}
+
+	if err := os.RemoveAll(root); err != nil {
+		return err
+	}
+
+	return os.Rename(cloned, root)
 }

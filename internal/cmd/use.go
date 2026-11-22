@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/specsnl/specs-cli/internal/host"
+	pkgtemplate "github.com/specsnl/specs-cli/internal/template"
 	pkggit "github.com/specsnl/specs-cli/internal/util/git"
 	"github.com/specsnl/specs-cli/internal/util/osutil"
 )
@@ -77,6 +78,10 @@ func runUse(app *App, rawSource, targetDir string, opts executeOpts) error {
 		// git layer logs clone start/complete
 		cloneDir, err := pkggit.CloneInto(tmp, "repo", src.CloneURL, pkggit.CloneOptions{Branch: src.Branch})
 		if err != nil {
+			return err
+		}
+
+		if err := pkgtemplate.CheckLinks(cloneDir); err != nil {
 			return err
 		}
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/specsnl/specs-cli/internal/specs"
 	pkgtemplate "github.com/specsnl/specs-cli/internal/template"
+	"github.com/specsnl/specs-cli/internal/util/osutil"
 )
 
 // addLinks creates symlinks under root/template/; links maps a path relative to
@@ -256,5 +257,46 @@ func TestGet_DoesNotReadThroughLinks(t *testing.T) {
 
 	if _, err := tmpl.Validate(); err != nil {
 		t.Fatalf("Validate: %v", err)
+	}
+}
+
+func TestCheckLinks(t *testing.T) {
+	tests := []struct {
+		name    string
+		links   map[string]string
+		wantErr bool
+	}{
+		{name: "no links"},
+		{name: "in bounds", links: map[string]string{".node-version": ".nvmrc", "alias": "real"}},
+		{name: "dangling", links: map[string]string{"broken": "nope"}},
+		{name: "absolute", links: map[string]string{"leak": "/etc/passwd"}, wantErr: true},
+		{name: "relative escape", links: map[string]string{"leak": "../project.yaml"}, wantErr: true},
+		{name: "chain escapes", links: map[string]string{"a": "b", "b": "../../x"}, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root := buildTemplate(t, "Name: x\n", map[string][]byte{".nvmrc": []byte("26"), "real/f": []byte("f")})
+			addLinks(t, root, tt.links)
+
+			err := pkgtemplate.CheckLinks(root)
+
+			if !tt.wantErr {
+				if err != nil {
+					t.Fatalf("CheckLinks: %v", err)
+				}
+
+				return
+			}
+
+			if !errors.Is(err, specs.ErrSymlinkOutside) {
+				t.Fatalf("CheckLinks error = %v, want ErrSymlinkOutside", err)
+			}
+
+			var linkErr *osutil.LinkError
+			if !errors.As(err, &linkErr) || linkErr.Path == "" || linkErr.Target == "" {
+				t.Errorf("error should name the link and its target: %v", err)
+			}
+		})
 	}
 }
