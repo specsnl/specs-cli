@@ -25,6 +25,10 @@ Manage a local registry of named templates. Unlike `specs use`, downloaded templ
 
 `template download` and `template save` accept `-f` / `--force` to overwrite an existing template with the same name.
 
+`template download` and `template upgrade` reject a template with a symlink pointing out of its `template/` directory;
+`template save` leaves such a link out of the copy and warns. `validate` reports skipped symlinks. See
+[Symlinks](/docs/template-structure/#symlinks).
+
 For machine-readable `list` and `update` output, use the global `--output json` flag (see
 [Global Flags](/docs/commands/global-flags/)). Their tables are the product and go to stdout — an empty registry
 still yields `[]`, with the explanation narrated on stderr — while `validate` answers

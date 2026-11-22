@@ -242,7 +242,11 @@ flowchart TD
     G -->|yes| Skip3[skip dir tree]
     G -->|no| H{is directory?}
     H -->|yes| Mkdir[os.MkdirAll]
-    H -->|no| I{matches .specsverbatim?}
+    H -->|no| S{is symlink?}
+    S -->|yes| S1{resolves inside template/?}
+    S1 -->|no| Skip5["skip — append LinkWarning"]
+    S1 -->|yes| S2["render target like a file name\n(unless it matches .specsverbatim)\nqueue link — see Symlinks"]
+    S -->|no| I{matches .specsverbatim?}
     I -->|yes| Copy1[copy verbatim]
     I -->|no| J{isBinary?}
     J -->|yes| Copy2[copy verbatim]
@@ -318,6 +322,64 @@ The same preservation applies when a template is saved to the local registry
 (`specs template save` / `specs use <local-path>`): `osutil.CopyDir` uses the same
 `os.Stat` + `os.Chmod` pattern, so a script that is `chmod +x` in the source stays
 executable in the registry and in every scaffolded output.
+
+### Symlinks
+
+A symlink is never read through. The boundary is the template's `template/` directory: a link
+is valid only when it resolves to something the template itself ships.
+
+`osutil.ResolveLink(root, path)` decides this. It follows the link one path component at a time,
+the way the OS does, instead of cleaning the path lexically. With `a → ..`, the OS resolves
+`a/../x` to `../../x`, but lexical cleaning turns it into `x`. Lexical cleaning would accept that
+link even though it escapes. The result is one of three:
+
+| Result        | When                                                                                              | Sentinel                   |
+|---------------|---------------------------------------------------------------------------------------------------|----------------------------|
+| In bounds     | The whole chain stays inside the root and ends at a file or directory                             | —                          |
+| Out of bounds | The target is absolute, or any step of the chain leaves the root, even if a later step comes back | `specs.ErrSymlinkOutside`  |
+| Dangling      | The chain ends at nothing, runs through a file, or loops (more than 40 hops)                      | `specs.ErrSymlinkDangling` |
+
+Absolute targets are always out of bounds. Such a link stops pointing into the template as soon as
+the template is copied, for example into the registry.
+
+**`Execute`** handles each symlink under `template/` as follows:
+
+1. Its name is rendered like any other path, so conditionals and empty segments skip it the same way.
+2. A link that is out of bounds or dangling **in the source** is skipped and recorded in
+   `Template.LinkWarnings` as an `*osutil.LinkError` (path, target as written, sentinel).
+3. An in-bounds link's target is rendered like a file name, so `.node-version → {{ .Name }}.rc` points
+   at the rendered name. A link matching `.specsverbatim` keeps its target as written. A render error
+   in the target fails fast, or becomes a `RenderWarning` with `--continue-on-error`.
+4. After the walk, every link is created with its rendered target and checked against the
+   **output**. A link whose target was not written (removed by a conditional, rendered empty,
+   whitespace-only content) or that now leaves the output is removed and recorded in
+   `LinkWarnings` with the reason `in the generated project`. Links are created only after the
+   walk, so a target written after its link is still found.
+5. A link that cannot be created is skipped and recorded the same way. On Windows this covers
+   missing privileges. The target is never copied in its place.
+
+Directory links are recreated, not descended into. `AnalyzeConditionals` and `Validate` analyse a
+link's target as a path expression and never read its content.
+
+**`osutil.CopyDir`** recreates every symlink that resolves inside the copied tree with the same
+target, and skips the rest, returning them as `[]*osutil.LinkError`. Without this, the
+temp → target copy in `template use` would flatten the links `Execute` created. For a local
+template, the first copy (`specs use <path>`, `template save`, local upgrade) would read outside
+files before `Execute` ever runs. Its bound is the copied root, not `template/`. A link from
+`template/` to `../project.yaml` survives the copy and is then skipped by `Execute`. Every caller
+reports the skipped links with `Output.Warn`. A local upgrade passes them back in
+`UpgradeResult.SkippedLinks`.
+
+**Cloned templates are rejected, not trimmed.** `template.CheckLinks(templateRoot)` returns an error
+naming every out-of-bounds link under `template/` (dangling links pass; `Execute` skips them). It
+runs wherever a template is cloned, so `template download` followed by `template use` cannot
+bypass it:
+
+| Clone site            | On rejection                                                                                                                 |
+|-----------------------|------------------------------------------------------------------------------------------------------------------------------|
+| `specs use <git-url>` | Aborts before `Get`; the clone lives in a temp dir, nothing is written to the target                                         |
+| `template download`   | Removes the fresh clone, so the template is not registered                                                                   |
+| `template upgrade`    | The clone is staged under the config dir and only swapped in after the check passes, so the registered template is untouched |
 
 ---
 
@@ -524,11 +586,12 @@ display format for the `list` command.
 It calls `Execute` on a temporary directory first to catch render errors, then calls
 `Template.Validate()` for static analysis.
 
-Three categories of issues are reported:
+Four categories of issues are reported:
 
 | Issue kind         | Source       | Meaning                                                                          |
 |--------------------|--------------|----------------------------------------------------------------------------------|
 | `render_error`     | `Execute()`  | A file could not be rendered (parse or execution error) and was copied verbatim. |
+| `symlink`          | `Execute()`  | A symlink was skipped: out of bounds, dangling, or not creatable (see Symlinks). |
 | `unknown_variable` | `Validate()` | A name used in a template file or path is **not defined** in `project.yaml`.     |
 | `unused_variable`  | `Validate()` | A variable **defined** in the user input section is never referenced anywhere.   |
 | `unused_computed`  | `Validate()` | A computed value **defined** under `computed:` is never referenced anywhere.     |
@@ -537,11 +600,13 @@ Exit codes are a bitmask — multiple conditions combine additively:
 
 | Bit | Constant          | Value | Condition                                                                 |
 |-----|-------------------|-------|---------------------------------------------------------------------------|
+| 3   | `ValidateLinks`   | 8     | Any skipped symlink                                                       |
 | 2   | `ValidateRender`  | 4     | Any `render_error` — file copied verbatim due to parse or execution error |
 | 1   | `ValidateUnknown` | 2     | Any `unknown_variable`                                                    |
 | 0   | `ValidateUnused`  | 1     | Any `unused_*` (only with `--strict`)                                     |
 
-`specs template validate` exits 0 only when there are no render errors and no unknown variables.
+`specs template validate` exits 0 only when there are no render errors, no skipped symlinks and no
+unknown variables.
 
 ---
 

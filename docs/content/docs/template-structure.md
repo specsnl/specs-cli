@@ -70,6 +70,34 @@ File permission bits are always preserved from template source to output. A scri
 marked executable (`chmod +x`) in the template directory — or in the local registry —
 will remain executable in every scaffolded project.
 
+## Symlinks
+
+A symlink in `template/` stays a symlink in the generated project, as long as it points at
+something inside `template/`. This covers links to files and to directories, and chains of links:
+
+```text
+template/
+├── .nvmrc
+└── .node-version → .nvmrc        # generated as .node-version → .nvmrc
+```
+
+The link target is rendered like a file name, so `.node-version → {{ .Name }}.rc` points at the
+rendered `acme.rc`.
+
+specs never reads through a link. These links are skipped with a warning:
+
+- links whose target is absolute, or climbs out of `template/` (`../`, `../../.ssh/id_rsa`), at any
+  step of the chain
+- links whose target does not exist
+- links whose rendered target was not generated, for example because a conditional removed the file
+- links that cannot be created, for example on Windows without the privilege to create symlinks
+
+A template cloned from a remote (`specs use <git-url>`, `specs template download`,
+`specs template upgrade`) with a link out of `template/` is rejected outright: the command fails,
+naming the link and its target, and nothing is written or registered.
+
+`specs template validate` reports skipped links and exits with bit `8` set.
+
 ## Skipping binary files
 
 Create a `.specsverbatim` file in the template root to list glob patterns for files that should be copied as-is without template rendering:
