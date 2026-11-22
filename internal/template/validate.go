@@ -9,6 +9,7 @@ import (
 	"sort"
 
 	"github.com/specsnl/specs-cli/internal/specs"
+	"github.com/specsnl/specs-cli/internal/util/osutil"
 )
 
 // Sentinel errors identifying each kind of validation issue.
@@ -117,6 +118,18 @@ func (t *Template) Validate() ([]ValidationIssue, error) {
 			if !allDefined[k] {
 				addIssue(ErrUnknownVariable, k, reportPath)
 			}
+		}
+
+		if osutil.IsLink(d) {
+			if target, err := os.Readlink(path); err == nil {
+				for _, k := range extractRefs(target, t.funcMap, t.cfg.delims()) {
+					if !allDefined[k] {
+						addIssue(ErrUnknownVariable, k, reportPath)
+					}
+				}
+			}
+
+			return nil
 		}
 
 		if d.IsDir() {

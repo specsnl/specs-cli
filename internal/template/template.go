@@ -1,6 +1,7 @@
 package template
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -8,6 +9,7 @@ import (
 	"maps"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -17,6 +19,7 @@ import (
 	"github.com/Masterminds/semver/v3"
 
 	"github.com/specsnl/specs-cli/internal/specs"
+	"github.com/specsnl/specs-cli/internal/util/osutil"
 )
 
 // Config holds options that control template loading and execution behaviour.
@@ -72,14 +75,15 @@ type RenderWarning struct {
 
 // Template holds everything needed to execute a boilr template.
 type Template struct {
-	Root         string            // path to the template root (contains project.yaml + template/)
-	Context      map[string]any    // user input map with referenced defaults resolved
-	ComputedDefs map[string]string // raw computed definitions; caller must apply via ApplyComputed before Execute
-	Conditionals Conditionals      // varName → Cond; absent means always prompt
-	Referenced   map[string]bool   // schema variables referenced in template files or computed expressions
-	Reserved     map[string]any    // recognised reserved config values (e.g. __delimiters), exposed to templates during rendering
-	Metadata     *Metadata         // nil if __metadata.json is absent
-	Warnings     []RenderWarning   // non-fatal render issues collected during Execute
+	Root         string              // path to the template root (contains project.yaml + template/)
+	Context      map[string]any      // user input map with referenced defaults resolved
+	ComputedDefs map[string]string   // raw computed definitions; caller must apply via ApplyComputed before Execute
+	Conditionals Conditionals        // varName → Cond; absent means always prompt
+	Referenced   map[string]bool     // schema variables referenced in template files or computed expressions
+	Reserved     map[string]any      // recognised reserved config values (e.g. __delimiters), exposed to templates during rendering
+	Metadata     *Metadata           // nil if __metadata.json is absent
+	Warnings     []RenderWarning     // non-fatal render issues collected during Execute
+	LinkWarnings []*osutil.LinkError // symlinks Execute skipped or removed from the output
 	cfg          Config
 	funcMap      texttemplate.FuncMap
 	verbatim     *VerbatimRules
@@ -226,6 +230,8 @@ func (t *Template) Execute(targetDir string) error {
 
 	var rendered, skipped, verbatim int
 
+	var links []outputLink
+
 	walkErr := filepath.WalkDir(srcRoot, func(srcPath string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -280,6 +286,16 @@ func (t *Template) Execute(targetDir string) error {
 		}
 
 		relForward := filepath.ToSlash(rel)
+
+		if osutil.IsLink(d) {
+			target, ok, err := t.linkTarget(srcRoot, srcPath, relForward, ctx)
+			if ok {
+				links = append(links, outputLink{path: destPath, rel: filepath.ToSlash(destRel), target: target})
+			}
+
+			return err
+		}
+
 		if t.verbatim.Matches(relForward) || isBinary(srcPath) {
 			slog.Debug("file decision", "path", rel, "dest", destPath, "action", "verbatim")
 
@@ -298,6 +314,10 @@ func (t *Template) Execute(targetDir string) error {
 		return walkErr
 	}
 
+	if err := t.writeLinks(targetDir, links); err != nil {
+		return err
+	}
+
 	slog.Debug("template execution complete",
 		"template", t.Root,
 		"dest", targetDir,
@@ -305,6 +325,88 @@ func (t *Template) Execute(targetDir string) error {
 		"verbatim", verbatim,
 		"skipped", skipped,
 	)
+
+	return nil
+}
+
+type outputLink struct {
+	path   string // absolute path of the link in the output
+	rel    string // path relative to the output root
+	target string // rendered target
+}
+
+// linkTarget returns the target of the symlink at srcPath, rendered like a file
+// name. A link that does not resolve inside srcRoot is never read through: it is
+// recorded in LinkWarnings and ok is false.
+func (t *Template) linkTarget(srcRoot, srcPath, rel string, ctx map[string]any) (target string, ok bool, err error) {
+	target, err = osutil.LinkTarget(srcRoot, srcPath)
+
+	var linkErr *osutil.LinkError
+	if errors.As(err, &linkErr) {
+		slog.Debug("file decision", "path", rel, "action", "skip link", "error", err)
+
+		linkErr.Path = path.Join(specs.TemplateDirFile, linkErr.Path)
+		t.LinkWarnings = append(t.LinkWarnings, linkErr)
+
+		return "", false, nil
+	}
+
+	if err != nil {
+		return "", false, err
+	}
+
+	if t.verbatim.Matches(rel) {
+		return target, true, nil
+	}
+
+	rendered, err := t.renderName(target, ctx)
+	if err != nil {
+		if !t.cfg.ContinueOnRenderError {
+			return "", false, fmt.Errorf("rendering symlink target %s: %w", rel, err)
+		}
+
+		t.Warnings = append(t.Warnings, RenderWarning{Path: rel, Err: err, Preview: contentPreview([]byte(target))})
+
+		return target, true, nil
+	}
+
+	return rendered, true, nil
+}
+
+// writeLinks creates the links once every file is in place, then removes each
+// one that does not resolve inside targetDir and records it in LinkWarnings.
+func (t *Template) writeLinks(targetDir string, links []outputLink) error {
+	warn := func(link outputLink, err error) {
+		t.LinkWarnings = append(t.LinkWarnings, &osutil.LinkError{Path: link.rel, Target: link.target, Err: err})
+	}
+
+	var created []outputLink
+
+	for _, link := range links {
+		if strings.TrimSpace(link.target) == "" {
+			warn(link, fmt.Errorf("in the generated project: %w", specs.ErrSymlinkDangling))
+			continue
+		}
+
+		slog.Debug("file decision", "dest", link.path, "action", "link", "target", link.target)
+
+		if err := osutil.Symlink(link.target, link.path); err != nil {
+			warn(link, err)
+			continue
+		}
+
+		created = append(created, link)
+	}
+
+	for _, link := range created {
+		if _, err := osutil.ResolveLink(targetDir, link.path); err != nil {
+			if rmErr := os.Remove(link.path); rmErr != nil {
+				return rmErr
+			}
+
+			warn(link, fmt.Errorf("in the generated project: %w", err))
+		}
+	}
 
 	return nil
 }

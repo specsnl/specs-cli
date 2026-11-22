@@ -195,6 +195,8 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 		return err
 	}
 
+	a.warnSkippedLinks(tmpl.LinkWarnings)
+
 	if len(tmpl.Warnings) > 0 {
 		for _, w := range tmpl.Warnings {
 			a.Output.Warn("%s: copied verbatim due to render error: %v", w.Path, w.Err)
