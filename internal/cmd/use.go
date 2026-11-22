@@ -64,9 +64,12 @@ func runUse(app *App, rawSource, targetDir string, opts executeOpts) error {
 	var templateRoot string
 
 	if src.IsLocal() {
-		if err := osutil.CopyDir(src.LocalPath, tmp); err != nil {
+		skipped, err := osutil.CopyDir(src.LocalPath, tmp)
+		if err != nil {
 			return fmt.Errorf("copying local template: %w", err)
 		}
+
+		app.warnSkippedLinks(skipped)
 
 		templateRoot = tmp
 	} else {

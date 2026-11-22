@@ -54,6 +54,7 @@ func newTemplateUpgradeCmd(app *App) *cobra.Command {
 				case res.AlreadyUpToDate:
 					app.Output.Info("template %q is already up-to-date", name)
 				default:
+					app.warnSkippedLinks(res.SkippedLinks)
 					app.Output.Info("template %q upgraded", name)
 				}
 			}

@@ -65,6 +65,13 @@ var (
 	// distinct kind because it is the one a CI job hits, and the fix is to supply
 	// the value rather than to retry.
 	ErrCannotPrompt = errors.New("cannot prompt for values")
+
+	// ErrSymlinkOutside is returned for a symlink whose target is absolute or
+	// leaves the directory tree it was found in at any step of its chain.
+	ErrSymlinkOutside = errors.New("symlink points outside the template")
+
+	// ErrSymlinkDangling is returned for a symlink whose chain ends at nothing.
+	ErrSymlinkDangling = errors.New("symlink target does not exist")
 )
 
 // KindOf returns a stable, machine-readable string identifier for the sentinel
@@ -102,6 +109,10 @@ func KindOf(err error) string {
 		return "reserved_variable_name"
 	case errors.Is(err, ErrCannotPrompt):
 		return "cannot_prompt"
+	case errors.Is(err, ErrSymlinkOutside):
+		return "symlink_outside"
+	case errors.Is(err, ErrSymlinkDangling):
+		return "symlink_dangling"
 	default:
 		return ""
 	}

@@ -30,6 +30,8 @@ type UpgradeResult struct {
 	Repository string
 	// TargetRef is the branch or tag that was checked out.
 	TargetRef string
+	// SkippedLinks are the symlinks a local upgrade left out of the copy.
+	SkippedLinks []*osutil.LinkError
 }
 
 // Load returns the registry Entry for name, loading its metadata and cached status.
@@ -174,7 +176,8 @@ func upgradeLocal(name, root string, meta *pkgtemplate.Metadata) (UpgradeResult,
 		return UpgradeResult{}, err
 	}
 
-	if err := osutil.CopyDir(src, root); err != nil {
+	skipped, err := osutil.CopyDir(src, root)
+	if err != nil {
 		return UpgradeResult{}, err
 	}
 
@@ -196,5 +199,5 @@ func upgradeLocal(name, root string, meta *pkgtemplate.Metadata) (UpgradeResult,
 
 	slog.Debug("upgrade local complete", "template", name, "source", src)
 
-	return UpgradeResult{Repository: repository, TargetRef: src}, nil
+	return UpgradeResult{Repository: repository, TargetRef: src, SkippedLinks: skipped}, nil
 }

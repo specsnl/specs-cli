@@ -73,7 +73,7 @@ func saveLocalTemplate(t *testing.T, registryDir, name, src string) string {
 	t.Helper()
 
 	dest := filepath.Join(registryDir, name)
-	if err := osutil.CopyDir(src, dest); err != nil {
+	if _, err := osutil.CopyDir(src, dest); err != nil {
 		t.Fatalf("CopyDir: %v", err)
 	}
 
@@ -163,5 +163,30 @@ func TestUpgrade_LocalGitSource_Missing(t *testing.T) {
 	_, err := registry.Upgrade("loc")
 	if !errors.Is(err, specs.ErrLocalSourceMissing) {
 		t.Errorf("expected ErrLocalSourceMissing, got %v", err)
+	}
+}
+
+func TestUpgrade_LocalGitSource_ReportsSkippedLinks(t *testing.T) {
+	registryDir := withTempRegistry(t)
+	src, repo := newSourceRepo(t)
+	dest := saveLocalTemplate(t, registryDir, "loc", src)
+
+	if err := os.Symlink("../outside", filepath.Join(src, "leak")); err != nil {
+		t.Fatal(err)
+	}
+
+	commitFile(t, repo, src, "second")
+
+	res, err := registry.Upgrade("loc")
+	if err != nil {
+		t.Fatalf("Upgrade: %v", err)
+	}
+
+	if len(res.SkippedLinks) != 1 || !errors.Is(res.SkippedLinks[0], specs.ErrSymlinkOutside) {
+		t.Fatalf("SkippedLinks = %v, want the outside link", res.SkippedLinks)
+	}
+
+	if _, err := os.Lstat(filepath.Join(dest, "leak")); !os.IsNotExist(err) {
+		t.Errorf("the skipped link should not reach the registry: %v", err)
 	}
 }
