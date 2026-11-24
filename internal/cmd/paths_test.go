@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/specsnl/specs-cli/internal/specs"
+	"github.com/specsnl/specs-cli/internal/util/exit"
 )
 
 const escapeWarning = "template/{{ .Dir }} → ../../escaped: rendered path is outside the output directory"
@@ -165,5 +166,24 @@ func TestTemplateUse_DownloadedEscapingPathAborts(t *testing.T) {
 
 	if _, err := os.Stat(targetDir); !errors.Is(err, os.ErrNotExist) {
 		t.Errorf("nothing should be written to the target: %v", err)
+	}
+}
+
+func TestTemplateValidate_ReportsEscapingPaths(t *testing.T) {
+	escaped := sandboxTempDir(t)
+
+	dir := t.TempDir()
+	buildEscapingTemplate(t, dir)
+
+	out, err := executeCmd("template", "validate", dir)
+
+	if code := validateExitCode(err); code != exit.ValidatePaths {
+		t.Fatalf("exit code = %d, want %d (err=%v)\n%s", code, exit.ValidatePaths, err, out)
+	}
+
+	assertNotEscaped(t, escaped)
+
+	if !strings.Contains(out, escapeWarning) {
+		t.Errorf("output should report the escaping path:\n%s", out)
 	}
 }
