@@ -34,12 +34,13 @@ The older `github:owner/repo` form is still accepted as a deprecated alias.
 
 ## Flags
 
-| Flag                | Description                                                                           |
-|---------------------|---------------------------------------------------------------------------------------|
-| `--values <file>`   | Load variable values from a JSON or YAML file (`.yaml`/`.yml` → YAML, otherwise JSON) |
-| `--arg <key=value>` | Set a single variable (repeatable); typed by the variable's default, see below        |
-| `--use-defaults`    | Accept all defaults without prompting                                                 |
-| `--no-hooks`        | Skip pre/post-use hooks                                                               |
+| Flag                  | Description                                                                                                                                |
+|-----------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
+| `--values <file>`     | Load variable values from a JSON or YAML file (`.yaml`/`.yml` → YAML, otherwise JSON)                                                      |
+| `--arg <key=value>`   | Set a single variable (repeatable); typed by the variable's default, see below                                                             |
+| `--use-defaults`      | Accept all defaults without prompting                                                                                                      |
+| `--no-hooks`          | Skip pre/post-use hooks                                                                                                                    |
+| `--continue-on-error` | Warn instead of aborting on a render error: a file whose content fails is copied verbatim, a file or directory whose name fails is skipped |
 
 ## Typed `--arg` values
 

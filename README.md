@@ -44,7 +44,8 @@ What it does, in one list:
   copied verbatim, or given explicit permissions. Symlinks inside the template stay symlinks, and a
   link out of it is never followed: it is skipped with a warning, and a cloned template is rejected.
   A file name that renders outside the target (`../`, an absolute path) is never written either:
-  skipped with a warning, or an error for a cloned template.
+  skipped with a warning, or an error for a cloned template. A name that fails to render (a typo,
+  an undefined variable) stops the run like a broken file does, instead of disappearing.
 - **Prompts only where something can answer.** With stdin not a terminal, a missing value fails
   immediately and names itself instead of hanging a CI job. `--arg`, `--values` and `--use-defaults`
   make a run unattended. An `--arg` value takes the type of the variable's default, so

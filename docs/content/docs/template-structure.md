@@ -35,6 +35,13 @@ Directory and file names are also templated:
   main.go
 ```
 
+A name that renders empty, like `Dockerfile` above with `useDocker: false`, is skipped, and a
+directory with everything under it. A name that fails to render is an error, just like a file's
+content: a typo in a function name, an undefined variable (`{{ .projectNmae }}`) or an action
+split across directories (a directory named `{{ if .x }}docs`) stops the run, naming the source path.
+With `--continue-on-error` it is skipped with a warning instead. `specs template validate` reports
+it and exits with bit `4` set.
+
 A rendered name must stay inside the generated project. A name that renders to an absolute path or
 climbs out with `..` (`{{ .Dir }}/x.txt` with `Dir: ../../escaped`) is never written, whether the
 value comes from a default, `--arg`, `--values` or a prompt. A `..` that stays inside is fine:
