@@ -37,6 +37,7 @@ func TestKindOf_KnownSentinels(t *testing.T) {
 		{specs.ErrSymlinkOutside, "symlink_outside"},
 		{fmt.Errorf("leak.txt → /etc/passwd: %w", specs.ErrSymlinkOutside), "symlink_outside"},
 		{specs.ErrSymlinkDangling, "symlink_dangling"},
+		{specs.ErrPathOutside, "path_outside"},
 	}
 
 	for _, tc := range cases {
@@ -81,6 +82,7 @@ func TestErrorsIs_AllSentinelsWrapCorrectly(t *testing.T) {
 		specs.ErrInvalidSpecsVersion,
 		specs.ErrSpecsVersionUnsatisfied,
 		specs.ErrReservedVariableName,
+		specs.ErrPathOutside,
 	}
 
 	for _, sentinel := range sentinels {

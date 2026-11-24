@@ -77,6 +77,13 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 	// constraint. Covers both `specs use` and `specs template use`, which share this path.
 	cfg.Version = Version
 
+	meta, err := pkgtemplate.LoadMetadata(templateRoot)
+	if err != nil {
+		slog.Debug("failed to parse template metadata", "template", templateRoot, "error", err)
+	}
+
+	cfg.RejectEscapingPaths = opts.remote || meta.IsRemote()
+
 	tmpl, err := pkgtemplate.Get(templateRoot, cfg)
 	if err != nil {
 		return err
@@ -196,6 +203,7 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 	}
 
 	a.warnSkippedLinks(tmpl.LinkWarnings)
+	a.warnSkippedPaths(tmpl.PathWarnings)
 
 	if len(tmpl.Warnings) > 0 {
 		for _, w := range tmpl.Warnings {
@@ -236,6 +244,12 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 func (a *App) warnSkippedLinks(links []*osutil.LinkError) {
 	for _, link := range links {
 		a.Output.Warn("skipped symlink %v", link)
+	}
+}
+
+func (a *App) warnSkippedPaths(paths []*pkgtemplate.PathError) {
+	for _, p := range paths {
+		a.Output.Warn("skipped %v", p)
 	}
 }
 
