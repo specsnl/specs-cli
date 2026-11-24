@@ -1179,3 +1179,28 @@ func TestPromptForm_ResizeReachesTheRendererUnchanged(t *testing.T) {
 		t.Errorf("the filter turned %#v into %#v", size, msg)
 	}
 }
+
+func TestTemplateUse_ContinueOnError_HintNamesTheRegistryPath(t *testing.T) {
+	withTempRegistry(t)
+
+	src := t.TempDir()
+	buildMinimalTemplate(t, src, "Name: world\n", "bad.txt", "{{ invalid")
+
+	if _, err := executeCmd("template", "save", src, "tpl"); err != nil {
+		t.Fatalf("template save: %v", err)
+	}
+
+	out, err := executeCmd("template", "use", "--use-defaults", "--continue-on-error", "tpl", t.TempDir())
+	if err != nil {
+		t.Fatalf("template use: %v\n%s", err, out)
+	}
+
+	want := "run 'specs template validate " + specs.TemplatePath("tpl") + "' to see all issues"
+	if !strings.Contains(out, want) {
+		t.Errorf("output should contain %q:\n%s", want, out)
+	}
+
+	if _, err := executeCmd("template", "validate", specs.TemplatePath("tpl")); err == nil {
+		t.Error("the hinted command should run and report the render error")
+	}
+}

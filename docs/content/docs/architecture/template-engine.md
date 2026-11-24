@@ -321,7 +321,10 @@ If any `RenderWarning` entries are present after `Execute` returns (only possibl
 - **`template use`** reports each affected file via `Output.Warn`, including the destination
   path and the first 80 characters of the unrendered source so the user can grep for
   straggling `{{ }}` literals. A skipped name is reported with its source path under `template/`
-  instead. It also suggests running `specs template validate <name>`.
+  instead. It then suggests a `specs template validate` command the user can run as written:
+  with the registry path for `specs template use`, with the path as given for a local
+  `specs use` source, and, for a remote `specs use` source, cloning the repository first — the
+  temporary copy or clone `specs use` rendered from is gone by then.
 - **`template validate`** reports each affected file, includes them in the exit code
   (`ValidateRender = 4`), and always runs at debug log level so no diagnostic output
   is suppressed.

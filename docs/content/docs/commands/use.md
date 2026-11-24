@@ -42,6 +42,10 @@ The older `github:owner/repo` form is still accepted as a deprecated alias.
 | `--no-hooks`          | Skip pre/post-use hooks                                                                                                                    |
 | `--continue-on-error` | Warn instead of aborting on a render error: a file whose content fails is copied verbatim, a file or directory whose name fails is skipped |
 
+With `--continue-on-error`, a run that hit render errors ends by saying how to see all of them:
+`specs template validate ./path` for a local source, or to clone the repository and validate the
+clone for a remote one.
+
 ## Typed `--arg` values
 
 A value given with `--arg` takes the type of the variable's default in the project file, so it

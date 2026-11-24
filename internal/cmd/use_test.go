@@ -5,8 +5,10 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/specsnl/specs-cli/internal/host"
 	"github.com/specsnl/specs-cli/internal/specs"
 )
 
@@ -357,4 +359,66 @@ func TestUse_AmbiguousProjectFiles(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error when both project.yaml and project.yml exist, got nil")
 	}
+}
+
+func TestUse_ContinueOnError_HintNamesThePathAsGiven(t *testing.T) {
+	parent := t.TempDir()
+	buildMinimalTemplate(t, mkdir(t, filepath.Join(parent, "tpl")), "Name: world\n", "bad.txt", "{{ invalid")
+	t.Chdir(parent)
+
+	for _, source := range []string{"./tpl", "file:./tpl"} {
+		t.Run(source, func(t *testing.T) {
+			out, err := executeCmd("use", "--use-defaults", "--continue-on-error", source, t.TempDir())
+			if err != nil {
+				t.Fatalf("use: %v\n%s", err, out)
+			}
+
+			if !strings.Contains(out, "run 'specs template validate ./tpl' to see all issues") {
+				t.Errorf("hint should name ./tpl:\n%s", out)
+			}
+
+			if strings.Contains(out, "specs-use-src") {
+				t.Errorf("hint should not name the temp copy:\n%s", out)
+			}
+		})
+	}
+}
+
+func TestUse_ContinueOnError_RemoteHintSaysToClone(t *testing.T) {
+	url := serveGitRepo(t, func(dir string) {
+		buildMinimalTemplate(t, dir, "Name: world\n", "bad.txt", "{{ invalid")
+	})
+
+	out, err := executeCmd("use", "--use-defaults", "--continue-on-error", url, t.TempDir())
+	if err != nil {
+		t.Fatalf("use: %v\n%s", err, out)
+	}
+
+	want := "clone " + strings.TrimSuffix(url, ".git") + " and run 'specs template validate <clone-dir>' to see all issues"
+	if !strings.Contains(out, want) {
+		t.Errorf("output should contain %q:\n%s", want, out)
+	}
+
+	if strings.Contains(out, "specs-use-src") || strings.Contains(out, "validate repo") {
+		t.Errorf("hint should not name the temp clone:\n%s", out)
+	}
+}
+
+func TestRemoteValidateHint_NamesTheRef(t *testing.T) {
+	got := remoteValidateHint(&host.Source{CloneURL: "https://github.com/acme/tpl", Branch: "v1.2.0"})
+
+	want := "clone https://github.com/acme/tpl at v1.2.0 and run 'specs template validate <clone-dir>' to see all issues"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func mkdir(t *testing.T, dir string) string {
+	t.Helper()
+
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	return dir
 }
