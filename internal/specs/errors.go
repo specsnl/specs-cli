@@ -72,6 +72,10 @@ var (
 
 	// ErrSymlinkDangling is returned for a symlink whose chain ends at nothing.
 	ErrSymlinkDangling = errors.New("symlink target does not exist")
+
+	// ErrPathOutside is returned for a file or directory whose rendered name is
+	// absolute or climbs out of the output directory.
+	ErrPathOutside = errors.New("rendered path is outside the output directory")
 )
 
 // KindOf returns a stable, machine-readable string identifier for the sentinel
@@ -113,6 +117,8 @@ func KindOf(err error) string {
 		return "symlink_outside"
 	case errors.Is(err, ErrSymlinkDangling):
 		return "symlink_dangling"
+	case errors.Is(err, ErrPathOutside):
+		return "path_outside"
 	default:
 		return ""
 	}

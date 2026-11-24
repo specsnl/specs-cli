@@ -35,6 +35,18 @@ Directory and file names are also templated:
   main.go
 ```
 
+A rendered name must stay inside the generated project. A name that renders to an absolute path or
+climbs out with `..` (`{{ .Dir }}/x.txt` with `Dir: ../../escaped`) is never written, whether the
+value comes from a default, `--arg`, `--values` or a prompt. A `..` that stays inside is fine:
+`a/../b/x.txt` is written as `b/x.txt`.
+
+- For a local template, the file is skipped with a warning naming the source and rendered path. A
+  directory is skipped with everything under it.
+- A template cloned from a remote (`specs use <git-url>`, or one added with `specs template download`)
+  fails instead, naming every such path, and nothing is written to the target.
+- `specs template validate` reports these paths, rendered with the schema defaults, and exits with
+  bit `16` set.
+
 To avoid conflicts with tools that also use `{{ }}` (e.g. GitHub Actions, Helm), add `__delimiters` to `project.yml` to use a custom pair:
 
 ```yaml

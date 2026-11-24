@@ -29,6 +29,10 @@ Manage a local registry of named templates. Unlike `specs use`, downloaded templ
 `template save` leaves such a link out of the copy and warns. `validate` reports skipped symlinks. See
 [Symlinks](/docs/template-structure/#symlinks).
 
+A rendered file or directory name that leaves the target directory is never written. `template use`
+skips it with a warning, or fails when the template was downloaded from a remote. `validate` reports it.
+See [Template delimiters](/docs/template-structure/#template-delimiters).
+
 For machine-readable `list` and `update` output, use the global `--output json` flag (see
 [Global Flags](/docs/commands/global-flags/)). Their tables are the product and go to stdout — an empty registry
 still yields `[]`, with the explanation narrated on stderr — while `validate` answers

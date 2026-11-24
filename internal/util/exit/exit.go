@@ -7,10 +7,11 @@ const (
 	Error = 1
 
 	// Bitmask exit codes for validate. Multiple conditions combine additively.
-	ValidateUnused  = 1 // bit 0: unused variable/computed value (--strict only)
-	ValidateUnknown = 2 // bit 1: unknown variable referenced in a template file
-	ValidateRender  = 4 // bit 2: file could not be rendered (parse or execution error)
-	ValidateLinks   = 8 // bit 3: symlink skipped (out of bounds, dangling, or not creatable)
+	ValidateUnused  = 1  // bit 0: unused variable/computed value (--strict only)
+	ValidateUnknown = 2  // bit 1: unknown variable referenced in a template file
+	ValidateRender  = 4  // bit 2: file could not be rendered (parse or execution error)
+	ValidateLinks   = 8  // bit 3: symlink skipped (out of bounds, dangling, or not creatable)
+	ValidatePaths   = 16 // bit 4: rendered path outside the output directory
 )
 
 // ExitError is a silent error that carries a specific exit code. main.go uses

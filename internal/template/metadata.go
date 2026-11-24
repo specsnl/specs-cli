@@ -21,6 +21,12 @@ type Metadata struct {
 	Version    string   `json:"Version,omitempty"`
 }
 
+// IsRemote reports whether the template was cloned from a remote repository
+// rather than saved from a local path. Nil metadata is not remote.
+func (m *Metadata) IsRemote() bool {
+	return m != nil && m.Repository != "" && !IsLocalRepository(m.Repository)
+}
+
 // JSONTime wraps time.Time with RFC1123Z serialisation and a human-readable display.
 type JSONTime struct {
 	time.Time

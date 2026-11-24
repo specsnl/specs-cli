@@ -55,6 +55,7 @@ func TestValidateCodesAreDistinctBits(t *testing.T) {
 		{name: "unknown", code: exit.ValidateUnknown, want: 2},
 		{name: "render", code: exit.ValidateRender, want: 4},
 		{name: "links", code: exit.ValidateLinks, want: 8},
+		{name: "paths", code: exit.ValidatePaths, want: 16},
 		{name: "unused and unknown", code: exit.ValidateUnused | exit.ValidateUnknown, want: 3},
 		{
 			name: "all three",

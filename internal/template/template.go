@@ -41,6 +41,12 @@ type Config struct {
 	// unrenderable files that cannot use .specsverbatim.
 	ContinueOnRenderError bool
 
+	// RejectEscapingPaths makes a rendered path outside the output directory
+	// abort Execute instead of being skipped with a warning. Set it for cloned
+	// templates: their file names, and the defaults they render with, were
+	// written by someone else.
+	RejectEscapingPaths bool
+
 	// Version is the running specs CLI version, injected by the cmd layer so that
 	// Get() can enforce a template's __specs__version constraint without pkg/template
 	// importing pkg/cmd. An empty value or "dev" (or any otherwise unparseable
@@ -73,6 +79,19 @@ type RenderWarning struct {
 	Preview string // first ~80 bytes of the unrendered source content; helps grep for stragglers
 }
 
+// PathError records a file or directory whose rendered path is outside the
+// output directory.
+type PathError struct {
+	Path     string // template-relative source path, e.g. template/{{ .Dir }}/x.txt
+	Rendered string
+}
+
+func (e *PathError) Error() string {
+	return fmt.Sprintf("%s → %s: %v", e.Path, e.Rendered, specs.ErrPathOutside)
+}
+
+func (e *PathError) Unwrap() error { return specs.ErrPathOutside }
+
 // Template holds everything needed to execute a boilr template.
 type Template struct {
 	Root         string              // path to the template root (contains project.yaml + template/)
@@ -84,6 +103,7 @@ type Template struct {
 	Metadata     *Metadata           // nil if __metadata.json is absent
 	Warnings     []RenderWarning     // non-fatal render issues collected during Execute
 	LinkWarnings []*osutil.LinkError // symlinks Execute skipped or removed from the output
+	PathWarnings []*PathError        // files and directories Execute skipped because their rendered path escapes
 	cfg          Config
 	funcMap      texttemplate.FuncMap
 	verbatim     *VerbatimRules
@@ -279,6 +299,23 @@ func (t *Template) Execute(targetDir string) error {
 			return nil
 		}
 
+		if !filepath.IsLocal(destRel) {
+			slog.Debug("file decision", "path", rel, "rendered", destRel, "action", "skip outside")
+
+			t.PathWarnings = append(t.PathWarnings, &PathError{
+				Path:     path.Join(specs.TemplateDirFile, filepath.ToSlash(rel)),
+				Rendered: destRel,
+			})
+
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+
+			skipped++
+
+			return nil
+		}
+
 		destPath := filepath.Join(targetDir, destRel)
 
 		if d.IsDir() {
@@ -312,6 +349,15 @@ func (t *Template) Execute(targetDir string) error {
 	})
 	if walkErr != nil {
 		return walkErr
+	}
+
+	if t.cfg.RejectEscapingPaths && len(t.PathWarnings) > 0 {
+		errs := make([]error, len(t.PathWarnings))
+		for i, w := range t.PathWarnings {
+			errs[i] = w
+		}
+
+		return errors.Join(errs...)
 	}
 
 	if err := t.writeLinks(targetDir, links); err != nil {

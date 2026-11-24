@@ -240,7 +240,10 @@ flowchart TD
     F -->|yes| Skip2[skip]
     F -->|no| G{any path segment empty?}
     G -->|yes| Skip3[skip dir tree]
-    G -->|no| H{is directory?}
+    G -->|no| P{"filepath.IsLocal(rendered path)?"}
+    P -->|"no — local template"| Skip6["skip (dir tree) — append PathWarning"]
+    P -->|"no — cloned template"| Skip7["append PathWarning\nExecute returns an error after the walk"]
+    P -->|yes| H{is directory?}
     H -->|yes| Mkdir[os.MkdirAll]
     H -->|no| S{is symlink?}
     S -->|yes| S1{resolves inside template/?}
@@ -258,6 +261,33 @@ flowchart TD
     L -->|yes| Skip4[skip — do not create file]
     L -->|no| Write[write to dest]
 ```
+
+### Rendered paths
+
+The boundary is the output directory: every rendered path must stay inside it. After the
+empty-segment check, `Execute` requires `filepath.IsLocal(rendered path)`. That rejects `..`
+segments that climb out of the output, absolute paths and, on Windows, volume and reserved names.
+A `..` that stays inside is kept: `a/../b/x.txt` is written as `b/x.txt`.
+
+On Unix an absolute path such as `/tmp/x` never reaches this check. Its leading `/` is an empty
+segment, so it is skipped like a conditional directory that rendered empty.
+
+A path that fails the check is recorded in `Template.PathWarnings` as a `*template.PathError`
+(source path under `template/`, rendered path, `specs.ErrPathOutside`). A directory is skipped
+together with its subtree. What happens next depends on where the template came from:
+
+| Template                                                              | Result                                                                                                                          |
+|-----------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------|
+| Local (`specs use <path>`, `template save`)                           | Skipped; `template use` reports each one with `Output.Warn`                                                                     |
+| Cloned (`specs use <git-url>`, or a registry entry with a remote URL) | `Execute` returns every `PathError` joined after the walk; the render temp dir is discarded and nothing is copied to the target |
+
+`Config.RejectEscapingPaths` selects the cloned behaviour. `executeTemplate` sets it for
+`specs use <git-url>` and for every registered template whose `__metadata.json` records a remote
+`Repository` (`Metadata.IsRemote`), so `template download` followed by `template use` is covered.
+A cloned template's file names, and the defaults they render with, were written by someone else.
+
+The check is on the rendered result, so it applies whatever supplied the value: a schema default,
+`--arg`, `--values` or a prompt answer.
 
 ### Render error modes
 
@@ -586,27 +616,29 @@ display format for the `list` command.
 It calls `Execute` on a temporary directory first to catch render errors, then calls
 `Template.Validate()` for static analysis.
 
-Four categories of issues are reported:
+These issues are reported:
 
-| Issue kind         | Source       | Meaning                                                                          |
-|--------------------|--------------|----------------------------------------------------------------------------------|
-| `render_error`     | `Execute()`  | A file could not be rendered (parse or execution error) and was copied verbatim. |
-| `symlink`          | `Execute()`  | A symlink was skipped: out of bounds, dangling, or not creatable (see Symlinks). |
-| `unknown_variable` | `Validate()` | A name used in a template file or path is **not defined** in `project.yaml`.     |
-| `unused_variable`  | `Validate()` | A variable **defined** in the user input section is never referenced anywhere.   |
-| `unused_computed`  | `Validate()` | A computed value **defined** under `computed:` is never referenced anywhere.     |
+| Issue kind         | Source       | Meaning                                                                                |
+|--------------------|--------------|----------------------------------------------------------------------------------------|
+| `render_error`     | `Execute()`  | A file could not be rendered (parse or execution error) and was copied verbatim.       |
+| `symlink`          | `Execute()`  | A symlink was skipped: out of bounds, dangling, or not creatable (see Symlinks).       |
+| `path_outside`     | `Execute()`  | A rendered path, with the schema defaults, is outside the output (see Rendered paths). |
+| `unknown_variable` | `Validate()` | A name used in a template file or path is **not defined** in `project.yaml`.           |
+| `unused_variable`  | `Validate()` | A variable **defined** in the user input section is never referenced anywhere.         |
+| `unused_computed`  | `Validate()` | A computed value **defined** under `computed:` is never referenced anywhere.           |
 
 Exit codes are a bitmask — multiple conditions combine additively:
 
 | Bit | Constant          | Value | Condition                                                                 |
 |-----|-------------------|-------|---------------------------------------------------------------------------|
+| 4   | `ValidatePaths`   | 16    | Any rendered path outside the output                                      |
 | 3   | `ValidateLinks`   | 8     | Any skipped symlink                                                       |
 | 2   | `ValidateRender`  | 4     | Any `render_error` — file copied verbatim due to parse or execution error |
 | 1   | `ValidateUnknown` | 2     | Any `unknown_variable`                                                    |
 | 0   | `ValidateUnused`  | 1     | Any `unused_*` (only with `--strict`)                                     |
 
-`specs template validate` exits 0 only when there are no render errors, no skipped symlinks and no
-unknown variables.
+`specs template validate` exits 0 only when there are no render errors, no skipped symlinks, no
+rendered paths outside the output and no unknown variables.
 
 ---
 
