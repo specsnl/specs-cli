@@ -73,6 +73,7 @@ func runUse(app *App, rawSource, targetDir string, opts executeOpts) error {
 		app.warnSkippedLinks(skipped)
 
 		templateRoot = tmp
+		opts.renderErrorHint = validateHint(src.LocalPath)
 	} else {
 		app.Output.Info("cloning %s…", src.CloneURL)
 		// git layer logs clone start/complete
@@ -87,7 +88,19 @@ func runUse(app *App, rawSource, targetDir string, opts executeOpts) error {
 
 		templateRoot = cloneDir
 		opts.remote = true
+		opts.renderErrorHint = remoteValidateHint(src)
 	}
 
 	return app.executeTemplate(templateRoot, targetDir, opts)
+}
+
+// remoteValidateHint says how to validate a remote template, which has no local
+// path to name once the temporary clone is gone.
+func remoteValidateHint(src *host.Source) string {
+	repo := src.CloneURL
+	if src.Branch != "" {
+		repo += " at " + src.Branch
+	}
+
+	return fmt.Sprintf("clone %s and run 'specs template validate <clone-dir>' to see all issues", repo)
 }

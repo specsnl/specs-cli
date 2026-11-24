@@ -33,6 +33,12 @@ type executeOpts struct {
 	allowHooks      bool // override safe-mode hook suppression
 	yes             bool // skip interactive confirmation for remote hook execution
 	remote          bool // set programmatically when source is a remote repository
+	// renderErrorHint tells the user how to see every render error; empty prints nothing.
+	renderErrorHint string
+}
+
+func validateHint(templatePath string) string {
+	return fmt.Sprintf("run 'specs template validate %s' to see all issues", templatePath)
 }
 
 func newTemplateUseCmd(app *App) *cobra.Command {
@@ -53,6 +59,8 @@ func newTemplateUseCmd(app *App) *cobra.Command {
 			if _, err := os.Stat(templateRoot); os.IsNotExist(err) {
 				return fmt.Errorf("%w: %s", specs.ErrTemplateNotFound, name)
 			}
+
+			opts.renderErrorHint = validateHint(templateRoot)
 
 			return app.executeTemplate(templateRoot, targetDir, opts)
 		},
@@ -220,7 +228,9 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 			}
 		}
 
-		a.Output.Warn("run 'specs template validate %s' to see all issues", filepath.Base(templateRoot))
+		if opts.renderErrorHint != "" {
+			a.Output.Warn("%s", opts.renderErrorHint)
+		}
 	}
 
 	if err := os.MkdirAll(targetDir, 0755); err != nil {
