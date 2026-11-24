@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"maps"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -207,6 +208,11 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 
 	if len(tmpl.Warnings) > 0 {
 		for _, w := range tmpl.Warnings {
+			if w.Skipped {
+				a.Output.Warn("%s: skipped due to render error in its name: %v", path.Join(specs.TemplateDirFile, w.Path), w.Err)
+				continue
+			}
+
 			a.Output.Warn("%s: copied verbatim due to render error: %v", w.Path, w.Err)
 
 			if w.Preview != "" {

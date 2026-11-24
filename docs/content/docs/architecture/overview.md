@@ -239,8 +239,9 @@ flowchart TD
     A["filepath.WalkDir(template/)"] --> B{ignoredFile?}
     B -->|yes| Skip1[skip]
     B -->|no| C[render path as template]
-    C --> D{render error or result empty?}
-    D -->|yes| Skip2[skip]
+    C --> D{parse or execution error?}
+    D -->|"yes — fail-fast"| Abort0[return error naming the source path]
+    D -->|"yes — --continue-on-error"| Skip2["skip dir tree — RenderWarning"]
     D -->|no| E{any template segment empty?}
     E -->|yes| Skip3[skip dir tree]
     E -->|no| P{"filepath.IsLocal(rendered path)?"}

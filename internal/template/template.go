@@ -71,12 +71,14 @@ var ignoredFiles = map[string]bool{
 }
 
 // RenderWarning records a non-fatal issue encountered while rendering a template file.
-// The file is still written to the destination as a verbatim copy.
+// A file whose content failed to render is still written as a verbatim copy; a file
+// or directory whose name failed to render is not written at all (Skipped).
 // Only produced when Config.ContinueOnRenderError is true.
 type RenderWarning struct {
 	Path    string // template-relative path of the affected file
 	Err     error
 	Preview string // first ~80 bytes of the unrendered source content; helps grep for stragglers
+	Skipped bool   // the name failed to render, so the path (and a directory's subtree) was not written
 }
 
 // PathError records a file or directory whose rendered path is outside the
@@ -271,10 +273,28 @@ func (t *Template) Execute(targetDir string) error {
 		}
 
 		segments, err := t.renderPath(rel, ctx)
+		if err != nil {
+			if !t.cfg.ContinueOnRenderError {
+				return fmt.Errorf("rendering name %s: %w", path.Join(specs.TemplateDirFile, filepath.ToSlash(rel)), err)
+			}
+
+			slog.Debug("file decision", "path", rel, "action", "skip name error", "error", err)
+
+			t.Warnings = append(t.Warnings, RenderWarning{Path: filepath.ToSlash(rel), Err: err, Skipped: true})
+
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+
+			skipped++
+
+			return nil
+		}
+
 		// A segment that renders empty is a conditional that rendered its name
 		// away, which excludes the whole subtree.
-		if err != nil || slices.ContainsFunc(segments, isBlank) {
-			slog.Debug("skipping path", "path", rel, "error", err)
+		if slices.ContainsFunc(segments, isBlank) {
+			slog.Debug("skipping path", "path", rel)
 
 			if d.IsDir() {
 				return filepath.SkipDir
@@ -465,7 +485,11 @@ func (t *Template) renderPath(rel string, ctx map[string]any) ([]string, error) 
 func (t *Template) renderName(name string, ctx map[string]any) (string, error) {
 	d := t.cfg.delims()
 
-	tmpl, err := texttemplate.New("").Delims(d.Left, d.Right).Funcs(t.funcMap).Parse(name)
+	tmpl, err := texttemplate.New("").
+		Delims(d.Left, d.Right).
+		Funcs(t.funcMap).
+		Option("missingkey=error").
+		Parse(name)
 	if err != nil {
 		return "", err
 	}

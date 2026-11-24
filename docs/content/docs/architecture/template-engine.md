@@ -229,7 +229,14 @@ template/
 | `false` (badge.png) | *(empty)*, `images`, `badge.png` | skipped — empty segment |
 
 Each name is rendered in the context of its own path, so an action cannot span directories: a
-directory named `{{ if .X }}docs` does not parse on its own and is skipped.
+directory named `{{ if .X }}docs` does not parse on its own, which is a render error.
+
+Names render with `missingkey=error`, like file contents. A name that fails to render (a parse
+error, an undefined variable, an execution error) is never mistaken for a conditional: it aborts
+`Execute`, naming the source path under `template/`. With `--continue-on-error` it becomes a
+`RenderWarning` with `Skipped` set, and the file, or the directory with its subtree, is not
+written. Unlike file contents, a name has no verbatim fallback. Only a name that renders empty or
+whitespace-only is skipped silently.
 
 A separator inside a rendered segment comes from a value, not from the template: with `Dir: a/b`,
 `{{ .Dir }}/x.txt` is written as `a/b/x.txt`. A value that empties a segment the same way a
@@ -247,8 +254,9 @@ flowchart TD
     C --> D{ignoredFile?}
     D -->|yes| Skip1[skip]
     D -->|no| E[render path as template]
-    E --> F{render error or result empty?}
-    F -->|yes| Skip2[skip]
+    E --> F{parse or execution error?}
+    F -->|"yes — fail-fast (default)"| Abort0["return error naming the source path"]
+    F -->|"yes — --continue-on-error"| Skip2["skip (dir tree) — append RenderWarning"]
     F -->|no| G{any template segment empty?}
     G -->|yes| Skip3[skip dir tree]
     G -->|no| P{"filepath.IsLocal(rendered path)?"}
@@ -303,16 +311,17 @@ The check is on the rendered result, so it applies whatever supplied the value: 
 
 ### Render error modes
 
-| Mode                    | Behaviour                                                                                                                                                                                | How to enable              |
-|-------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------|
-| **Fail-fast** (default) | Parse or execution errors abort `Execute` immediately; no destination file is written for the affected path. The tmp dir is cleaned up by the deferred `os.RemoveAll` in `template use`. | Default — no flag needed   |
-| **Continue-on-error**   | Parse or execution errors are recorded as `RenderWarning` entries and the file is copied verbatim. Restores the pre-v0.x behaviour. Use only when `.specsverbatim` is not an option.     | `--continue-on-error` flag |
+| Mode                    | Behaviour                                                                                                                                                                                                                                                                 | How to enable              |
+|-------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------|
+| **Fail-fast** (default) | Parse or execution errors, in a file's content or in a file or directory name, abort `Execute` immediately; no destination file is written for the affected path. The tmp dir is cleaned up by the deferred `os.RemoveAll` in `template use`.                             | Default — no flag needed   |
+| **Continue-on-error**   | Parse or execution errors are recorded as `RenderWarning` entries. A file whose content failed is copied verbatim; a file or directory whose name failed is skipped (`Skipped` is set). Restores the pre-v0.x behaviour. Use only when `.specsverbatim` is not an option. | `--continue-on-error` flag |
 
 If any `RenderWarning` entries are present after `Execute` returns (only possible with `--continue-on-error`):
 
 - **`template use`** reports each affected file via `Output.Warn`, including the destination
   path and the first 80 characters of the unrendered source so the user can grep for
-  straggling `{{ }}` literals. It also suggests running `specs template validate <name>`.
+  straggling `{{ }}` literals. A skipped name is reported with its source path under `template/`
+  instead. It also suggests running `specs template validate <name>`.
 - **`template validate`** reports each affected file, includes them in the exit code
   (`ValidateRender = 4`), and always runs at debug log level so no diagnostic output
   is suppressed.
@@ -632,7 +641,7 @@ These issues are reported:
 
 | Issue kind         | Source       | Meaning                                                                                |
 |--------------------|--------------|----------------------------------------------------------------------------------------|
-| `render_error`     | `Execute()`  | A file could not be rendered (parse or execution error) and was copied verbatim.       |
+| `render_error`     | `Execute()`  | A file's content (copied verbatim) or a name (skipped) failed to render.               |
 | `symlink`          | `Execute()`  | A symlink was skipped: out of bounds, dangling, or not creatable (see Symlinks).       |
 | `path_outside`     | `Execute()`  | A rendered path, with the schema defaults, is outside the output (see Rendered paths). |
 | `unknown_variable` | `Validate()` | A name used in a template file or path is **not defined** in `project.yaml`.           |
@@ -645,7 +654,7 @@ Exit codes are a bitmask — multiple conditions combine additively:
 |-----|-------------------|-------|---------------------------------------------------------------------------|
 | 4   | `ValidatePaths`   | 16    | Any rendered path outside the output                                      |
 | 3   | `ValidateLinks`   | 8     | Any skipped symlink                                                       |
-| 2   | `ValidateRender`  | 4     | Any `render_error` — file copied verbatim due to parse or execution error |
+| 2   | `ValidateRender`  | 4     | Any `render_error` — parse or execution error in a file's content or name |
 | 1   | `ValidateUnknown` | 2     | Any `unknown_variable`                                                    |
 | 0   | `ValidateUnused`  | 1     | Any `unused_*` (only with `--strict`)                                     |
 
