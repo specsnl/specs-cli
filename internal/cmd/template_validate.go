@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 
 	"github.com/specsnl/specs-cli/internal/specs"
@@ -63,6 +64,11 @@ func newTemplateValidateCmd(app *App) *cobra.Command {
 			}
 
 			for _, w := range tmpl.Warnings {
+				if w.Skipped {
+					app.Output.Warn("render error in the name of %s: %v", path.Join(specs.TemplateDirFile, w.Path), w.Err)
+					continue
+				}
+
 				app.Output.Warn("render error in %s: %v", w.Path, w.Err)
 			}
 
