@@ -34,6 +34,9 @@ func TestKindOf_KnownSentinels(t *testing.T) {
 		{fmt.Errorf("%w: template requires specs %s, but this binary is %s", specs.ErrSpecsVersionUnsatisfied, "^0.2.0", "0.1.0"), "specs_version_unsatisfied"},
 		{specs.ErrReservedVariableName, "reserved_variable_name"},
 		{fmt.Errorf("%w: __foo", specs.ErrReservedVariableName), "reserved_variable_name"},
+		{specs.ErrSymlinkOutside, "symlink_outside"},
+		{fmt.Errorf("leak.txt → /etc/passwd: %w", specs.ErrSymlinkOutside), "symlink_outside"},
+		{specs.ErrSymlinkDangling, "symlink_dangling"},
 	}
 
 	for _, tc := range cases {

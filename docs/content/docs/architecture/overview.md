@@ -52,6 +52,7 @@ specs-cli/
     │   └── registry.go           # Entry, UpgradeResult, Load(), Upgrade()
     ├── template/                 # template loading & execution engine
     │   ├── template.go           # Get(), Execute(), configurable delimiters
+    │   ├── links.go              # CheckLinks() — rejects a cloned template with out-of-bounds symlinks
     │   ├── context.go            # project.yml parsing, LoadProjectFile(), referenced defaults, computed values
     │   ├── verbatim.go           # .specsverbatim loading & matching
     │   ├── functions.go          # FuncMap (custom + Sprout)
@@ -68,7 +69,7 @@ specs-cli/
     └── util/
         ├── exit/                 # exit codes
         ├── git/                  # go-git wrapper, SSH auth, remote check
-        ├── osutil/               # file operations (CopyDir, etc.)
+        ├── osutil/               # file operations (CopyDir, ResolveLink, LinkTarget, Symlink)
         ├── output/               # Writer implementations, table renderer, slog setup, IsTTY
         ├── validate/             # Name() validator and argument validators
         └── values/               # --values file (JSON/YAML) + --arg flag parsing
@@ -207,7 +208,7 @@ flowchart TD
     F --> G["ApplyComputed — resolve computed: values post-prompt"]
     G --> H["hooks.Run(pre-use) if defined"]
     H --> I["Execute(tmpDir) — render template/ into temp dir"]
-    I --> J["osutil.CopyDir(tmpDir → targetDir)"]
+    I --> J["osutil.CopyDir(tmpDir → targetDir)\nsymlinks recreated as symlinks"]
     J --> K["hooks.Run(post-use, env=SPECS_-prefixed context)"]
     K --> L[output success]
 ```
@@ -220,8 +221,11 @@ flowchart TD
 flowchart TD
     A[parse source format] --> B{source type?}
     B -->|github shorthand / URL| C["git.Clone(tmpDir, url)"]
-    B -->|local path| D["copy local path to tmpDir"]
-    C & D --> E["template.Get(tmpDir)"]
+    C --> CL{"template.CheckLinks:\nsymlink leaves template/?"}
+    CL -->|yes| Abort["abort — nothing written"]
+    CL -->|no| E
+    B -->|local path| D["osutil.CopyDir(local path → tmpDir)\nout-of-bounds symlinks skipped with a warning"]
+    D --> E["template.Get(tmpDir)"]
     E --> F[same flow as specs template use]
     F --> G[discard tmpDir — no registry entry]
 ```
@@ -241,7 +245,11 @@ flowchart TD
     E -->|yes| Skip3[skip dir tree]
     E -->|no| F{is directory?}
     F -->|yes| Mkdir[os.MkdirAll]
-    F -->|no| G{matches .specsverbatim?}
+    F -->|no| L{is symlink?}
+    L -->|yes| L1{resolves inside template/?}
+    L1 -->|no| Skip5[skip — LinkWarning]
+    L1 -->|yes| L2["render target like a file name\nqueue link — created after the walk"]
+    L -->|no| G{matches .specsverbatim?}
     G -->|yes| Copy1[copy verbatim]
     G -->|no| H{isBinary?}
     H -->|yes| Copy2[copy verbatim]
@@ -436,5 +444,5 @@ func (h *Hooks) Run(trigger, cwd string, ctx map[string]any, funcMap template.Fu
 | `pkg/util/exec`          | **removed** | no longer needed (hooks use `os/exec` directly)                                                                                                                                       |
 | `internal/util/exit`     | unchanged   |                                                                                                                                                                                       |
 | `internal/util/git`      | updated     | SSH auth, `CheckRemoteContext()` (context-aware), `CheckLocalSource()` (local-path status), `Describe()` for status tracking; `RemoteCheckResult.Err()` returns typed sentinel errors |
-| `internal/util/osutil`   | updated     | `CopyDir()` recursive copy                                                                                                                                                            |
+| `internal/util/osutil`   | updated     | `CopyDir()` recursive copy that recreates in-bounds symlinks and skips the rest; `ResolveLink()` symlink bounds check                                                                 |
 | `internal/util/validate` | updated     | `Name()` validator (alphanumeric + hyphens + underscores)                                                                                                                             |

@@ -11,6 +11,7 @@ import (
 	"text/template/parse"
 
 	"github.com/specsnl/specs-cli/internal/specs"
+	"github.com/specsnl/specs-cli/internal/util/osutil"
 )
 
 // Conditionals maps a schema variable name to the condition that must be true for
@@ -46,6 +47,15 @@ func AnalyzeConditionals(
 
 		// Analyse the filename/path template itself.
 		analyseExpr(rel, nil, funcMap, conds, always, delims)
+
+		// A link's target is rendered like a file name; its content is never read.
+		if osutil.IsLink(d) {
+			if target, err := os.Readlink(path); err == nil {
+				analyseExpr(target, nil, funcMap, conds, always, delims)
+			}
+
+			return nil
+		}
 
 		// For files, analyse the content.
 		if !d.IsDir() {

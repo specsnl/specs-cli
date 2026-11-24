@@ -41,9 +41,12 @@ func newTemplateSaveCmd(app *App) *cobra.Command {
 				return err
 			}
 
-			if err := osutil.CopyDir(srcPath, dest); err != nil {
+			skipped, err := osutil.CopyDir(srcPath, dest)
+			if err != nil {
 				return err
 			}
+
+			app.warnSkippedLinks(skipped)
 
 			absPath, err := filepath.Abs(srcPath)
 			if err != nil {

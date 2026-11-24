@@ -25,7 +25,7 @@ func TestCopyDir_PreservesStructure(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := osutil.CopyDir(src, dst); err != nil {
+	if _, err := osutil.CopyDir(src, dst); err != nil {
 		t.Fatalf("CopyDir: %v", err)
 	}
 
@@ -45,7 +45,7 @@ func TestCopyDir_PreservesContent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := osutil.CopyDir(src, dst); err != nil {
+	if _, err := osutil.CopyDir(src, dst); err != nil {
 		t.Fatalf("CopyDir: %v", err)
 	}
 
@@ -72,7 +72,7 @@ func TestCopyDir_PreservesPermissions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := osutil.CopyDir(src, dst); err != nil {
+	if _, err := osutil.CopyDir(src, dst); err != nil {
 		t.Fatalf("CopyDir: %v", err)
 	}
 
@@ -98,7 +98,7 @@ func TestCopyDir_OverwritesExisting(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := osutil.CopyDir(src, dst); err != nil {
+	if _, err := osutil.CopyDir(src, dst); err != nil {
 		t.Fatalf("CopyDir: %v", err)
 	}
 

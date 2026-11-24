@@ -195,6 +195,8 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 		return err
 	}
 
+	a.warnSkippedLinks(tmpl.LinkWarnings)
+
 	if len(tmpl.Warnings) > 0 {
 		for _, w := range tmpl.Warnings {
 			a.Output.Warn("%s: copied verbatim due to render error: %v", w.Path, w.Err)
@@ -211,9 +213,12 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 		return err
 	}
 
-	if err := osutil.CopyDir(tmp, targetDir); err != nil {
+	skipped, err := osutil.CopyDir(tmp, targetDir)
+	if err != nil {
 		return err
 	}
+
+	a.warnSkippedLinks(skipped)
 
 	if !skipHooks && h.HasPostUse() {
 		a.Output.Info("running post-use hook…")
@@ -226,6 +231,12 @@ func (a *App) executeTemplate(templateRoot, targetDir string, opts executeOpts) 
 	a.Output.Info("done — files written to %s", targetDir)
 
 	return nil
+}
+
+func (a *App) warnSkippedLinks(links []*osutil.LinkError) {
+	for _, link := range links {
+		a.Output.Warn("skipped symlink %v", link)
+	}
 }
 
 // confirmRemoteHooks displays the rendered hook commands from a remote template and

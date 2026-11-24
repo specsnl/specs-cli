@@ -56,8 +56,14 @@ func newTemplateDownloadCmd(app *App) *cobra.Command {
 				return err
 			}
 
-			// Reject templates that use the reserved "__" variable namespace. Remove the
-			// freshly cloned directory so a rejected template is not left registered.
+			// Reject templates with a symlink out of template/ or that use the reserved
+			// "__" variable namespace. Remove the freshly cloned directory so a rejected
+			// template is not left registered.
+			if err := pkgtemplate.CheckLinks(dest); err != nil {
+				_ = os.RemoveAll(dest)
+				return err
+			}
+
 			if raw, perr := pkgtemplate.LoadProjectFile(dest); perr == nil {
 				if err := pkgtemplate.CheckReservedNames(raw); err != nil {
 					_ = os.RemoveAll(dest)

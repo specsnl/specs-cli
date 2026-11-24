@@ -66,6 +66,8 @@ func newTemplateValidateCmd(app *App) *cobra.Command {
 				app.Output.Warn("render error in %s: %v", w.Path, w.Err)
 			}
 
+			app.warnSkippedLinks(tmpl.LinkWarnings)
+
 			issues, err := tmpl.Validate()
 			if err != nil {
 				return fmt.Errorf("validation error: %w", err)
@@ -85,6 +87,10 @@ func newTemplateValidateCmd(app *App) *cobra.Command {
 			code := 0
 			if len(tmpl.Warnings) > 0 {
 				code |= exit.ValidateRender
+			}
+
+			if len(tmpl.LinkWarnings) > 0 {
+				code |= exit.ValidateLinks
 			}
 
 			if pkgtemplate.HasUnknown(issues) {
