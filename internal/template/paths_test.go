@@ -92,12 +92,13 @@ func TestExecute_EscapingDirectorySkipsItsSubtree(t *testing.T) {
 	assertPathWarnings(t, tmpl, "template/{{ .Dir }} → ../../escaped")
 }
 
-func TestExecute_AbsoluteRenderedPathIsNotWritten(t *testing.T) {
+func TestExecute_AbsoluteRenderedPathIsSkipped(t *testing.T) {
 	abs := filepath.Join(t.TempDir(), "abs")
 
 	tmpl, _, target, err := executeInSandbox(t, "Dir: "+abs+"\n", map[string][]byte{
+		"keep.txt":         []byte("keep"),
 		"{{ .Dir }}/x.txt": []byte("x"),
-	}, pkgtemplate.Config{RejectEscapingPaths: true})
+	}, pkgtemplate.Config{})
 	if err != nil {
 		t.Fatalf("Execute: %v", err)
 	}
@@ -106,13 +107,70 @@ func TestExecute_AbsoluteRenderedPathIsNotWritten(t *testing.T) {
 		t.Errorf("an absolute rendered path was written: %v", err)
 	}
 
+	if got := readFile(t, target, "keep.txt"); got != "keep" {
+		t.Errorf("keep.txt = %q", got)
+	}
+
+	assertPathWarnings(t, tmpl, "template/{{ .Dir }} → "+abs)
+}
+
+func TestExecute_AbsoluteRenderedPathAbortsWhenRejected(t *testing.T) {
+	abs := filepath.Join(t.TempDir(), "abs")
+
+	_, _, _, err := executeInSandbox(t, "Dir: "+abs+"\n", map[string][]byte{
+		"{{ .Dir }}/x.txt": []byte("x"),
+	}, pkgtemplate.Config{RejectEscapingPaths: true})
+	if !errors.Is(err, specs.ErrPathOutside) {
+		t.Fatalf("Execute error = %v, want ErrPathOutside", err)
+	}
+
+	if _, err := os.Stat(abs); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("an absolute rendered path was written: %v", err)
+	}
+}
+
+func TestExecute_ConditionalDirectoryIsSkippedSilently(t *testing.T) {
+	files := map[string][]byte{
+		"{{ if .X }}docs{{ end }}/images/badge.png": []byte("png"),
+		"{{ if .X }}x.txt{{ end }}":                 []byte("x"),
+	}
+
+	tmpl, _, target, err := executeInSandbox(t, "X: false\n", files, pkgtemplate.Config{RejectEscapingPaths: true})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
 	entries, err := os.ReadDir(target)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	if len(entries) != 0 {
-		t.Errorf("output should be empty, has %d entries", len(entries))
+		t.Errorf("output should be empty, has %v", entries)
+	}
+
+	assertPathWarnings(t, tmpl)
+
+	_, _, target, err = executeInSandbox(t, "X: true\n", files, pkgtemplate.Config{})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	if got := readFile(t, target, "docs/images/badge.png"); got != "png" {
+		t.Errorf("docs/images/badge.png = %q", got)
+	}
+}
+
+func TestExecute_SeparatorInAValueIsKept(t *testing.T) {
+	tmpl, _, target, err := executeInSandbox(t, "Dir: a//b/\n", map[string][]byte{
+		"{{ .Dir }}/x.txt": []byte("x"),
+	}, pkgtemplate.Config{RejectEscapingPaths: true})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	if got := readFile(t, target, "a/b/x.txt"); got != "x" {
+		t.Errorf("a/b/x.txt = %q", got)
 	}
 
 	assertPathWarnings(t, tmpl)

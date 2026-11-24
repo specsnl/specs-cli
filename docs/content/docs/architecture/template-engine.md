@@ -207,23 +207,34 @@ vendor/**
 
 ## Conditional Files and Directories
 
-Use the filename itself as a template expression. After rendering:
-
-- Empty or whitespace result → skip the file/directory
-- Any **path segment** empty → skip the file (enables conditional directory trees)
+Use the filename itself as a template expression. `Execute` renders the whole template-relative
+path as one template, with the template's own separators swapped for a marker, and splits the
+result back into one segment per file or directory name. If any of those names renders empty or
+whitespace-only, the file is skipped, and a directory is skipped with its subtree. This is what
+makes conditional directory trees work.
 
 ```text
 template/
-└── {{ if .UseSonarQube }}sonar-project.properties{{ end }}
-└── {{ if .UseSonarQube }}docs/images{{ end }}/
-    └── badge.png
+├── {{ if .UseSonarQube }}sonar-project.properties{{ end }}
+└── {{ if .UseSonarQube }}docs{{ end }}/
+    └── images/
+        └── badge.png
 ```
 
-| `UseSonarQube`      | Rendered path              | Result                  |
-|---------------------|----------------------------|-------------------------|
-| `true`              | `sonar-project.properties` | created                 |
-| `false`             | *(empty)*                  | skipped                 |
-| `false` (badge.png) | `/badge.png`               | skipped — empty segment |
+| `UseSonarQube`      | Rendered segments                | Result                  |
+|---------------------|----------------------------------|-------------------------|
+| `true`              | `sonar-project.properties`       | created                 |
+| `false`             | *(empty)*                        | skipped                 |
+| `true` (badge.png)  | `docs`, `images`, `badge.png`    | `docs/images/badge.png` |
+| `false` (badge.png) | *(empty)*, `images`, `badge.png` | skipped — empty segment |
+
+Each name is rendered in the context of its own path, so an action cannot span directories: a
+directory named `{{ if .X }}docs` does not parse on its own and is skipped.
+
+A separator inside a rendered segment comes from a value, not from the template: with `Dir: a/b`,
+`{{ .Dir }}/x.txt` is written as `a/b/x.txt`. A value that empties a segment the same way a
+conditional does (`Dir: " "`) is skipped the same way, but a value that adds an empty segment
+(`Dir: a//b`) does not: the path is cleaned and written as `a/b/x.txt`.
 
 ---
 
@@ -238,7 +249,7 @@ flowchart TD
     D -->|no| E[render path as template]
     E --> F{render error or result empty?}
     F -->|yes| Skip2[skip]
-    F -->|no| G{any path segment empty?}
+    F -->|no| G{any template segment empty?}
     G -->|yes| Skip3[skip dir tree]
     G -->|no| P{"filepath.IsLocal(rendered path)?"}
     P -->|"no — local template"| Skip6["skip (dir tree) — append PathWarning"]
@@ -265,12 +276,13 @@ flowchart TD
 ### Rendered paths
 
 The boundary is the output directory: every rendered path must stay inside it. After the
-empty-segment check, `Execute` requires `filepath.IsLocal(rendered path)`. That rejects `..`
-segments that climb out of the output, absolute paths and, on Windows, volume and reserved names.
-A `..` that stays inside is kept: `a/../b/x.txt` is written as `b/x.txt`.
+empty-segment check, `Execute` joins the rendered segments and requires
+`filepath.IsLocal(rendered path)`. That rejects `..` segments that climb out of the output,
+absolute paths and, on Windows, volume and reserved names. A `..` that stays inside is kept:
+`a/../b/x.txt` is written as `b/x.txt`.
 
-On Unix an absolute path such as `/tmp/x` never reaches this check. Its leading `/` is an empty
-segment, so it is skipped like a conditional directory that rendered empty.
+Only the template's own segments count for the empty-segment check, so an absolute value
+(`Dir: /tmp/x`) is not mistaken for a conditional and reaches this check.
 
 A path that fails the check is recorded in `Template.PathWarnings` as a `*template.PathError`
 (source path under `template/`, rendered path, `specs.ErrPathOutside`). A directory is skipped

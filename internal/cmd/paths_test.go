@@ -97,6 +97,35 @@ func TestUse_ArgThatEscapesIsSkipped(t *testing.T) {
 	}
 }
 
+func TestUse_AbsoluteArgIsSkippedWithAWarning(t *testing.T) {
+	sandboxTempDir(t)
+
+	abs := filepath.Join(t.TempDir(), "abs")
+
+	srcDir := t.TempDir()
+	buildMinimalTemplate(t, srcDir, "Dir: src\n", "keep.txt", "keep")
+
+	nested := filepath.Join(srcDir, specs.TemplateDirFile, "{{ .Dir }}")
+	if err := os.MkdirAll(nested, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(filepath.Join(nested, "x.txt"), []byte("x"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := executeCmd("use", "--use-defaults", "--arg", "Dir="+abs, "file:"+srcDir, t.TempDir())
+	if err != nil {
+		t.Fatalf("use: %v\n%s", err, out)
+	}
+
+	assertNotEscaped(t, abs)
+
+	if !strings.Contains(out, "template/{{ .Dir }} → "+abs+": rendered path is outside the output directory") {
+		t.Errorf("output should warn about the skipped path:\n%s", out)
+	}
+}
+
 func TestTemplateUse_SavedEscapingPathIsSkipped(t *testing.T) {
 	withTempRegistry(t)
 

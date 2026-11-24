@@ -241,7 +241,7 @@ flowchart TD
     B -->|no| C[render path as template]
     C --> D{render error or result empty?}
     D -->|yes| Skip2[skip]
-    D -->|no| E{any path segment empty?}
+    D -->|no| E{any template segment empty?}
     E -->|yes| Skip3[skip dir tree]
     E -->|no| P{"filepath.IsLocal(rendered path)?"}
     P -->|no| Skip6["skip dir tree — PathWarning\n(cloned template: Execute returns an error)"]
