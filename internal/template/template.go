@@ -270,34 +270,22 @@ func (t *Template) Execute(targetDir string) error {
 			return nil
 		}
 
-		destRel, err := t.renderName(rel, ctx)
-		if err != nil || strings.TrimSpace(destRel) == "" {
+		segments, err := t.renderPath(rel, ctx)
+		// A segment that renders empty is a conditional that rendered its name
+		// away, which excludes the whole subtree.
+		if err != nil || slices.ContainsFunc(segments, isBlank) {
 			slog.Debug("skipping path", "path", rel, "error", err)
 
-			if !d.IsDir() {
-				skipped++
-			}
-
 			if d.IsDir() {
 				return filepath.SkipDir
 			}
 
-			return nil
-		}
-
-		// An empty path segment means a conditional rendered away a directory
-		// name, which excludes the whole subtree.
-		if hasEmptySegment(destRel) {
-			if !d.IsDir() {
-				skipped++
-			}
-
-			if d.IsDir() {
-				return filepath.SkipDir
-			}
+			skipped++
 
 			return nil
 		}
+
+		destRel := strings.Join(segments, string(filepath.Separator))
 
 		if !filepath.IsLocal(destRel) {
 			slog.Debug("file decision", "path", rel, "rendered", destRel, "action", "skip outside")
@@ -457,6 +445,22 @@ func (t *Template) writeLinks(targetDir string, links []outputLink) error {
 	return nil
 }
 
+// pathSep stands in for the separators of a template-relative path while it
+// renders. A file name cannot contain it.
+const pathSep = "\x00"
+
+// renderPath renders a template-relative path as a single template and returns
+// one rendered segment per segment of rel. A separator inside a segment came
+// from a value, not from the template.
+func (t *Template) renderPath(rel string, ctx map[string]any) ([]string, error) {
+	rendered, err := t.renderName(strings.ReplaceAll(rel, string(filepath.Separator), pathSep), ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return strings.Split(rendered, pathSep), nil
+}
+
 // renderName renders a file/directory path template using the configured delimiters.
 func (t *Template) renderName(name string, ctx map[string]any) (string, error) {
 	d := t.cfg.delims()
@@ -565,15 +569,8 @@ func isBinary(path string) bool {
 	return !utf8.Valid(buf)
 }
 
-// hasEmptySegment returns true if any path segment is empty or whitespace-only.
-func hasEmptySegment(path string) bool {
-	for seg := range strings.SplitSeq(path, string(filepath.Separator)) {
-		if strings.TrimSpace(seg) == "" {
-			return true
-		}
-	}
-
-	return false
+func isBlank(s string) bool {
+	return strings.TrimSpace(s) == ""
 }
 
 func copyFile(src, dst string) (err error) {
