@@ -207,7 +207,7 @@ flowchart TD
     E --> F["huh form: iterative prompting\n(unconditional vars first, then conditional by dependency layer)"]
     F --> G["ApplyComputed — resolve computed: values post-prompt"]
     G --> H["hooks.Run(pre-use) if defined"]
-    H --> I["Execute(tmpDir) — render template/ into temp dir"]
+    H --> I["Execute(tmpDir) — render template/ into temp dir\n(rendered path outside: skipped, or an error for a cloned template)"]
     I --> J["osutil.CopyDir(tmpDir → targetDir)\nsymlinks recreated as symlinks"]
     J --> K["hooks.Run(post-use, env=SPECS_-prefixed context)"]
     K --> L[output success]
@@ -243,7 +243,9 @@ flowchart TD
     D -->|yes| Skip2[skip]
     D -->|no| E{any path segment empty?}
     E -->|yes| Skip3[skip dir tree]
-    E -->|no| F{is directory?}
+    E -->|no| P{"filepath.IsLocal(rendered path)?"}
+    P -->|no| Skip6["skip dir tree — PathWarning\n(cloned template: Execute returns an error)"]
+    P -->|yes| F{is directory?}
     F -->|yes| Mkdir[os.MkdirAll]
     F -->|no| L{is symlink?}
     L -->|yes| L1{resolves inside template/?}
